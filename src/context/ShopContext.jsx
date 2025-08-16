@@ -134,7 +134,7 @@ const ShopContextProvider = (props) => {
     try {
       setIsCollectionLoading(true);
 
-      const geocodeResponse = await getLocation();
+      // const geocodeResponse = await getLocation();
 
       const response = await axios.get(`${backend_url}/product-location`, {
         params: {

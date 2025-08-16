@@ -19,7 +19,7 @@ const ListUsers = () => {
   const [pageLimit, setPageLimit] = useState(50);
   const [searchValue, setSearchValue] = useState("");
   const [userPage, setUserPage] = useState(1);
-  const [itemDeleted, setItemDeleted] = useState(false);
+  const [updated, setUpdated] = useState(false);
 
   const { token, backend_url, navigate } = useContext(ShopContext);
 
@@ -50,8 +50,7 @@ const ListUsers = () => {
 
   useEffect(() => {
     fetchUsers();
-    setItemDeleted(false);
-  }, [fetchUsers, itemDeleted]);
+  }, [fetchUsers, updated]);
 
   let tableContent;
   if (isLoading) {
@@ -75,11 +74,7 @@ const ListUsers = () => {
     tableContent = (
       <tbody>
         {users.data.map((user, index) => (
-          <UserTableItem
-            user={user}
-            key={index}
-            setItemDeleted={setItemDeleted}
-          />
+          <UserTableItem user={user} key={index} setUpdated={setUpdated} />
         ))}
       </tbody>
     );
@@ -89,7 +84,7 @@ const ListUsers = () => {
     if (!token) {
       navigate("/login");
     }
-  }, [token]);
+  }, [token, navigate]);
 
   return (
     <div>

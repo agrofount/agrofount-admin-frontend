@@ -37,9 +37,11 @@ const brands = [
 
 const AddProductForm = ({ setShowProductForm }) => {
   const [categories, setCategories] = useState({});
+  const [primaryCategories, setPrimaryCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
+  const [selectedPrimaryCategory, setSelectedPrimaryCategory] = useState("");
   const [selectedBrand, setSelectedBrand] = useState(brands[1]);
   const [productName, setProductName] = useState("");
   const [description, setDescription] = useState("");
@@ -57,11 +59,9 @@ const AddProductForm = ({ setShowProductForm }) => {
         `${backend_url}/product/livestock-feed-categories`
       );
       if (response.data) {
-        setCategories(response.data);
-        setSelectedCategory(Object.keys(response.data)[0]);
-      } else {
-        console.log("error", response);
-        toast.error(response.data.message);
+        setCategories(response.data.livestock);
+        setPrimaryCategories(response.data.primaryCategories);
+        setSelectedCategory(Object.keys(response.data.livestock)[0]);
       }
     } catch (error) {
       console.log("error", error);
@@ -127,6 +127,7 @@ const AddProductForm = ({ setShowProductForm }) => {
       subCategory: selectedSubCategory,
       brand: selectedBrand.name,
       images: images,
+      primaryCategory: selectedPrimaryCategory,
     };
 
     try {
@@ -294,6 +295,28 @@ const AddProductForm = ({ setShowProductForm }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-3">
+        <div className="col-span-2">
+          <Field>
+            <Label className="text-[15px] font-bold leading-normal tracking-[0.3px] text-black">
+              Primary Category <span className="text-red-600">*</span>
+            </Label>
+            <select
+              value={selectedPrimaryCategory}
+              onChange={(e) => setSelectedPrimaryCategory(e.target.value)}
+              className="block w-full border border-gray-500 rounded-full bg-white py-3 pr-8 pl-3 text-gray-500 focus:outline-[#61BF75] text-sm appearance-none"
+            >
+              {primaryCategories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+            <ChevronDownIcon
+              className="pointer-events-none absolute top-10 right-3 size-4 fill-gray-500"
+              aria-hidden="true"
+            />
+          </Field>
+        </div>
         <div>
           <Field>
             <Label className="text-[15px] font-bold leading-normal tracking-[0.3px] text-black">

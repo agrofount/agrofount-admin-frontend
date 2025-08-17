@@ -38,10 +38,12 @@ const brands = [
 
 const UpdateProductForm = ({ productLocationData }) => {
   const [categories, setCategories] = useState({});
+  const [primaryCategories, setPrimaryCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [product, setProduct] = useState({});
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
+  const [selectedPrimaryCategory, setSelectedPrimaryCategory] = useState("");
   const [selectedBrand, setSelectedBrand] = useState("");
   const [productName, setProductName] = useState("");
   const [description, setDescription] = useState("");
@@ -60,11 +62,9 @@ const UpdateProductForm = ({ productLocationData }) => {
         `${backend_url}/product/livestock-feed-categories`
       );
       if (response.data) {
-        setCategories(response.data);
-        setSelectedCategory(Object.keys(response.data)[0]);
-      } else {
-        console.log("error", response);
-        toast.error(response.data.message);
+        setCategories(response.data.livestock);
+        setPrimaryCategories(response.data.primaryCategories);
+        setSelectedCategory(Object.keys(response.data.livestock)[0]);
       }
     } catch (error) {
       console.log("error", error);
@@ -126,13 +126,13 @@ const UpdateProductForm = ({ productLocationData }) => {
     const payload = {
       name: productName || product.name,
       description: description || product.description,
+      primaryCategory: selectedPrimaryCategory || product.primaryCategory,
       category: selectedCategory || product.category,
       subCategory: selectedSubCategory || product.subCategory,
       brand: selectedBrand.name || product.brand,
       images: images.length > 0 ? images : product.images,
     };
 
-    console.log("this is thepayload: ", payload);
     try {
       setProcessing(true);
 
@@ -312,48 +312,49 @@ const UpdateProductForm = ({ productLocationData }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-3">
+        <div className="col-span-2">
+          <Field>
+            <Label className="text-[15px] font-bold leading-normal tracking-[0.3px] text-black">
+              Primary Category <span className="text-red-600">*</span>
+            </Label>
+            <select
+              value={selectedPrimaryCategory || product.primaryCategory}
+              onChange={(e) => setSelectedPrimaryCategory(e.target.value)}
+              className="block w-full border border-gray-500 rounded-full bg-white py-3 pr-8 pl-3 text-gray-500 focus:outline-[#61BF75] text-sm appearance-none"
+            >
+              {primaryCategories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+            <ChevronDownIcon
+              className="pointer-events-none absolute top-10 right-3 size-4 fill-gray-500"
+              aria-hidden="true"
+            />
+          </Field>
+        </div>
         <div>
           <Field>
             <Label className="text-[15px] font-bold leading-normal tracking-[0.3px] text-black">
               Category <span className="text-red-600">*</span>
             </Label>
-          </Field>
-          <Listbox
-            value={selectedCategory || product.category}
-            onChange={setSelectedCategory}
-          >
-            <ListboxButton
-              className={clsx(
-                "relative block w-full border border-gray-500 rounded-full bg-white/5 py-3 pr-8 pl-3 text-left text-gray-500 focus:outline-[#61BF75] text-sm",
-                "data-[focus]:outline-2 data-[focus]:-outline-offset-2 data-[focus]:outline-[#61BF75]"
-              )}
-            >
-              {selectedCategory || product.category}
-              <ChevronDownIcon
-                className="group pointer-events-none absolute top-2.5 right-2.5 size-4 fill-gray-500"
-                aria-hidden="true"
-              />
-            </ListboxButton>
-            <ListboxOptions
-              anchor="bottom"
-              transition
-              className={clsx(
-                "w-[var(--button-width)] rounded-xl border border-white/5 bg-white p-1 [--anchor-gap:var(--spacing-1)] focus:outline-[#61BF75]",
-                "transition duration-100 ease-in data-[leave]:data-[closed]:opacity-0"
-              )}
+            <select
+              value={selectedCategory || product.category}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="block w-full border border-gray-500 rounded-full bg-white py-3 pr-8 pl-3 text-gray-500 focus:outline-[#61BF75] text-sm appearance-none"
             >
               {Object.keys(categories).map((category) => (
-                <ListboxOption
-                  key={category}
-                  value={category}
-                  className="group flex cursor-default items-center gap-2 rounded-lg py-1.5 px-3 select-none data-[focus]:bg-white/10"
-                >
-                  <CheckIcon className="invisible size-4 fill-white group-data-[selected]:visible" />
-                  <div className="text-sm text-gray-500">{category}</div>
-                </ListboxOption>
+                <option key={category} value={category}>
+                  {category}
+                </option>
               ))}
-            </ListboxOptions>
-          </Listbox>
+            </select>
+            <ChevronDownIcon
+              className="pointer-events-none absolute top-10 right-3 size-4 fill-gray-500"
+              aria-hidden="true"
+            />
+          </Field>
         </div>
 
         <div>
@@ -361,42 +362,20 @@ const UpdateProductForm = ({ productLocationData }) => {
             <Label className="text-[15px] font-bold leading-normal tracking-[0.3px] text-black">
               Sub Category <span className="text-red-600">*</span>
             </Label>
-            <Listbox
-              value={selectedSubCategory || product.subCategory}
-              onChange={setSelectedSubCategory}
+            <select
+              value={selectedSubCategory || product.subCategory || ""}
+              onChange={(e) => setSelectedSubCategory(e.target.value)}
+              className="block w-full border border-gray-500 rounded-full bg-white/5 py-3 px-3 text-gray-500 focus:outline-[#61BF75] text-sm"
             >
-              <ListboxButton
-                className={clsx(
-                  "relative block w-full border border-gray-500 rounded-full bg-white/5 py-3 pr-8 pl-3 text-left text-gray-500 focus:outline-[#61BF75] text-sm",
-                  "data-[focus]:outline-2 data-[focus]:-outline-offset-2 data-[focus]:outline-[#61BF75]"
-                )}
-              >
-                {selectedSubCategory || product.subCategory}
-                <ChevronDownIcon
-                  className="group pointer-events-none absolute top-2.5 right-2.5 size-4 fill-gray-500"
-                  aria-hidden="true"
-                />
-              </ListboxButton>
-              <ListboxOptions
-                anchor="bottom"
-                transition
-                className={clsx(
-                  "w-[var(--button-width)] rounded-xl border border-white/5 bg-white p-1 [--anchor-gap:var(--spacing-1)] focus:outline-[#61BF75]",
-                  "transition duration-100 ease-in data-[leave]:data-[closed]:opacity-0"
-                )}
-              >
-                {subCategories.map((subCategory) => (
-                  <ListboxOption
-                    key={subCategory}
-                    value={subCategory}
-                    className="group flex cursor-default items-center gap-2 rounded-lg py-1.5 px-3 select-none data-[focus]:bg-white/10"
-                  >
-                    <CheckIcon className="invisible size-4 fill-white group-data-[selected]:visible" />
-                    <div className="text-sm text-gray-500">{subCategory}</div>
-                  </ListboxOption>
-                ))}
-              </ListboxOptions>
-            </Listbox>
+              <option value="" disabled>
+                Select a sub category
+              </option>
+              {subCategories.map((subCategory) => (
+                <option key={subCategory} value={subCategory}>
+                  {subCategory}
+                </option>
+              ))}
+            </select>
           </Field>
         </div>
 

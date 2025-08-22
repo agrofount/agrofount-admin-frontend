@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { assets } from "../../assets/assets";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  faBell,
   faChevronLeft,
   faChevronRight,
 } from "@fortawesome/free-solid-svg-icons";
@@ -11,6 +12,7 @@ import axios from "axios";
 import { ShopContext } from "../../context/ShopContext";
 import TableSkeleton from "../skeleton/TableSkeleton";
 import ProductTableItem from "../ProductTableItem";
+import { toast } from "react-toastify";
 
 const ListProducts = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -19,6 +21,7 @@ const ListProducts = () => {
   const [searchValue, setSearchValue] = useState("");
   const [productPage, setProductPage] = useState(1);
   const [itemDeleted, setItemDeleted] = useState(false);
+  const [processingNotificaton, setProcessingNotificaton] = useState(false);
 
   const { token, backend_url, navigate } = useContext(ShopContext);
 
@@ -40,6 +43,28 @@ const ListProducts = () => {
 
   const handlePageChange = (page) => {
     setProductPage(page);
+  };
+
+  const handleSendNotifications = async () => {
+    setProcessingNotificaton(true);
+    try {
+      // Simulate sending notifications
+      const response = await axios.post(
+        `${backend_url}/message/price-updates/send`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (response.status === 201) {
+        toast.success(response.message || "Notifications sent successfully");
+      }
+    } catch (error) {
+      console.error("Error sending notifications:", error);
+    } finally {
+      setProcessingNotificaton(false);
+    }
   };
 
   useEffect(() => {
@@ -187,7 +212,33 @@ const ListProducts = () => {
             </div>
           </div>
 
-          <div>
+          <div className="flex flex-row justify-between items-center gap-3">
+            <div
+              className="border border-[#F96767] px-10 py-3 rounded-full cursor-pointer"
+              onClick={handleSendNotifications}
+            >
+              {processingNotificaton ? (
+                <div className="flex items-center space-x-2 text-[#F96767] text-center text-[15px] font-bold leading-normal">
+                  <div
+                    className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent align-[-0.125em] text-surface motion-reduce:animate-[spin_1.5s_linear_infinite] dark:text-white"
+                    role="status"
+                  >
+                    <span className="sr-only">Processing...</span>
+                  </div>
+                  <span className="text-surface ">Processing...</span>
+                </div>
+              ) : (
+                <div className="flex flex-row justify-center gap-2">
+                  <div>
+                    <FontAwesomeIcon icon={faBell} color="#F96767" />
+                  </div>
+
+                  <p className="text-[#F96767] text-center text-[15px] font-bold leading-normal">
+                    Send Notifications
+                  </p>
+                </div>
+              )}
+            </div>
             <Link
               to="/add-products"
               className="flex flex-row gap-2 border border-[#61BF75] px-10 py-3 rounded-full cursor-pointer"

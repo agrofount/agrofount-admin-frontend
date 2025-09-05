@@ -16,28 +16,23 @@ const PrimaryCategoryChart = ({ orders }) => {
       orders.forEach((order) => {
         // Check if order has items
         if (order.items && order.items.length > 0) {
+          //   console.log("these are the order items: ", order.items);
           order.items.forEach((item) => {
             // Check if item has productLocations
-            if (item.productLocations && item.productLocations.length > 0) {
-              item.productLocations.forEach((productLocation) => {
-                // Check if productLocation has product with primaryCategory
-                if (
-                  productLocation.product &&
-                  productLocation.product.primaryCategory
-                ) {
-                  const category = productLocation.product.primaryCategory;
-                  // Use item price and quantity to calculate sales
-                  const itemTotal =
-                    (productLocation.price || 0) *
-                    (productLocation.quantity || 1);
+            if (item) {
+              // Check if productLocation has product with primaryCategory
+              if (item.product) {
+                console.log("these are the order items: ", item);
+                const category = item.product.primaryCategory;
+                // Use item price and quantity to calculate sales
+                const itemTotal = (item.price || 0) * (item.quantity || 1);
 
-                  if (!categorySales[category]) {
-                    categorySales[category] = 0;
-                  }
-                  categorySales[category] += itemTotal;
-                  totalSales += itemTotal;
+                if (!categorySales[category]) {
+                  categorySales[category] = 0;
                 }
-              });
+                categorySales[category] += itemTotal;
+                totalSales += itemTotal;
+              }
             }
           });
         }

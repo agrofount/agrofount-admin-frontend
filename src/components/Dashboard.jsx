@@ -19,8 +19,33 @@ import {
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/16/solid";
 import axios from "axios";
 import qs from "qs";
+// import PrimaryCategoryChart from "./PrimaryCategoryChart";
 
 const periods = [
+  {
+    id: 8,
+    name: "December 2025",
+    startDate: "2025-12-01",
+    endDate: "2025-12-31",
+  },
+  {
+    id: 7,
+    name: "November 2025",
+    startDate: "2025-11-01",
+    endDate: "2025-11-30",
+  },
+  {
+    id: 6,
+    name: "October 2025",
+    startDate: "2025-10-01",
+    endDate: "2025-10-31",
+  },
+  {
+    id: 5,
+    name: "September 2025",
+    startDate: "2025-09-01",
+    endDate: "2025-09-30",
+  },
   {
     id: 4,
     name: "August 2025",
@@ -177,15 +202,18 @@ export const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8">
-        <div className="flex flex-col items-center px-4 bg-white border-b border-gray-200 h-[584px] overflow-y-scroll flex-shrink-0 rounded-[12px] shadow-[0px_0px_10px_0px_#EDEDED] py-3 md:col-span-1">
-          <div className="flex justify-between items-center w-full">
-            <p className="text-black font-roboto text-2xl font-bold leading-normal">
-              New Comments
-            </p>
-            <img src={assets.action_icon} alt="" />
-          </div>
+        <div className="flex flex-col gap-6 md:col-span-1">
+          {/* <PrimaryCategoryChart orders={orders} /> */}
+          <div className="flex flex-col items-center px-4 bg-white border-b border-gray-200 h-[360px] overflow-y-scroll flex-shrink-0 rounded-[12px] shadow-[0px_0px_10px_0px_#EDEDED] py-3 md:col-span-1">
+            <div className="flex justify-between items-center w-full">
+              <p className="text-black font-roboto text-2xl font-bold leading-normal">
+                New Comments
+              </p>
+              <img src={assets.action_icon} alt="" />
+            </div>
 
-          <DashboardReviewList />
+            <DashboardReviewList />
+          </div>
         </div>
 
         <div className="flex flex-col items-center px-4 bg-white border-b border-gray-200 h-[584px] flex-shrink-0 rounded-[12px] shadow-[0px_0px_10px_0px_#EDEDED] py-3 md:col-span-3">

@@ -197,6 +197,22 @@ const OrderDetail = () => {
                                 currency,
                               }).format(item.price)}
                             </td>
+                            <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500">
+                              <p className="text-sm text-gray-400">
+                                Vendor Price
+                              </p>
+                              {(() => {
+                                const matchedUom = item.uom?.find(
+                                  (uom) => uom.platformPrice === item.price
+                                );
+                                return matchedUom
+                                  ? new Intl.NumberFormat("en-NG", {
+                                      style: "currency",
+                                      currency,
+                                    }).format(matchedUom.vendorPrice)
+                                  : "-";
+                              })()}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -309,6 +325,30 @@ const OrderDetail = () => {
                                   style: "currency",
                                   currency,
                                 }).format(orderData.totalPrice)}
+                              </td>
+                            </tr>
+                            <tr className="">
+                              <td className="whitespace-nowrap px-6 py-4 font-medium">
+                                Total Profit
+                              </td>
+                              <td className="whitespace-nowrap px-6 py-4">
+                                {(() => {
+                                  let totalProfit = 0;
+                                  orderItems.forEach((item) => {
+                                    const matchedUom = item.uom?.find(
+                                      (uom) => uom.platformPrice === item.price
+                                    );
+                                    if (matchedUom) {
+                                      totalProfit +=
+                                        (item.price - matchedUom.vendorPrice) *
+                                        item.quantity;
+                                    }
+                                  });
+                                  return new Intl.NumberFormat("en-NG", {
+                                    style: "currency",
+                                    currency,
+                                  }).format(totalProfit);
+                                })()}
                               </td>
                             </tr>
                           </tbody>

@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import TableSkeleton from "../skeleton/TableSkeleton";
 import { assets } from "../../assets/assets";
 import { ShopContext } from "../../context/ShopContext";
@@ -20,9 +20,10 @@ const ListPayments = () => {
   const [paymentPage, setPaymentPage] = useState(1);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [sortBy, setSortBy] = useState("createdAt");
-  const [sortOrder, setSortOrder] = useState("ASC");
+  const [sortOrder, setSortOrder] = useState("DESC");
 
   const { token, backend_url, navigate } = useContext(ShopContext);
+  const searchTimeout = useRef();
 
   const fetchPayments = useCallback(async () => {
     try {
@@ -101,6 +102,14 @@ const ListPayments = () => {
       setSortBy(field);
       setSortOrder("ASC");
     }
+  };
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      setSearchValue(value);
+    }, 400);
   };
 
   return (
@@ -194,8 +203,8 @@ const ListPayments = () => {
                   name="price"
                   type="text"
                   placeholder="Search here..."
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
+                  defaultValue={searchValue}
+                  onChange={handleSearchChange}
                   className="block w-full py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
                 />
                 <div className="grid shrink-0 grid-cols-1 focus-within:relative cursor-pointer">

@@ -15,10 +15,12 @@ import PaymentTableItem from "./PaymentTableItem";
 const ListPayments = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [payments, setPayments] = useState({ data: [], meta: {} });
-  const [pageLimit, setPageLimit] = useState(10);
+  const [pageLimit, setPageLimit] = useState(50);
   const [searchValue, setSearchValue] = useState("");
   const [paymentPage, setPaymentPage] = useState(1);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("ASC");
 
   const { token, backend_url, navigate } = useContext(ShopContext);
 
@@ -27,17 +29,30 @@ const ListPayments = () => {
       setIsLoading(true);
       const response = await axios.get(`${backend_url}/payment`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { page: paymentPage, limit: pageLimit, search: searchValue },
+        params: {
+          page: paymentPage,
+          limit: pageLimit,
+          search: searchValue,
+          sortBy: `${sortBy}:${sortOrder}`,
+        },
+        paramsSerializer: { indexes: null },
       });
 
-      console.log("these are the payments: ", response.data);
       if (response.status === 200) setPayments(response.data);
     } catch (error) {
       console.error("an error occurred: ", error);
     } finally {
       setIsLoading(false);
     }
-  }, [backend_url, token, paymentPage, pageLimit, searchValue]);
+  }, [
+    backend_url,
+    token,
+    paymentPage,
+    pageLimit,
+    searchValue,
+    sortBy,
+    sortOrder,
+  ]);
 
   const handlePageChange = (page) => {
     setPaymentPage(page);
@@ -77,6 +92,16 @@ const ListPayments = () => {
       navigate("/login");
     }
   }, [token, navigate]);
+
+  // Sort handler
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "ASC" ? "DESC" : "ASC"));
+    } else {
+      setSortBy(field);
+      setSortOrder("ASC");
+    }
+  };
 
   return (
     <div>
@@ -190,46 +215,59 @@ const ListPayments = () => {
             <tr>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("reference")}
               >
-                Reference
+                Reference{" "}
+                {sortBy === "reference" && (sortOrder === "ASC" ? "▲" : "▼")}
               </th>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("email")}
               >
-                Email
+                Email {sortBy === "email" && (sortOrder === "ASC" ? "▲" : "▼")}
               </th>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("orderId")}
               >
-                Order ID
+                Order ID{" "}
+                {sortBy === "orderId" && (sortOrder === "ASC" ? "▲" : "▼")}
               </th>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("amount")}
               >
-                Amount
+                Amount{" "}
+                {sortBy === "amount" && (sortOrder === "ASC" ? "▲" : "▼")}
               </th>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("paymentStatus")}
               >
-                Payment Status
-              </th>
-
-              <th
-                scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Amount Paid
+                Payment Status{" "}
+                {sortBy === "paymentStatus" &&
+                  (sortOrder === "ASC" ? "▲" : "▼")}
               </th>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("amountPaid")}
               >
-                Date
+                Amount Paid{" "}
+                {sortBy === "amountPaid" && (sortOrder === "ASC" ? "▲" : "▼")}
+              </th>
+              <th
+                scope="col"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("createdAt")}
+              >
+                Date{" "}
+                {sortBy === "createdAt" && (sortOrder === "ASC" ? "▲" : "▼")}
               </th>
             </tr>
           </thead>

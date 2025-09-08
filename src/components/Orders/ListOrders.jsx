@@ -19,6 +19,8 @@ export const ListOrders = () => {
 
   const [meta, setMeta] = useState({});
   const [orderPage, setOrderPage] = useState(1);
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("ASC");
 
   const { token, backend_url, currency, navigate } = useContext(ShopContext);
 
@@ -32,7 +34,10 @@ export const ListOrders = () => {
         params: {
           page: orderPage,
           limit: pageLimit,
+          search: searchValue,
+          sortBy: `${sortBy}:${sortOrder}`,
         },
+        paramsSerializer: { indexes: null },
       });
 
       if (response.status === 200) {
@@ -45,10 +50,28 @@ export const ListOrders = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [orderPage, pageLimit, searchValue, backend_url, token]);
+  }, [
+    orderPage,
+    pageLimit,
+    searchValue,
+    backend_url,
+    token,
+    sortBy,
+    sortOrder,
+  ]);
 
   const handlePageChange = (page) => {
     setOrderPage(page);
+  };
+
+  // Sort handler
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "ASC" ? "DESC" : "ASC"));
+    } else {
+      setSortBy(field);
+      setSortOrder("ASC");
+    }
   };
 
   useEffect(() => {
@@ -161,35 +184,45 @@ export const ListOrders = () => {
               </th>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("id")}
               >
-                Order ID
+                Order ID{" "}
+                {sortBy === "id" && (sortOrder === "ASC" ? " ▲" : " ▼")}
               </th>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("totalPrice")}
               >
-                Price
+                Price{""}
+                {sortBy === "totalPrice" && (sortOrder === "ASC" ? " ▲" : " ▼")}
               </th>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("quantity")}
               >
-                Quantity
+                Quantity{""}
+                {sortBy === "quantity" && (sortOrder === "ASC" ? " ▲" : " ▼")}
               </th>
 
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("status")}
               >
-                Status
+                Status{""}
+                {sortBy === "status" && (sortOrder === "ASC" ? " ▲" : " ▼")}
               </th>
 
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("createdAt")}
               >
-                start date
+                Start Date{""}
+                {sortBy === "createdAt" && (sortOrder === "ASC" ? " ▲" : " ▼")}
               </th>
             </tr>
           </thead>

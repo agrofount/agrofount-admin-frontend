@@ -4,7 +4,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { assets } from "../../assets/assets";
 import axios from "axios";
@@ -19,8 +19,12 @@ export const ListOrders = () => {
 
   const [meta, setMeta] = useState({});
   const [orderPage, setOrderPage] = useState(1);
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("DESC");
 
   const { token, backend_url, currency, navigate } = useContext(ShopContext);
+
+  const searchTimeout = useRef();
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -32,7 +36,10 @@ export const ListOrders = () => {
         params: {
           page: orderPage,
           limit: pageLimit,
+          search: searchValue,
+          sortBy: `${sortBy}:${sortOrder}`,
         },
+        paramsSerializer: { indexes: null },
       });
 
       if (response.status === 200) {
@@ -45,10 +52,36 @@ export const ListOrders = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [orderPage, pageLimit, searchValue, backend_url, token]);
+  }, [
+    orderPage,
+    pageLimit,
+    searchValue,
+    backend_url,
+    token,
+    sortBy,
+    sortOrder,
+  ]);
 
   const handlePageChange = (page) => {
     setOrderPage(page);
+  };
+
+  // Sort handler
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "ASC" ? "DESC" : "ASC"));
+    } else {
+      setSortBy(field);
+      setSortOrder("ASC");
+    }
+  };
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      setSearchValue(value);
+    }, 400);
   };
 
   useEffect(() => {
@@ -134,8 +167,8 @@ export const ListOrders = () => {
                   name="price"
                   type="text"
                   placeholder="Search here..."
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
+                  defaultValue={searchValue}
+                  onChange={handleSearchChange}
                   className="block w-full py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
                 />
                 <div className="grid shrink-0 grid-cols-1 focus-within:relative cursor-pointer">
@@ -161,35 +194,45 @@ export const ListOrders = () => {
               </th>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("id")}
               >
-                Order ID
+                Order ID{" "}
+                {sortBy === "id" && (sortOrder === "ASC" ? " ▲" : " ▼")}
               </th>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("totalPrice")}
               >
-                Price
+                Price{""}
+                {sortBy === "totalPrice" && (sortOrder === "ASC" ? " ▲" : " ▼")}
               </th>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("quantity")}
               >
-                Quantity
+                Quantity{""}
+                {sortBy === "quantity" && (sortOrder === "ASC" ? " ▲" : " ▼")}
               </th>
 
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("status")}
               >
-                Status
+                Status{""}
+                {sortBy === "status" && (sortOrder === "ASC" ? " ▲" : " ▼")}
               </th>
 
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSort("createdAt")}
               >
-                start date
+                Start Date{""}
+                {sortBy === "createdAt" && (sortOrder === "ASC" ? " ▲" : " ▼")}
               </th>
             </tr>
           </thead>

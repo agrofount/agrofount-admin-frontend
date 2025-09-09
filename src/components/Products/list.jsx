@@ -7,7 +7,7 @@ import {
   faChevronRight,
 } from "@fortawesome/free-solid-svg-icons";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { ShopContext } from "../../context/ShopContext";
 import TableSkeleton from "../skeleton/TableSkeleton";
@@ -24,6 +24,7 @@ const ListProducts = () => {
   const [processingNotificaton, setProcessingNotificaton] = useState(false);
 
   const { token, backend_url, navigate } = useContext(ShopContext);
+  const searchTimeout = useRef();
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -105,6 +106,14 @@ const ListProducts = () => {
       navigate("/login");
     }
   }, [token]);
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      setSearchValue(value);
+    }, 400);
+  };
 
   return (
     <div>
@@ -197,8 +206,8 @@ const ListProducts = () => {
                   name="price"
                   type="text"
                   placeholder="Search here..."
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
+                  defaultValue={searchValue}
+                  onChange={handleSearchChange}
                   className="block w-full py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
                 />
                 <div className="grid shrink-0 grid-cols-1 focus-within:relative cursor-pointer">

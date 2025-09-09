@@ -7,7 +7,7 @@ import {
   faTable,
 } from "@fortawesome/free-solid-svg-icons";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { ShopContext } from "../../context/ShopContext";
 import TableSkeleton from "../skeleton/TableSkeleton";
@@ -23,6 +23,8 @@ const ListUsers = () => {
 
   const { token, backend_url, navigate } = useContext(ShopContext);
 
+  const searchTimeout = useRef();
+
   const fetchUsers = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -35,7 +37,6 @@ const ListUsers = () => {
           //   "filter.country.id": countryId,
         },
       });
-
       if (response.status === 200) setUsers(response.data);
     } catch (error) {
       console.error("an error occurred: ", error);
@@ -44,13 +45,30 @@ const ListUsers = () => {
     }
   }, [backend_url, token, userPage, pageLimit, searchValue]);
 
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      setSearchValue(value);
+    }, 400);
+  };
+
   const handlePageChange = (page) => {
     setUserPage(page);
   };
 
+  const debounceTimeout = useRef();
+
+  // Debounced search effect
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers, updated]);
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+    debounceTimeout.current = setTimeout(() => {
+      fetchUsers();
+    }, 400);
+    return () => clearTimeout(debounceTimeout.current);
+  }, [searchValue, userPage, pageLimit, updated, fetchUsers]);
 
   let tableContent;
   if (isLoading) {
@@ -178,7 +196,7 @@ const ListUsers = () => {
                   type="text"
                   placeholder="Search here..."
                   value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
+                  onChange={handleSearchChange}
                   className="block w-full py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
                 />
                 <div className="grid shrink-0 grid-cols-1 focus-within:relative cursor-pointer">

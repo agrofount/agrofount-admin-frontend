@@ -19,7 +19,7 @@ import {
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/16/solid";
 import axios from "axios";
 import qs from "qs";
-// import PrimaryCategoryChart from "./PrimaryCategoryChart";
+import DashbordPrimaryCategoryChart from "./DashbordPrimaryCategoryChart";
 
 const periods = [
   {
@@ -203,7 +203,8 @@ export const Dashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8">
         <div className="flex flex-col gap-6 md:col-span-1">
-          {/* <PrimaryCategoryChart orders={orders} /> */}
+          {/* <DashboardPrimaryCategoryChart orders={orders} /> */}
+          <DashbordPrimaryCategoryChart orders={orders} />
           <div className="flex flex-col items-center px-4 bg-white border-b border-gray-200 h-[360px] overflow-y-scroll flex-shrink-0 rounded-[12px] shadow-[0px_0px_10px_0px_#EDEDED] py-3 md:col-span-1">
             <div className="flex justify-between items-center w-full">
               <p className="text-black font-roboto text-2xl font-bold leading-normal">

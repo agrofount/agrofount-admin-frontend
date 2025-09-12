@@ -52,14 +52,14 @@ const DashboardPrimaryCategoryChart = ({ orders }) => {
                   <p className="text-gray-800 font-medium">{deal.title}</p>
                   <p className="text-gray-500 text-sm">{deal.stage}</p>
                 </div>
-                <p className="text-amber-600 font-semibold">
+                <p className="text-[#dc3545] font-semibold">
                   ₦{deal.value.toLocaleString()}
                 </p>
               </div>
               {/* Progress Bar */}
               <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                 <div
-                  className="bg-blue-600 h-2 rounded-full"
+                  className="bg-[#61BF75] h-2 rounded-full"
                   style={{
                     width: `${Math.min(
                       (deal.value / deals[0].value) * 100,

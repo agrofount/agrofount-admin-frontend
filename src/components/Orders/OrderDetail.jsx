@@ -9,6 +9,7 @@ import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { assets } from "../../assets/assets";
 import OrderDetailSkeleton from "../skeleton/OrderDetailSkeleton";
 import ShipmentForm from "../Shipment/ShipmentForm";
+import UpdateOrderItem from "./UpdateOrderItem";
 
 const OrderDetail = () => {
   const { orderId } = useParams();
@@ -19,6 +20,7 @@ const OrderDetail = () => {
   const [sortBy, setSortBy] = useState("");
   const [orderItems, setOrderItems] = useState([]);
   const [cancelProcessing, setCancelProcessing] = useState(false);
+  const [updated, setUpdated] = useState(false);
 
   const fetchOrderData = useCallback(async () => {
     try {
@@ -42,7 +44,7 @@ const OrderDetail = () => {
     } finally {
       setIsLoading(false); // Set loading to false after fetching
     }
-  }, [orderId, backend_url, token]);
+  }, [orderId, backend_url, token, updated]);
 
   const handleCancelOrder = async () => {
     try {
@@ -162,6 +164,40 @@ const OrderDetail = () => {
 
                   <div className="w-full h-80 overflow-y-scroll overflow-x-auto">
                     <table className="w-full divide-y divide-gray-200  pb-20">
+                      <thead>
+                        <tr>
+                          <th
+                            scope="col"
+                            className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Product
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Quantity
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Price
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Vendor Price
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Action
+                          </th>
+                        </tr>
+                      </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {orderItems.map((item, index) => (
                           <tr key={index}>
@@ -175,9 +211,6 @@ const OrderDetail = () => {
                                   />
                                 </div>
                                 <div className="ml-4 max-w-[10rem]">
-                                  <p className="text-sm text-gray-400">
-                                    Product Name
-                                  </p>
                                   <div className="text-sm font-medium text-gray-900 text-wrap">
                                     {item.product.name}
                                   </div>
@@ -186,21 +219,15 @@ const OrderDetail = () => {
                             </td>
 
                             <td className="px-6 py-5 whitespace-nowrap text-sm">
-                              <p className="text-sm text-gray-400">Quantity</p>
                               {item.quantity}
                             </td>
                             <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500">
-                              <p className="text-sm text-gray-400">Price</p>
-
                               {new Intl.NumberFormat("en-NG", {
                                 style: "currency",
                                 currency,
                               }).format(item.price)}
                             </td>
                             <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500">
-                              <p className="text-sm text-gray-400">
-                                Vendor Price
-                              </p>
                               {(() => {
                                 const matchedUom = item.uom?.find(
                                   (uom) => uom.platformPrice === item.price
@@ -212,6 +239,13 @@ const OrderDetail = () => {
                                     }).format(matchedUom.vendorPrice)
                                   : "-";
                               })()}
+                            </td>
+                            <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500">
+                              <UpdateOrderItem
+                                orderId={orderId}
+                                orderItem={item}
+                                setUpdated={setUpdated}
+                              />
                             </td>
                           </tr>
                         ))}

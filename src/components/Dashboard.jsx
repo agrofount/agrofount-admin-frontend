@@ -203,7 +203,6 @@ export const Dashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8">
         <div className="flex flex-col gap-6 md:col-span-1">
-          {/* <DashboardPrimaryCategoryChart orders={orders} /> */}
           <DashbordPrimaryCategoryChart orders={orders} />
           <div className="flex flex-col items-center px-4 bg-white border-b border-gray-200 h-[360px] overflow-y-scroll flex-shrink-0 rounded-[12px] shadow-[0px_0px_10px_0px_#EDEDED] py-3 md:col-span-1">
             <div className="flex justify-between items-center w-full">

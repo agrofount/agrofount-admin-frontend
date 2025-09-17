@@ -113,6 +113,10 @@ export const uoms = [
   { name: "4mm 25kg" },
   { name: "6mm 25kg" },
   { name: "8mm 25kg" },
+  { name: "200kg" },
+  { name: "300kg" },
+  { name: "400kg" },
+  { name: "500kg" },
 ];
 
 export const OrderStatus = {};

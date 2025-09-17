@@ -117,6 +117,9 @@ export const uoms = [
   { name: "300kg" },
   { name: "400kg" },
   { name: "500kg" },
+  { name: "size 50" },
+  { name: "size 60" },
+  { name: "size 80" },
 ];
 
 export const OrderStatus = {};

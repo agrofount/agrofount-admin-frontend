@@ -26,57 +26,57 @@ const periods = [
     id: 8,
     name: "December 2025",
     startDate: "2025-12-01",
-    endDate: "2025-12-31",
+    endDate: "2025-12-31T23:59:59.999Z",
   },
   {
     id: 7,
     name: "November 2025",
     startDate: "2025-11-01",
-    endDate: "2025-11-30",
+    endDate: "2025-11-30T23:59:59.999Z",
   },
   {
     id: 6,
     name: "October 2025",
     startDate: "2025-10-01",
-    endDate: "2025-10-31",
+    endDate: "2025-10-31T23:59:59.999Z",
   },
   {
     id: 5,
     name: "September 2025",
     startDate: "2025-09-01",
-    endDate: "2025-09-30",
+    endDate: "2025-09-30T23:59:59.999Z",
   },
   {
     id: 4,
     name: "August 2025",
     startDate: "2025-08-01",
-    endDate: "2025-08-31",
+    endDate: "2025-08-31T23:59:59.999Z",
   },
   {
     id: 3,
     name: "July 2025",
     startDate: "2025-07-01",
-    endDate: "2025-07-31",
+    endDate: "2025-07-31T23:59:59.999Z",
   },
 
   {
     id: 2,
     name: "June 2025",
     startDate: "2025-06-01",
-    endDate: "2025-06-30",
+    endDate: "2025-06-30T23:59:59.999Z",
   },
 
   {
     id: 1,
     name: "May 2025",
     startDate: "2025-05-01",
-    endDate: "2025-05-31",
+    endDate: "2025-05-31T23:59:59.999Z",
   },
   {
     id: 0,
     name: "All 2025",
     startDate: "2025-01-01",
-    endDate: "2025-12-31",
+    endDate: "2025-12-31T23:59:59.999Z",
   },
 ];
 export const Dashboard = () => {

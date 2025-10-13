@@ -396,23 +396,59 @@ const OrderDetail = () => {
               <div className="bg-white rounded-lg p-5">
                 <p className="font-semibold mb-3">Shipping Address</p>
 
-                {orderData.address?.pickupLocation ? (
-                  <div className="flex flex-row justify-start gap-5">
-                    <p>Pickup Location: </p>
-                    <p>{orderData.address?.pickupLocation}</p>
+                <div className="flex flex-col">
+                  <div className="overflow-x-auto sm:-mx-6 lg:-mx-8">
+                    <div className="inline-block min-w-full sm:px-6 lg:px-8">
+                      <div className="overflow-hidden">
+                        <table className="min-w-full text-left text-sm font-light text-surface">
+                          <tbody>
+                            {orderData.address?.pickupLocation ? (
+                              <tr className="border-b border-neutral-200">
+                                <td className="whitespace-nowrap px-6 py-4 font-medium">
+                                  Pickup Location:
+                                </td>
+                                <td className="whitespace-nowrap px-6 py-4">
+                                  <p>{orderData.address?.pickupLocation}</p>
+                                </td>
+                              </tr>
+                            ) : (
+                              <tr className="border-b border-neutral-200">
+                                <td className="whitespace-nowrap px-6 py-4 font-medium">
+                                  Shipping Address:
+                                </td>
+                                <td className="whitespace-nowrap px-6 py-4">
+                                  <p>{` ${orderData?.address?.address} ${
+                                    orderData.address?.landmark
+                                      ? orderData.address?.landmark
+                                      : ""
+                                  }${orderData.address?.city}, ${
+                                    orderData.address?.state
+                                  }, ${orderData.address?.country}.`}</p>
+                                </td>
+                              </tr>
+                            )}
+                            <tr className="border-b border-neutral-200">
+                              <td className="whitespace-nowrap px-6 py-4 font-medium">
+                                Fullname:
+                              </td>
+                              <td className="whitespace-nowrap px-6 py-4">
+                                {orderData.fullName}
+                              </td>
+                            </tr>
+                            <tr className="">
+                              <td className="whitespace-nowrap px-6 py-4 font-medium">
+                                Phone Number:
+                              </td>
+                              <td className="whitespace-nowrap px-6 py-4">
+                                {orderData.phoneNumber}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex flex-row justify-start gap-5">
-                    <p>Shipping Address:</p>
-                    <p>{` ${orderData?.address?.address} ${
-                      orderData.address?.landmark
-                        ? orderData.address?.landmark
-                        : ""
-                    }${orderData.address?.city}, ${orderData.address?.state}, ${
-                      orderData.address?.country
-                    }.`}</p>
-                  </div>
-                )}
+                </div>
               </div>
 
               <div className="bg-white rounded-lg p-5">

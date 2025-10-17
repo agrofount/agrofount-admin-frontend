@@ -3,7 +3,7 @@ import { useContext, useEffect, useState } from "react";
 import { ShopContext } from "../context/ShopContext";
 import { DashboardOrderListSkeleton } from "./skeleton/DashboardOrderListSkeleton";
 
-const DashboardOrderList = ({ orders, isLoading }) => {
+const DashboardOrderList = ({ orders, isLoading, error }) => {
   const [loadedOrders, setLoadedOrders] = useState([]);
 
   const { currency } = useContext(ShopContext);
@@ -68,6 +68,11 @@ const DashboardOrderList = ({ orders, isLoading }) => {
         </thead>
         {isLoading ? (
           <DashboardOrderListSkeleton />
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center h-[300px]">
+            <img src={assets.empty_inbox} alt="Error" />
+            <p className="text-[#ADADAD] text-sm mt-5">{error}</p>
+          </div>
         ) : loadedOrders.length < 1 ? (
           <div className="flex flex-col items-center justify-center h-[300px]">
             <img src={assets.empty_inbox} alt="No Order yet" />

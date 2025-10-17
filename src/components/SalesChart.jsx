@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { assets } from "../assets/assets";
 import Chart from "react-apexcharts";
 
-const SalesChart = ({ orders }) => {
-  const [salesChart, setSalesChart] = useState([]);
+const SalesChart = ({ orders, isLoading, error }) => {
+  const [salesChart, setSalesChart] = useState({ chart: [], totalSales: 0 });
 
   const generateSalesChartData = (orders) => {
     const salesData = Array(7).fill(0);
@@ -15,7 +15,6 @@ const SalesChart = ({ orders }) => {
         totalSales += Number(order.totalPrice);
       }
     });
-
     return {
       chart: [
         {
@@ -29,9 +28,11 @@ const SalesChart = ({ orders }) => {
   };
 
   useEffect(() => {
-    const chartData = generateSalesChartData(orders);
-    setSalesChart(chartData);
-  }, [orders]);
+    if (!error && !isLoading) {
+      const chartData = generateSalesChartData(orders);
+      setSalesChart(chartData);
+    }
+  }, [orders, isLoading, error]);
 
   const chartConfig = {
     options: {
@@ -68,28 +69,40 @@ const SalesChart = ({ orders }) => {
             <img src={assets.sales_icon} alt="" />
           </div>
           <p className="text-[#6E6E6E] text-sm font-normal mt-2">Total sales</p>
-          <p className="text-black text-xl font-bold mb-2">
-            {salesChart.totalSales >= 1_000_000_000
-              ? `${(salesChart.totalSales / 1_000_000_000).toFixed(1)}B`
-              : salesChart.totalSales >= 1_000_000
-              ? `${(salesChart.totalSales / 1_000_000).toFixed(1)}M`
-              : salesChart.totalSales >= 1_000
-              ? `${(salesChart.totalSales / 1_000).toFixed(1)}K`
-              : new Intl.NumberFormat("en-NG").format(salesChart.totalSales)}
-          </p>
+          {error ? (
+            <p className="text-red-500 text-sm mb-2">{error}</p>
+          ) : isLoading ? (
+            <p className="text-gray-400 text-sm mb-2">Loading...</p>
+          ) : (
+            <p className="text-black text-xl font-bold mb-2">
+              {salesChart.totalSales >= 1_000_000_000
+                ? `${(salesChart.totalSales / 1_000_000_000).toFixed(1)}B`
+                : salesChart.totalSales >= 1_000_000
+                ? `${(salesChart.totalSales / 1_000_000).toFixed(1)}M`
+                : salesChart.totalSales >= 1_000
+                ? `${(salesChart.totalSales / 1_000).toFixed(1)}K`
+                : new Intl.NumberFormat("en-NG").format(salesChart.totalSales)}
+            </p>
+          )}
           <div className="flex flex-row justify-start text-[#61BF75] text-xs py-2">
             <p>1.56%</p>
             <img src={assets.bull_icon} className="w-5 h-3 mx-2" alt="" />
           </div>
         </div>
         <div className="flex flex-grow items-center w-[55%]">
-          <Chart
-            options={chartConfig.options}
-            series={salesChart.chart || []}
-            type="bar"
-            className="w-[80%] sm:w-[70%]"
-            height="100%"
-          />
+          {error ? (
+            <div className="text-red-500 text-sm">Chart unavailable</div>
+          ) : isLoading ? (
+            <div className="text-gray-400 text-sm">Loading chart...</div>
+          ) : (
+            <Chart
+              options={chartConfig.options}
+              series={salesChart.chart}
+              type="bar"
+              className="w-[80%] sm:w-[70%]"
+              height="100%"
+            />
+          )}
         </div>
       </div>
     </div>

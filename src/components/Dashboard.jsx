@@ -85,55 +85,74 @@ export const Dashboard = () => {
   const [totalSales, setTotalSales] = useState(0);
   const { currency } = useContext(ShopContext);
   const [selectedDate, setSelectedDate] = useState(periods[periods.length - 1]);
-  const [isLoading, setIsLoading] = useState(false);
+  // Separate loading and error states for orders and users
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState(null);
+  const [usersError, setUsersError] = useState(null);
   const { token, backend_url, navigate } = useContext(ShopContext);
 
   useEffect(() => {
     const fetchOrders = async () => {
-      setIsLoading(true);
-      const response = await axios.get(`${backend_url}/order`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        params: {
-          "filter.createdAt": [
-            `$gte:${selectedDate.startDate}`,
-            `$lte:${selectedDate.endDate}`,
-          ],
-        },
-        paramsSerializer: (params) =>
-          qs.stringify(params, { arrayFormat: "repeat" }),
-      });
-
-      if (response.status === 200) {
-        setOrders(response.data.data || []);
+      setOrdersLoading(true);
+      setOrdersError(null);
+      try {
+        const response = await axios.get(`${backend_url}/order`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          params: {
+            "filter.createdAt": [
+              `$gte:${selectedDate.startDate}`,
+              `$lte:${selectedDate.endDate}`,
+            ],
+          },
+          paramsSerializer: (params) =>
+            qs.stringify(params, { arrayFormat: "repeat" }),
+        });
+        if (response.status === 200) {
+          setOrders(response.data.data || []);
+        }
+      } catch (error) {
+        console.error(error);
+        setOrdersError(
+          "Failed to load orders. Please check your connection and try again."
+        );
+      } finally {
+        setOrdersLoading(false);
       }
-      setIsLoading(false);
     };
     fetchOrders();
   }, [backend_url, token, selectedDate]);
 
   useEffect(() => {
     const fetchUsers = async () => {
-      setIsLoading(true);
-      const response = await axios.get(`${backend_url}/user`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        params: {
-          "filter.createdAt": [
-            `$gte:${selectedDate.startDate}`,
-            `$lte:${selectedDate.endDate}`,
-          ],
-        },
-        paramsSerializer: (params) =>
-          qs.stringify(params, { arrayFormat: "repeat" }),
-      });
-
-      if (response.status === 200) setUsers(response.data || []);
-      setIsLoading(false);
+      setUsersLoading(true);
+      setUsersError(null);
+      try {
+        const response = await axios.get(`${backend_url}/user`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          params: {
+            "filter.createdAt": [
+              `$gte:${selectedDate.startDate}`,
+              `$lte:${selectedDate.endDate}`,
+            ],
+          },
+          paramsSerializer: (params) =>
+            qs.stringify(params, { arrayFormat: "repeat" }),
+        });
+        if (response.status === 200) setUsers(response.data || []);
+      } catch (error) {
+        console.error(error);
+        setUsersError(
+          "Failed to load users. Please check your connection and try again."
+        );
+      } finally {
+        setUsersLoading(false);
+      }
     };
-
     fetchUsers();
   }, [backend_url, token, selectedDate]);
 
@@ -196,9 +215,21 @@ export const Dashboard = () => {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <DashboardTargetChart />
-        <SalesChart orders={orders} />
-        <IncomeChart orders={orders} />
-        <VisitorChart users={users} />
+        <SalesChart
+          orders={orders}
+          isLoading={ordersLoading}
+          error={ordersError}
+        />
+        <IncomeChart
+          orders={orders}
+          isLoading={ordersLoading}
+          error={ordersError}
+        />
+        <VisitorChart
+          users={users}
+          isLoading={usersLoading}
+          error={usersError}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8">
@@ -223,7 +254,12 @@ export const Dashboard = () => {
             </p>
           </div>
 
-          <DashboardOrderList orders={orders} isLoading={isLoading} />
+          {/* Pass loading and error states to DashboardOrderList */}
+          <DashboardOrderList
+            orders={orders}
+            isLoading={ordersLoading}
+            error={ordersError}
+          />
         </div>
       </div>
 

@@ -3,8 +3,8 @@ import { assets } from "../assets/assets";
 import Chart from "react-apexcharts";
 import { ShopContext } from "../context/ShopContext";
 
-const IncomeChart = ({ orders }) => {
-  const [incomeChart, setIncomeChart] = useState([]);
+const IncomeChart = ({ orders, isLoading, error }) => {
+  const [incomeChart, setIncomeChart] = useState({ chart: [], totalIncome: 0 });
   const { token, backend_url } = useContext(ShopContext);
 
   const generateIncomeChartData = (orders) => {
@@ -60,9 +60,11 @@ const IncomeChart = ({ orders }) => {
   };
 
   useEffect(() => {
-    const incomeChart = generateIncomeChartData(orders);
-    setIncomeChart(incomeChart);
-  }, [backend_url, token, orders]);
+    if (!error && !isLoading) {
+      const chartData = generateIncomeChartData(orders);
+      setIncomeChart(chartData);
+    }
+  }, [backend_url, token, orders, isLoading, error]);
 
   const chartConfig = {
     options: {
@@ -91,15 +93,6 @@ const IncomeChart = ({ orders }) => {
     },
   };
 
-  useEffect(() => {
-    setIncomeChart([
-      {
-        name: "sales-chart",
-        data: [30, 40, 45, 50, 49, 60, 70],
-        color: "#61BF75",
-      },
-    ]);
-  }, []);
   return (
     <div className="flex items-center px-4 bg-white border-b border-gray-200 h-[200px] flex-shrink-0 rounded-[12px]">
       <div className="flex flex-row  justify-start items-center gap-2">
@@ -110,29 +103,42 @@ const IncomeChart = ({ orders }) => {
           <p className="text-[#6E6E6E] text-sm font-normal mt-2">
             Total Income
           </p>
-          <p className="text-black text-2xl font-bold mb-2">
-            {" "}
-            {incomeChart.totalIncome >= 1_000_000_000
-              ? `${(incomeChart.totalIncome / 1_000_000_000).toFixed(1)}B`
-              : incomeChart.totalIncome >= 1_000_000
-              ? `${(incomeChart.totalIncome / 1_000_000).toFixed(1)}M`
-              : incomeChart.totalIncome >= 1_000
-              ? `${(incomeChart.totalIncome / 1_000).toFixed(1)}K`
-              : new Intl.NumberFormat("en-NG").format(incomeChart.totalIncome)}
-          </p>
+          {error ? (
+            <p className="text-red-500 text-sm mb-2">{error}</p>
+          ) : isLoading ? (
+            <p className="text-gray-400 text-sm mb-2">Loading...</p>
+          ) : (
+            <p className="text-black text-2xl font-bold mb-2">
+              {incomeChart.totalIncome >= 1_000_000_000
+                ? `${(incomeChart.totalIncome / 1_000_000_000).toFixed(1)}B`
+                : incomeChart.totalIncome >= 1_000_000
+                ? `${(incomeChart.totalIncome / 1_000_000).toFixed(1)}M`
+                : incomeChart.totalIncome >= 1_000
+                ? `${(incomeChart.totalIncome / 1_000).toFixed(1)}K`
+                : new Intl.NumberFormat("en-NG").format(
+                    incomeChart.totalIncome
+                  )}
+            </p>
+          )}
           <div className="flex flex-row justify-start text-[#F96767] text-xs py-2">
             <p>1.56%</p>
             <img src={assets.bear_icon} className="w-5 h-3 mx-2" alt="" />
           </div>
         </div>
         <div className="flex flex-grow items-center w-[55%]">
-          <Chart
-            options={chartConfig.options}
-            series={incomeChart}
-            type="bar"
-            className="w-[80%] sm:w-[70%]"
-            height="100%"
-          />
+          {error ? (
+            <div className="text-red-500 text-sm">Chart unavailable</div>
+          ) : isLoading ? (
+            <div className="text-gray-400 text-sm">Loading chart...</div>
+          ) : (
+            <Chart
+              options={chartConfig.options}
+              series={incomeChart.chart}
+              type="bar"
+              className="w-[80%] sm:w-[70%]"
+              height="100%"
+            />
+          )}
         </div>
       </div>
     </div>

@@ -113,6 +113,7 @@ const OrderItems = ({
         setQuantity(1);
         setSelectedPrice(0);
         setUpdated(true);
+        toast.success("Items added to order successfully");
       }
     } catch (error) {
       console.error("Error adding items to order:", error);

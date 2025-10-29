@@ -5,11 +5,9 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ShopContext } from "../../context/ShopContext";
-import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
-import { assets } from "../../assets/assets";
 import OrderDetailSkeleton from "../skeleton/OrderDetailSkeleton";
 import ShipmentForm from "../Shipment/ShipmentForm";
-import UpdateOrderItem from "./UpdateOrderItem";
+import OrderItems from "./OrderItems";
 
 const OrderDetail = () => {
   const { orderId } = useParams();
@@ -17,7 +15,6 @@ const OrderDetail = () => {
   const { currency, backend_url, token, navigate } = useContext(ShopContext);
   const [orderData, setOrderData] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [sortBy, setSortBy] = useState("");
   const [orderItems, setOrderItems] = useState([]);
   const [cancelProcessing, setCancelProcessing] = useState(false);
   const [updated, setUpdated] = useState(false);
@@ -69,16 +66,6 @@ const OrderDetail = () => {
     fetchOrderData();
   }, [fetchOrderData]);
 
-  useEffect(() => {
-    console.log("sorting items");
-    const sortedItems = [...orderItems].sort((a, b) => {
-      if (a[sortBy] < b[sortBy]) return -1;
-      if (a[sortBy] > b[sortBy]) return 1;
-      return 0;
-    });
-    setOrderItems(sortedItems);
-  }, [sortBy]);
-
   return (
     <div>
       <div className="flex flex-row justify-between items-center gap-5 mb-3">
@@ -123,136 +110,13 @@ const OrderDetail = () => {
           <div className="flex flex-col sm:flex-row gap-6 gap-y-6">
             <div className="w-full sm:w-64 flex-1 ">
               <div className="flex flex-col gap-4">
-                <div className="flex flex-col bg-white rounded-lg p-5">
-                  <div className="flex flex-row justify-between items-center gap-5 bg-gray-100 p-3 rounded-sm w-full">
-                    <p className="font-semibold">All Items</p>
-                    <Menu>
-                      <MenuButton className="flex flex-row items-center gap-2 border border-gray-500 cursor-pointer py-1.5 px-3 rounded-md">
-                        <p className="text-sm">{sortBy || "SortBy"}</p>
-                        <img src={assets.dropdown_icon} alt="" />
-                      </MenuButton>
-                      <MenuItems anchor="bottom" className="bg-white py-2 px-4">
-                        <MenuItem
-                          onClick={() => setSortBy("name")}
-                          className="cursor-pointer"
-                        >
-                          <p className="text-sm text-left text-gray-500 py-3">
-                            Name
-                          </p>
-                        </MenuItem>
-
-                        <MenuItem
-                          onClick={() => setSortBy("quantity")}
-                          className="cursor-pointer"
-                        >
-                          <p className="text-sm text-left text-gray-500  py-3">
-                            Quantity
-                          </p>
-                        </MenuItem>
-
-                        <MenuItem
-                          onClick={() => setSortBy("price")}
-                          className="cursor-pointer"
-                        >
-                          <p className="text-sm text-left text-gray-500  py-3">
-                            Price
-                          </p>
-                        </MenuItem>
-                      </MenuItems>
-                    </Menu>
-                  </div>
-
-                  <div className="w-full h-80 overflow-y-scroll overflow-x-auto">
-                    <table className="w-full divide-y divide-gray-200  pb-20">
-                      <thead>
-                        <tr>
-                          <th
-                            scope="col"
-                            className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            Product
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            Quantity
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            Price
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            Vendor Price
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            Action
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {orderItems.map((item, index) => (
-                          <tr key={index}>
-                            <td className="px-6 py-5 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <div className="flex-shrink-0 h-10 w-10">
-                                  <img
-                                    className="h-10 w-10 rounded-lg"
-                                    src={item.product.images[0]}
-                                    alt=""
-                                  />
-                                </div>
-                                <div className="ml-4 max-w-[10rem]">
-                                  <div className="text-sm font-medium text-gray-900 text-wrap">
-                                    {item.product.name}
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-
-                            <td className="px-6 py-5 whitespace-nowrap text-sm">
-                              {item.quantity}
-                            </td>
-                            <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500">
-                              {new Intl.NumberFormat("en-NG", {
-                                style: "currency",
-                                currency,
-                              }).format(item.price)}
-                            </td>
-                            <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500">
-                              {(() => {
-                                const matchedUom = item.uom?.find(
-                                  (uom) => uom.platformPrice === item.price
-                                );
-                                return matchedUom
-                                  ? new Intl.NumberFormat("en-NG", {
-                                      style: "currency",
-                                      currency,
-                                    }).format(matchedUom.vendorPrice)
-                                  : "-";
-                              })()}
-                            </td>
-                            <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500">
-                              <UpdateOrderItem
-                                orderId={orderId}
-                                orderItem={item}
-                                setUpdated={setUpdated}
-                              />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                <OrderItems
+                  orderItems={orderItems}
+                  setOrderItems={setOrderItems}
+                  orderId={orderId}
+                  setUpdated={setUpdated}
+                  orderData={orderData}
+                />
 
                 <div className="flex flex-col bg-white rounded-lg p-5">
                   <div className="flex flex-col">
@@ -417,7 +281,7 @@ const OrderDetail = () => {
                                   Shipping Address:
                                 </td>
                                 <td className="whitespace-nowrap px-6 py-4">
-                                  <p>{` ${orderData?.address?.address} ${
+                                  <p>{` ${orderData?.address?.street} ${
                                     orderData.address?.landmark
                                       ? orderData.address?.landmark
                                       : ""

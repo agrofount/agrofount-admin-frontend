@@ -220,6 +220,13 @@ export const ListOrders = () => {
               <th
                 scope="col"
                 className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+              >
+                Location{""}
+              </th>
+
+              <th
+                scope="col"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                 onClick={() => handleSort("status")}
               >
                 Status{""}
@@ -281,6 +288,10 @@ export const ListOrders = () => {
                       (total, item) => total + item.quantity,
                       0
                     )}
+                  </td>
+
+                  <td className="px-2 py-5 whitespace-nowrap text-sm text-gray-500">
+                    {order.address.state || "Ibadan"}
                   </td>
 
                   <td className="px-2 py-5 whitespace-nowrap text-sm text-gray-500">

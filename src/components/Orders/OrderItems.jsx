@@ -121,11 +121,10 @@ const OrderItems = ({
   };
 
   const handleAddItem = () => {
-    console.log("Adding item...", orderData);
-    if (orderData.status !== "pending") {
-      toast.error("Cannot add items to a non-pending order");
-      return;
-    }
+    // if (orderData.status !== "pending") {
+    //   toast.error("Cannot add items to a non-pending order");
+    //   return;
+    // }
     setIsAddItemModalOpen(true);
   };
 

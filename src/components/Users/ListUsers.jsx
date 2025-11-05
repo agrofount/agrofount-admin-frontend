@@ -211,58 +211,54 @@ const ListUsers = () => {
           </div>
         </div>
 
-        <table className="w-full divide-y divide-gray-200 border-b border-gray-500 pb-20 overflow-x-hidden">
+        <table className="w-full table-fixed divide-y divide-gray-200 border-b border-gray-500 pb-20 overflow-x-auto">
           <thead className="bg-gray-50 my-2">
             <tr>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[8rem] max-w-[10rem] truncate"
               >
                 User
               </th>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[14rem] max-w-[16rem] truncate"
               >
                 Email
               </th>
-
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[6rem] max-w-[8rem] truncate"
               >
                 Gender
               </th>
-
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[10rem] max-w-[12rem] truncate"
               >
                 Phone
               </th>
-
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[12rem] max-w-[14rem] truncate"
               >
                 Location
               </th>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[8rem] max-w-[10rem] truncate"
               >
                 IsVerified
               </th>
               <th
                 scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[10rem] max-w-[12rem] truncate"
               >
                 CreatedAt
               </th>
-
               <th
                 scope="col"
-                className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[8rem] max-w-[10rem] truncate"
               >
                 Action
               </th>

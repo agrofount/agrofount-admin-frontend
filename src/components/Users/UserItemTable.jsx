@@ -133,7 +133,13 @@ const UserTableItem = ({ user, setItemDeleted, setUpdated }) => {
       </td>
 
       <td className="px-2 py-5 whitespace-nowrap text-sm text-gray-500">
-        <p className="py-1">{new Date(user.createdAt).toDateString()}</p>
+        <p className="py-1">
+          {new Date(user.createdAt).toDateString()}{" "}
+          {new Date(user.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </p>
       </td>
 
       <td className="px-4 py-5 whitespace-nowrap text-sm text-gray-500">

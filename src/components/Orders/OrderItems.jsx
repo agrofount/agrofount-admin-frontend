@@ -15,13 +15,7 @@ import axios from "axios";
 import qs from "qs";
 import { toast } from "react-toastify";
 
-const OrderItems = ({
-  orderItems,
-  setOrderItems,
-  orderId,
-  setUpdated,
-  orderData,
-}) => {
+const OrderItems = ({ orderItems, setOrderItems, orderId, setUpdated }) => {
   const [sortBy, setSortBy] = useState("");
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");

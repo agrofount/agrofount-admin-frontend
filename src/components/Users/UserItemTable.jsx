@@ -61,6 +61,19 @@ const UserTableItem = ({ user, setItemDeleted, setUpdated }) => {
     }
   };
 
+  // Add this helper function above your component:
+  function formatPhoneForWhatsApp(phone) {
+    // Remove all non-digits
+    let digits = phone.replace(/[^\d]/g, "");
+    // Remove leading zeros
+    digits = digits.replace(/^0+/, "");
+    // If it doesn't start with country code, add it (e.g., 234 for Nigeria)
+    if (!digits.startsWith("234")) {
+      digits = "234" + digits;
+    }
+    return digits;
+  }
+
   return (
     <tr className="hover:bg-[#F7F7F7]">
       <td className="px-2 py-5 whitespace-nowrap text-sm text-gray-500">
@@ -73,9 +86,24 @@ const UserTableItem = ({ user, setItemDeleted, setUpdated }) => {
       </td>
 
       <td className="px-2 py-5 whitespace-nowrap text-sm text-gray-500">
-        <p className="py-1">
-          <p className="py-1">{user.phone || "N/A"}</p>
-        </p>
+        <div className="flex items-center gap-2 py-1">
+          {user.phone || "N/A"}
+          {user.phone && (
+            <a
+              href={`https://wa.me/${formatPhoneForWhatsApp(user.phone)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Message on WhatsApp"
+              className="ml-1"
+            >
+              <img
+                src={assets.message_icon}
+                alt="WhatsApp"
+                className="w-4 h-4 inline"
+              />
+            </a>
+          )}
+        </div>
       </td>
 
       <td className="px-2 py-5 whitespace-nowrap text-sm text-gray-500">

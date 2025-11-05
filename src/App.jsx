@@ -36,6 +36,7 @@ import EditBlogPost from "./components/Blog/EditBlogPost";
 import CreditFacilityRequests from "./components/CreditFacility/CreditFacilityRequests";
 import ListDrivers from "./components/SupplyChain/Driver/Drivers";
 import ListShipments from "./components/SupplyChain/Shipments/shipments";
+import ListCarts from "./components/Cart/ListCarts";
 
 // Layout component for shared structure (TopNav, SideBar, Navbar)
 function Layout() {
@@ -110,6 +111,8 @@ function App() {
           <Route path="/blogs" element={<ListPost />} />
           <Route path="/blogs/add" element={<AddBlogPost />} />
           <Route path="/blogs/:slug/edit" element={<EditBlogPost />} />
+
+          <Route path="/carts" element={<ListCarts />} />
 
           {/* Add more routes as needed */}
           <Route

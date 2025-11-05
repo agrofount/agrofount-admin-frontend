@@ -187,6 +187,17 @@ const SideBar = () => {
             </Link>
 
             <Link
+              to="/carts"
+              className="flex justify-between items-center px-4 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
+              onClick={() => setActiveTab("carts")}
+            >
+              <div className="flex">
+                <img src={assets.ecommerce_icon} alt="" />
+                <span className="px-3 text-sm font-medium">Carts</span>
+              </div>
+            </Link>
+
+            <Link
               to="/payments"
               className="flex justify-between items-center px-4 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
               onClick={() => setActiveTab("payments")}

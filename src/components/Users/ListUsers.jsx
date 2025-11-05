@@ -226,11 +226,26 @@ const ListUsers = () => {
               >
                 Email
               </th>
+
+              <th
+                scope="col"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Gender
+              </th>
+
               <th
                 scope="col"
                 className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Phone
+              </th>
+
+              <th
+                scope="col"
+                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Location
               </th>
               <th
                 scope="col"

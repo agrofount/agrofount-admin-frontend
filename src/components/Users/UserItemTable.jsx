@@ -86,6 +86,12 @@ const UserTableItem = ({ user, setItemDeleted, setUpdated }) => {
       </td>
 
       <td className="px-2 py-5 whitespace-nowrap text-sm text-gray-500">
+        <div className="flex flex-row items-start gap-4 max-w-32">
+          <p className="py-1 text-wrap">{user.gender || "N/A"}</p>
+        </div>
+      </td>
+
+      <td className="px-2 py-5 whitespace-nowrap text-sm text-gray-500">
         <div className="flex items-center gap-2 py-1">
           {user.phone || "N/A"}
           {user.phone && (
@@ -103,6 +109,12 @@ const UserTableItem = ({ user, setItemDeleted, setUpdated }) => {
               />
             </a>
           )}
+        </div>
+      </td>
+
+      <td className="px-2 py-5 whitespace-nowrap text-sm text-gray-500">
+        <div className="flex flex-row items-start gap-4 max-w-32">
+          <p className="py-1 text-wrap">{user.state || "N/A"}</p>
         </div>
       </td>
 

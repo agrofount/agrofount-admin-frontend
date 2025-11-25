@@ -20,11 +20,13 @@ const ListCarts = () => {
   const fetchCarts = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${backend_url}/cart`, {
+      const response = await axios.get(`${backend_url}/cart/all`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      console.log("Carts response: ", response.data);
 
       if (response.status === 200) {
         setCarts(response.data.data);

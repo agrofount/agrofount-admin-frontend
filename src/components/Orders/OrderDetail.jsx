@@ -8,6 +8,7 @@ import { ShopContext } from "../../context/ShopContext";
 import OrderDetailSkeleton from "../skeleton/OrderDetailSkeleton";
 import ShipmentForm from "../Shipment/ShipmentForm";
 import OrderItems from "./OrderItems";
+import { assets } from "../../assets/assets";
 
 const OrderDetail = () => {
   const { orderId } = useParams();
@@ -304,7 +305,27 @@ const OrderDetail = () => {
                                 Phone Number:
                               </td>
                               <td className="whitespace-nowrap px-6 py-4">
-                                {orderData.phoneNumber}
+                                <div className="flex items-center gap-2">
+                                  {orderData.phoneNumber || "N/A"}
+                                  {orderData.phoneNumber && (
+                                    <a
+                                      href={`https://wa.me/${orderData.phoneNumber
+                                        .replace(/[^\d]/g, "")
+                                        .replace(/^0+/, "")
+                                        .replace(/^((?!234).)/, "234$1")}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      title="Message on WhatsApp"
+                                      className="ml-1"
+                                    >
+                                      <img
+                                        src={assets.message_icon}
+                                        alt="WhatsApp"
+                                        className="w-4 h-4 inline"
+                                      />
+                                    </a>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           </tbody>

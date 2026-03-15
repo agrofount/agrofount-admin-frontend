@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
@@ -34,6 +34,7 @@ const ShopContextProvider = (props) => {
   const [page, setProductPage] = useState(1);
 
   const [token, setToken] = useState(localStorage.getItem("token") || "");
+  const [user, setUser] = useState(null); // Add user state
   const [isCollectionLoading, setIsCollectionLoading] = useState(true);
   const [reviewAdded, setReviewAdded] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(false);
@@ -67,7 +68,7 @@ const ShopContextProvider = (props) => {
             enableHighAccuracy: true,
             timeout: 10000,
             maximumAge: 0,
-          }
+          },
         );
       });
     };
@@ -83,7 +84,7 @@ const ShopContextProvider = (props) => {
         {
           location_type: "ROOFTOP",
           enable_address_descriptor: true,
-        }
+        },
       );
 
       const { results } = geocodeResponse;
@@ -98,7 +99,7 @@ const ShopContextProvider = (props) => {
             acc.country = component.long_name;
           return acc;
         },
-        { city: null, state: null, country: null }
+        { city: null, state: null, country: null },
       );
 
       console.log(city, state, country);
@@ -130,55 +131,112 @@ const ShopContextProvider = (props) => {
     }
   };
 
-  const getProductData = async (filter = "", search = "") => {
-    try {
-      setIsCollectionLoading(true);
+  const getProductData = useCallback(
+    async (filter = "", search = "") => {
+      try {
+        setIsCollectionLoading(true);
 
-      // const geocodeResponse = await getLocation();
+        // const geocodeResponse = await getLocation();
 
-      const response = await axios.get(`${backend_url}/product-location`, {
-        params: {
-          page,
-          filter,
-          search,
-          limit: 15,
-        },
-      });
+        const response = await axios.get(`${backend_url}/product-location`, {
+          params: {
+            page,
+            filter,
+            search,
+            limit: 15,
+          },
+        });
 
-      if (response.data) {
-        setProductLocations(response.data);
+        if (response.data) {
+          setProductLocations(response.data);
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error(error.response?.data?.message || error.message);
+      } finally {
+        setIsCollectionLoading(false);
       }
-    } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || error.message);
-    } finally {
-      setIsCollectionLoading(false);
-    }
-  };
+    },
+    [backend_url, page],
+  );
 
-  const handleTokenExpiry = () => {
+  const handleTokenExpiry = useCallback(() => {
     toast.error("Session expired. Please log in again.");
     setToken("");
+    setUser(null);
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     navigate("/login");
+  }, [navigate]);
+
+  // Fetch user profile when token changes
+  const fetchUserProfile = useCallback(
+    async (authToken) => {
+      try {
+        const response = await axios.get(`${backend_url}/admin/profile`, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        console.log("this is the user data: ", user);
+
+        if (response.data) {
+          setUser(response.data);
+
+          // Store user data in localStorage for persistence
+          localStorage.setItem("user", JSON.stringify(response.data));
+        }
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+        if (error.response?.status === 401) {
+          handleTokenExpiry();
+        }
+      }
+    },
+    [backend_url, handleTokenExpiry],
+  );
+
+  const logout = () => {
+    setToken("");
+    setUser(null);
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/login");
+    toast.success("Logged out successfully");
   };
 
   useEffect(() => {
     getProductData();
-  }, [page]);
+  }, [page, getProductData]);
 
   useEffect(() => {
     if (token) {
-      const decodedToken = jwtDecode(token);
-      const currentTime = Date.now() / 1000;
-      if (decodedToken.exp < currentTime) {
-        // Token has expired
+      try {
+        const decodedToken = jwtDecode(token);
+        const currentTime = Date.now() / 1000;
+        if (decodedToken.exp < currentTime) {
+          // Token has expired
+          handleTokenExpiry();
+        } else {
+          // Fetch user profile
+          fetchUserProfile(token);
+
+          // Try to get user from localStorage first for immediate display
+          const storedUser = localStorage.getItem("user");
+          if (storedUser) {
+            setUser(JSON.parse(storedUser));
+          }
+          // getCartData(token);
+        }
+      } catch (error) {
+        console.error("Error decoding token:", error);
         handleTokenExpiry();
-      } else {
-        // getCartData(token);
       }
+    } else {
+      setUser(null);
     }
-  }, [token]);
+  }, [token, handleTokenExpiry, fetchUserProfile]);
 
   const value = {
     productLocations,
@@ -206,6 +264,8 @@ const ShopContextProvider = (props) => {
     sidebarVisible,
     toggleSidebar,
     socket,
+    user,
+    logout,
   };
 
   return (

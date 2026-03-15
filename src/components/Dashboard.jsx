@@ -20,6 +20,7 @@ import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/16/solid";
 import axios from "axios";
 import qs from "qs";
 import DashbordPrimaryCategoryChart from "./DashbordPrimaryCategoryChart";
+import { useDashboardPermissions } from "./Hooks/useDashboardPermission";
 
 const periods = [
   {
@@ -92,6 +93,19 @@ export const Dashboard = () => {
   const [usersError, setUsersError] = useState(null);
   const { token, backend_url, navigate } = useContext(ShopContext);
 
+  const {
+    canViewSalesChart,
+    canViewIncomeChart,
+    canViewVisitorChart,
+    // canViewOrders,
+    // canViewCustomers,
+    // canViewProducts,
+    // canViewStatesSales,
+    // canViewComments,
+    // canViewCategories,
+    // hasAnyDashboardAccess,
+  } = useDashboardPermissions();
+
   useEffect(() => {
     const fetchOrders = async () => {
       setOrdersLoading(true);
@@ -116,7 +130,7 @@ export const Dashboard = () => {
       } catch (error) {
         console.error(error);
         setOrdersError(
-          "Failed to load orders. Please check your connection and try again."
+          "Failed to load orders. Please check your connection and try again.",
         );
       } finally {
         setOrdersLoading(false);
@@ -127,6 +141,8 @@ export const Dashboard = () => {
 
   useEffect(() => {
     const fetchUsers = async () => {
+      if (!canViewVisitorChart) return;
+
       setUsersLoading(true);
       setUsersError(null);
       try {
@@ -147,14 +163,14 @@ export const Dashboard = () => {
       } catch (error) {
         console.error(error);
         setUsersError(
-          "Failed to load users. Please check your connection and try again."
+          "Failed to load users. Please check your connection and try again.",
         );
       } finally {
         setUsersLoading(false);
       }
     };
     fetchUsers();
-  }, [backend_url, token, selectedDate]);
+  }, [backend_url, token, selectedDate, canViewVisitorChart]);
 
   useEffect(() => {
     if (!token) {
@@ -215,24 +231,41 @@ export const Dashboard = () => {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <DashboardTargetChart />
-        <SalesChart
-          orders={orders}
-          isLoading={ordersLoading}
-          error={ordersError}
-        />
-        <IncomeChart
-          orders={orders}
-          isLoading={ordersLoading}
-          error={ordersError}
-        />
-        <VisitorChart
-          users={users}
-          isLoading={usersLoading}
-          error={usersError}
-        />
+        {(canViewSalesChart || canViewIncomeChart || canViewVisitorChart) && (
+          <>
+            {canViewSalesChart && (
+              <SalesChart
+                orders={orders}
+                isLoading={ordersLoading}
+                error={ordersError}
+              />
+            )}
+
+            {canViewIncomeChart && (
+              <IncomeChart
+                orders={orders}
+                isLoading={ordersLoading}
+                error={ordersError}
+              />
+            )}
+
+            {canViewVisitorChart && (
+              <VisitorChart
+                users={users}
+                isLoading={usersLoading}
+                error={usersError}
+              />
+            )}
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8">
+        <DashboardOrderList
+          orders={orders}
+          isLoading={ordersLoading}
+          error={ordersError}
+        />
         <div className="flex flex-col gap-6 md:col-span-1">
           <DashbordPrimaryCategoryChart orders={orders} />
           <div className="flex flex-col items-center px-4 bg-white border-b border-gray-200 h-[360px] overflow-y-scroll flex-shrink-0 rounded-[12px] shadow-[0px_0px_10px_0px_#EDEDED] py-3 md:col-span-1">
@@ -248,12 +281,6 @@ export const Dashboard = () => {
         </div>
 
         <div className="flex flex-col items-center px-4 bg-white border-b border-gray-200 h-[584px] flex-shrink-0 rounded-[12px] shadow-[0px_0px_10px_0px_#EDEDED] py-3 md:col-span-3">
-          <div className="flex justify-between items-center w-full">
-            <p className="text-black font-roboto text-2xl font-bold leading-normal">
-              Recent Orders
-            </p>
-          </div>
-
           {/* Pass loading and error states to DashboardOrderList */}
           <DashboardOrderList
             orders={orders}

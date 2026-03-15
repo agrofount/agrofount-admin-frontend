@@ -29,7 +29,7 @@ const PaymentTableItem = ({ payment, setPaymentConfirmed }) => {
 
       if (response.status === 200 && response.data) {
         toast.success(
-          response.data.message || "Payment confirmed successfully!"
+          response.data.message || "Payment confirmed successfully!",
         );
         setPaymentConfirmed(true);
       }
@@ -46,7 +46,7 @@ const PaymentTableItem = ({ payment, setPaymentConfirmed }) => {
   return (
     <>
       <tr className="hover:bg-[#F7F7F7]" onClick={() => setIsModalOpen(true)}>
-        <td className="px-2 py-5 whitespace-nowrap">
+        <td className="px-2 py-5 whitespace-nowrap ">
           <p className="py-1">{payment.reference}</p>
         </td>
 
@@ -74,14 +74,14 @@ const PaymentTableItem = ({ payment, setPaymentConfirmed }) => {
               payment.paymentStatus === "completed"
                 ? "bg-[#d9f5df] text-[#61BF75]"
                 : payment.paymentStatus === "pending"
-                ? "bg-[#e2e3e5] text-[#6c757d]"
-                : payment.paymentStatus === "cancelled"
-                ? "bg-[#f8d7da] text-[#dc3545]"
-                : payment.paymentStatus === "failed"
-                ? "bg-[#f8d7da] text-[#dc3545]"
-                : payment.paymentStatus === "refunded"
-                ? "bg-[#fff3cd] text-[#856404]"
-                : "bg-[#cce5ff] text-[#007bff]"
+                  ? "bg-[#e2e3e5] text-[#6c757d]"
+                  : payment.paymentStatus === "cancelled"
+                    ? "bg-[#f8d7da] text-[#dc3545]"
+                    : payment.paymentStatus === "failed"
+                      ? "bg-[#f8d7da] text-[#dc3545]"
+                      : payment.paymentStatus === "refunded"
+                        ? "bg-[#fff3cd] text-[#856404]"
+                        : "bg-[#cce5ff] text-[#007bff]"
             }`}
           >
             {payment.paymentStatus}

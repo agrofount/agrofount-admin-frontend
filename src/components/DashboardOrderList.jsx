@@ -23,7 +23,7 @@ const DashboardOrderList = ({ orders, isLoading, error }) => {
           item["date"] = order.createdAt;
 
           allOtherItems.push(item);
-        }) || []
+        }) || [],
     );
 
     setLoadedOrders(allOtherItems);
@@ -119,16 +119,16 @@ const DashboardOrderList = ({ orders, isLoading, error }) => {
                       order.status === "confirmed"
                         ? "bg-[#d9f5df] text-[#61BF75]"
                         : order.status === "pending"
-                        ? "bg-[#e2e3e5] text-[#6c757d]"
-                        : order.status === "shipped"
-                        ? "bg-[#cce5ff] text-[#007bff]"
-                        : order.status === "delivered"
-                        ? "bg-[#e2f0cb] text-[#28a745]"
-                        : order.status === "cancelled"
-                        ? "bg-[#f8d7da] text-[#dc3545]"
-                        : order.status === "returned"
-                        ? "bg-[#f7c6c7] text-[#e63946]"
-                        : "bg-[#e2e3e5] text-[#6c757d]"
+                          ? "bg-[#e2e3e5] text-[#6c757d]"
+                          : order.status === "shipped"
+                            ? "bg-[#cce5ff] text-[#007bff]"
+                            : order.status === "delivered"
+                              ? "bg-[#e2f0cb] text-[#28a745]"
+                              : order.status === "cancelled"
+                                ? "bg-[#f8d7da] text-[#dc3545]"
+                                : order.status === "returned"
+                                  ? "bg-[#f7c6c7] text-[#e63946]"
+                                  : "bg-[#e2e3e5] text-[#6c757d]"
                     }`}
                   >
                     {order.status}

@@ -28,6 +28,7 @@ const ListPayments = () => {
   const fetchPayments = useCallback(async () => {
     try {
       setIsLoading(true);
+
       const response = await axios.get(`${backend_url}/payment`, {
         headers: { Authorization: `Bearer ${token}` },
         params: {
@@ -55,24 +56,52 @@ const ListPayments = () => {
     sortOrder,
   ]);
 
-  const handlePageChange = (page) => {
-    setPaymentPage(page);
-  };
+  const handlePageChange = (page) => setPaymentPage(page);
 
   useEffect(() => {
     fetchPayments();
     setPaymentConfirmed(false);
   }, [fetchPayments, paymentConfirmed]);
 
+  useEffect(() => {
+    if (!token) navigate("/login");
+  }, [token, navigate]);
+
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === "ASC" ? "DESC" : "ASC"));
+    } else {
+      setSortBy(field);
+      setSortOrder("ASC");
+    }
+  };
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+
+    clearTimeout(searchTimeout.current);
+
+    searchTimeout.current = setTimeout(() => {
+      setSearchValue(value);
+    }, 400);
+  };
+
   let tableContent;
+
   if (isLoading) {
     tableContent = <TableSkeleton />;
   } else if (payments.data.length < 1) {
     tableContent = (
-      <div className="flex flex-col items-center justify-center h-[300px]">
-        <img src={assets.empty_inbox} alt="empty inbox" />
-        <p className="text-[#ADADAD] text-sm mt-5">No messages yet</p>
-      </div>
+      <tbody>
+        <tr>
+          <td colSpan="7">
+            <div className="flex flex-col items-center justify-center h-[300px]">
+              <img src={assets.empty_inbox} alt="empty inbox" />
+              <p className="text-gray-400 text-sm mt-5">No payments yet</p>
+            </div>
+          </td>
+        </tr>
+      </tbody>
     );
   } else {
     tableContent = (
@@ -88,258 +117,176 @@ const ListPayments = () => {
     );
   }
 
-  useEffect(() => {
-    if (!token) {
-      navigate("/login");
-    }
-  }, [token, navigate]);
-
-  // Sort handler
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder((prev) => (prev === "ASC" ? "DESC" : "ASC"));
-    } else {
-      setSortBy(field);
-      setSortOrder("ASC");
-    }
-  };
-
-  const handleSearchChange = (e) => {
-    const value = e.target.value;
-    clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => {
-      setSearchValue(value);
-    }, 400);
-  };
-
   return (
-    <div>
-      <div className="flex flex-row justify-between items-center gap-5">
-        <p className="text-black text-[25px] font-bold leading-normal tracking-[0.5px]">
-          Payment List
-        </p>
-        <div className="flex flex-row items-center gap-2">
-          <Link to="/">
-            <p className="text-[#6E6E6E] font-roboto text-[13px] font-normal leading-normal tracking-[0.26px]">
-              Dashboard
-            </p>
-          </Link>
-          <p>
-            <FontAwesomeIcon
-              icon={faChevronRight}
-              size="sm"
-              className="pt-1 h-3 text-[#6E6E6E]"
-            />
-          </p>
-          <Link to="/payments">
-            <p className="text-[#6E6E6E] font-roboto text-[13px] font-normal leading-normal tracking-[0.26px]">
-              Payment List
-            </p>
-          </Link>
+    <div className="grid grid-cols-1 gap-6 mt-8 w-full">
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+        <p className="text-xl md:text-2xl font-bold">Payment List</p>
+
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <Link to="/">Dashboard</Link>
+          <FontAwesomeIcon icon={faChevronRight} size="xs" />
+          <Link to="/payments">Payment List</Link>
         </div>
       </div>
 
-      <div className="bg-white rounded-[12px] shadow-[0px_0px_10px_0px_#EDEDED] mt-5 p-4">
-        <div className="flex flex-row justify-between items-center py-3">
-          <div className="flex flex-row items-start gap-2">
-            <img src={assets.tip_icon} alt="" />
-            <p className="text-[#6E6E6E] font-roboto text-[15px] font-normal leading-normal">
-              Tip search by Payment ID: Each payment is provided with a unique
-              ID, which you can rely on to find the exact payment you need.
-            </p>
-          </div>
+      <div className="bg-white rounded-xl shadow mt-5 p-4">
+        {/* TIP */}
+        <div className="flex flex-col md:flex-row gap-3 py-3">
+          <img src={assets.tip_icon} alt="" className="w-5 h-5 mt-1" />
+          <p className="text-gray-600 text-sm">
+            Tip: search by Payment ID to find exact payments quickly.
+          </p>
         </div>
 
-        <div className="flex flex-row justify-between items-center py-3">
-          <div className="flex flex-row items-start gap-2">
-            <p className="text-sm p-1.5 text-gray-500">showing</p>
+        {/* CONTROLS */}
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm text-gray-500">showing</p>
+
             <Menu>
-              <MenuButton className="flex flex-row items-center gap-2 border border-gray-500 cursor-pointer py-1.5 px-3 rounded-md">
+              <MenuButton className="flex items-center gap-2 border border-gray-400 px-3 py-1.5 rounded-md">
                 <p className="text-sm">{pageLimit}</p>
                 <img src={assets.dropdown_icon} alt="" />
               </MenuButton>
-              <MenuItems anchor="bottom" className="bg-white py-2 px-4">
-                <MenuItem
-                  onClick={() => setPageLimit(10)}
-                  className="cursor-pointer"
-                >
-                  <p className="text-sm text-center text-gray-500 py-3">10</p>
-                </MenuItem>
 
-                <MenuItem
-                  onClick={() => setPageLimit(20)}
-                  className="cursor-pointer"
-                >
-                  <p className="text-sm text-center text-gray-500  py-3">20</p>
-                </MenuItem>
-
-                <MenuItem
-                  onClick={() => setPageLimit(30)}
-                  className="cursor-pointer"
-                >
-                  <p className="text-sm text-center text-gray-500  py-3">30</p>
-                </MenuItem>
-
-                <MenuItem
-                  onClick={() => setPageLimit(40)}
-                  className="cursor-pointer"
-                >
-                  <p className="text-sm text-center text-gray-500  py-3">40</p>
-                </MenuItem>
-
-                <MenuItem
-                  onClick={() => setPageLimit(50)}
-                  className="cursor-pointer"
-                >
-                  <p className="text-sm text-center text-gray-500  py-3">50</p>
-                </MenuItem>
+              <MenuItems
+                anchor="bottom"
+                className="bg-white shadow rounded-md p-2"
+              >
+                {[10, 20, 30, 40, 50].map((limit) => (
+                  <MenuItem key={limit} onClick={() => setPageLimit(limit)}>
+                    <p className="cursor-pointer text-sm text-center py-2">
+                      {limit}
+                    </p>
+                  </MenuItem>
+                ))}
               </MenuItems>
             </Menu>
-            <p className="text-sm p-1.5 text-gray-500">entries</p>
-            <div className="">
-              <div className="flex items-center rounded-full bg-white pl-3 outline-1 -outline-offset-1 outline-gray-300 has-[input:focus-within]:outline-2 has-[input:focus-within]:-outline-offset-2 has-[input:focus-within]:outline-indigo-600 border border-gray-500">
-                <input
-                  id="price"
-                  name="price"
-                  type="text"
-                  placeholder="Search here..."
-                  defaultValue={searchValue}
-                  onChange={handleSearchChange}
-                  className="block w-full py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
-                />
-                <div className="grid shrink-0 grid-cols-1 focus-within:relative cursor-pointer">
-                  <img
-                    src={assets.search_icon}
-                    className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                    alt=""
-                  />
-                </div>
-              </div>
+
+            <p className="text-sm text-gray-500">entries</p>
+
+            {/* SEARCH */}
+            <div className="flex items-center border border-gray-400 rounded-full px-2">
+              <input
+                type="text"
+                placeholder="Search..."
+                defaultValue={searchValue}
+                onChange={handleSearchChange}
+                className="w-[130px] sm:w-[180px] md:w-[220px] py-1 text-sm focus:outline-none"
+              />
+              <img src={assets.search_icon} className="w-4 h-4 ml-2" alt="" />
             </div>
           </div>
         </div>
 
-        <table className="w-full divide-y divide-gray-200 border-b border-gray-500 pb-20 overflow-x-hidden">
-          <thead className="bg-gray-50 my-2">
-            <tr>
-              <th
-                scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSort("reference")}
-              >
-                Reference{" "}
-                {sortBy === "reference" && (sortOrder === "ASC" ? "▲" : "▼")}
-              </th>
-              <th
-                scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSort("email")}
-              >
-                Email {sortBy === "email" && (sortOrder === "ASC" ? "▲" : "▼")}
-              </th>
-              <th
-                scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSort("orderId")}
-              >
-                Order ID{" "}
-                {sortBy === "orderId" && (sortOrder === "ASC" ? "▲" : "▼")}
-              </th>
-              <th
-                scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSort("amount")}
-              >
-                Amount{" "}
-                {sortBy === "amount" && (sortOrder === "ASC" ? "▲" : "▼")}
-              </th>
-              <th
-                scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSort("paymentStatus")}
-              >
-                Payment Status{" "}
-                {sortBy === "paymentStatus" &&
-                  (sortOrder === "ASC" ? "▲" : "▼")}
-              </th>
-              <th
-                scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSort("amountPaid")}
-              >
-                Amount Paid{" "}
-                {sortBy === "amountPaid" && (sortOrder === "ASC" ? "▲" : "▼")}
-              </th>
-              <th
-                scope="col"
-                className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSort("createdAt")}
-              >
-                Date{" "}
-                {sortBy === "createdAt" && (sortOrder === "ASC" ? "▲" : "▼")}
-              </th>
-            </tr>
-          </thead>
-          {tableContent}
-        </table>
+        {/* TABLE */}
+        <div className="w-full overflow-x-auto">
+          <table className="min-w-[1200px] w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th
+                  className="px-2 py-4 text-xs text-left text-gray-500 uppercase cursor-pointer"
+                  onClick={() => handleSort("reference")}
+                >
+                  Reference{" "}
+                  {sortBy === "reference" && (sortOrder === "ASC" ? "▲" : "▼")}
+                </th>
 
-        {/* meta */}
+                <th
+                  className="px-2 py-4 text-xs text-left text-gray-500 uppercase cursor-pointer"
+                  onClick={() => handleSort("email")}
+                >
+                  Email{" "}
+                  {sortBy === "email" && (sortOrder === "ASC" ? "▲" : "▼")}
+                </th>
+
+                <th
+                  className="px-2 py-4 text-xs text-left text-gray-500 uppercase cursor-pointer"
+                  onClick={() => handleSort("orderId")}
+                >
+                  Order ID{" "}
+                  {sortBy === "orderId" && (sortOrder === "ASC" ? "▲" : "▼")}
+                </th>
+
+                <th
+                  className="px-2 py-4 text-xs text-left text-gray-500 uppercase cursor-pointer"
+                  onClick={() => handleSort("amount")}
+                >
+                  Amount{" "}
+                  {sortBy === "amount" && (sortOrder === "ASC" ? "▲" : "▼")}
+                </th>
+
+                <th
+                  className="px-2 py-4 text-xs text-left text-gray-500 uppercase cursor-pointer"
+                  onClick={() => handleSort("paymentStatus")}
+                >
+                  Status{" "}
+                  {sortBy === "paymentStatus" &&
+                    (sortOrder === "ASC" ? "▲" : "▼")}
+                </th>
+
+                <th
+                  className="px-2 py-4 text-xs text-left text-gray-500 uppercase cursor-pointer"
+                  onClick={() => handleSort("amountPaid")}
+                >
+                  Paid{" "}
+                  {sortBy === "amountPaid" && (sortOrder === "ASC" ? "▲" : "▼")}
+                </th>
+
+                <th
+                  className="px-2 py-4 text-xs text-left text-gray-500 uppercase cursor-pointer"
+                  onClick={() => handleSort("createdAt")}
+                >
+                  Date{" "}
+                  {sortBy === "createdAt" && (sortOrder === "ASC" ? "▲" : "▼")}
+                </th>
+              </tr>
+            </thead>
+
+            {tableContent}
+          </table>
+        </div>
+
+        {/* PAGINATION */}
         {payments.meta && (
-          <div className="flex flex-row text-center justify-between my-5">
-            <p className="text-sm text-gray-500">
+          <div className="flex flex-col md:flex-row md:justify-between items-center gap-3 my-5">
+            <p className="text-sm text-gray-500 text-center">
               Showing {payments.meta.currentPage} to {payments.meta.totalPages}{" "}
-              of {payments.meta.totalItems} entries
+              of {payments.meta.totalItems}
             </p>
 
-            <div className="flex flex-row">
+            <div className="flex flex-wrap justify-center">
               <button
-                className={`flex flex-row px-3 py-1 mx-1 border font-normal rounded-full ${
-                  Number(payments.meta.currentPage) === 1
-                    ? " bg-[#D5D5D5] text-white cursor-not-allowed"
-                    : "bg-white "
-                }`}
-                onClick={() =>
-                  handlePageChange(Number(payments.meta.currentPage) - 1)
-                }
-                disabled={Number(payments.meta.currentPage) === 1}
+                className="px-3 py-1 mx-1 border rounded-full"
+                disabled={payments.meta.currentPage === 1}
+                onClick={() => handlePageChange(payments.meta.currentPage - 1)}
               >
-                <FontAwesomeIcon
-                  icon={faChevronLeft}
-                  size="5rem"
-                  className="py-1"
-                />
+                <FontAwesomeIcon icon={faChevronLeft} />
               </button>
+
               {[...Array(payments.meta.totalPages)].map((_, index) => (
                 <button
                   key={index}
                   className={`px-3 py-1 mx-1 border rounded-full ${
-                    Number(payments.meta.currentPage) === index + 1
-                      ? "bg-[#F96767] text-white"
-                      : "bg-white"
+                    payments.meta.currentPage === index + 1
+                      ? "bg-red-500 text-white"
+                      : ""
                   }`}
                   onClick={() => handlePageChange(index + 1)}
                 >
                   {index + 1}
                 </button>
               ))}
+
               <button
-                className={`flex flex-row  px-3 p-1 mx-1 border font-normal rounded-full ${
-                  Number(payments.meta.currentPage) === payments.meta.totalPages
-                    ? "bg-[#D5D5D5] text-white cursor-not-allowed "
-                    : "bg-white"
-                }`}
-                onClick={() =>
-                  handlePageChange(Number(payments.meta.currentPage) + 1)
-                }
+                className="px-3 py-1 mx-1 border rounded-full"
                 disabled={
-                  Number(payments.meta.currentPage) === payments.meta.totalPages
+                  payments.meta.currentPage === payments.meta.totalPages
                 }
+                onClick={() => handlePageChange(payments.meta.currentPage + 1)}
               >
-                <FontAwesomeIcon
-                  icon={faChevronRight}
-                  size="5rem"
-                  className="py-1"
-                />
+                <FontAwesomeIcon icon={faChevronRight} />
               </button>
             </div>
           </div>

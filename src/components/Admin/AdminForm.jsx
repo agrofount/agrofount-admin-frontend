@@ -33,8 +33,8 @@ const AdminForm = () => {
   const toggleRole = (roleName, roleId) => {
     setRoleOptions((prevOptions) =>
       prevOptions.map((role) =>
-        role.name === roleName ? { ...role, isActive: !role.isActive } : role
-      )
+        role.name === roleName ? { ...role, isActive: !role.isActive } : role,
+      ),
     );
 
     setSelectedRoles((prevRoles) => {
@@ -43,7 +43,7 @@ const AdminForm = () => {
       if (roleExists) {
         // Toggle the isActive property for the existing role
         return prevRoles.map((role) =>
-          role.name === roleName ? { ...role, isActive: !role.isActive } : role
+          role.name === roleName ? { ...role, isActive: !role.isActive } : role,
         );
       } else {
         // Add the role with isActive set to true
@@ -111,6 +111,8 @@ const AdminForm = () => {
       ...(adminId ? {} : { password }),
     };
 
+    // console.log("this is the admin payload: ", payload);
+
     try {
       setProcessing(true);
       let response;
@@ -133,7 +135,7 @@ const AdminForm = () => {
             headers: {
               Authorization: `Bearer ${token}`,
             },
-          }
+          },
         );
 
         if (response.status === StatusCodes.OK) {
@@ -210,9 +212,9 @@ const AdminForm = () => {
           prevOptions.map((role) => ({
             ...role,
             isActive: response.data.roles.some(
-              (adminRole) => adminRole.id === role.id
+              (adminRole) => adminRole.id === role.id,
             ),
-          }))
+          })),
         );
       } else {
         console.log("error", response);

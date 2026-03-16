@@ -261,11 +261,6 @@ export const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8">
-        <DashboardOrderList
-          orders={orders}
-          isLoading={ordersLoading}
-          error={ordersError}
-        />
         <div className="flex flex-col gap-6 md:col-span-1">
           <DashbordPrimaryCategoryChart orders={orders} />
           <div className="flex flex-col items-center px-4 bg-white border-b border-gray-200 h-[360px] overflow-y-scroll flex-shrink-0 rounded-[12px] shadow-[0px_0px_10px_0px_#EDEDED] py-3 md:col-span-1">
@@ -281,6 +276,12 @@ export const Dashboard = () => {
         </div>
 
         <div className="flex flex-col items-center px-4 bg-white border-b border-gray-200 h-[584px] flex-shrink-0 rounded-[12px] shadow-[0px_0px_10px_0px_#EDEDED] py-3 md:col-span-3">
+          <div className="flex justify-between items-center w-full">
+            <p className="text-black font-roboto text-2xl font-bold leading-normal">
+              Recent Orders
+            </p>
+          </div>
+
           {/* Pass loading and error states to DashboardOrderList */}
           <DashboardOrderList
             orders={orders}

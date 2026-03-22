@@ -116,8 +116,8 @@ const ListProducts = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 mt-8 w-full">
-      <div className="flex flex-row justify-between items-center gap-5">
+    <div className="grid grid-cols-1 gap-2 w-full">
+      <div className="flex flex-row justify-between items-center gap-1">
         <p className="text-black text-[25px] font-bold leading-normal tracking-[0.5px]">
           Product List
         </p>
@@ -142,7 +142,7 @@ const ListProducts = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-[12px] shadow-[0px_0px_10px_0px_#EDEDED] mt-5 p-4">
+      <div className="bg-white rounded-[12px] shadow-[0px_0px_10px_0px_#EDEDED] mt-2 p-2">
         <div className="flex flex-row justify-between items-center py-3">
           <div className="flex flex-row items-start gap-2">
             <img src={assets.tip_icon} alt="" />

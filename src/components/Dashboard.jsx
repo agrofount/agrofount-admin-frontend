@@ -22,64 +22,42 @@ import qs from "qs";
 import DashbordPrimaryCategoryChart from "./DashbordPrimaryCategoryChart";
 import { useDashboardPermissions } from "./Hooks/useDashboardPermission";
 
-const periods = [
-  {
-    id: 8,
-    name: "December 2025",
-    startDate: "2025-12-01",
-    endDate: "2025-12-31T23:59:59.999Z",
-  },
-  {
-    id: 7,
-    name: "November 2025",
-    startDate: "2025-11-01",
-    endDate: "2025-11-30T23:59:59.999Z",
-  },
-  {
-    id: 6,
-    name: "October 2025",
-    startDate: "2025-10-01",
-    endDate: "2025-10-31T23:59:59.999Z",
-  },
-  {
-    id: 5,
-    name: "September 2025",
-    startDate: "2025-09-01",
-    endDate: "2025-09-30T23:59:59.999Z",
-  },
-  {
-    id: 4,
-    name: "August 2025",
-    startDate: "2025-08-01",
-    endDate: "2025-08-31T23:59:59.999Z",
-  },
-  {
-    id: 3,
-    name: "July 2025",
-    startDate: "2025-07-01",
-    endDate: "2025-07-31T23:59:59.999Z",
-  },
+const generatePeriods = () => {
+  const periods = [];
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-based (0 = Jan)
 
-  {
-    id: 2,
-    name: "June 2025",
-    startDate: "2025-06-01",
-    endDate: "2025-06-30T23:59:59.999Z",
-  },
+  // Generate last 12 months
+  for (let i = 11; i >= 0; i--) {
+    const date = new Date(currentYear, currentMonth - i, 1);
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const monthName = date.toLocaleString("default", { month: "long" });
+    const startDate = new Date(year, month, 1).toISOString().split("T")[0]; // YYYY-MM-DD
+    const endDate = new Date(year, month + 1, 0, 23, 59, 59, 999).toISOString(); // End of month
 
-  {
-    id: 1,
-    name: "May 2025",
-    startDate: "2025-05-01",
-    endDate: "2025-05-31T23:59:59.999Z",
-  },
-  {
+    periods.push({
+      id: 12 - i, // Unique ID
+      name: `${monthName} ${year}`,
+      startDate,
+      endDate,
+    });
+  }
+
+  // Add "All" option
+  periods.push({
     id: 0,
-    name: "All 2025",
-    startDate: "2025-01-01",
-    endDate: "2025-12-31T23:59:59.999Z",
-  },
-];
+    name: "All",
+    startDate: "2025-01-01", // Or make this dynamic if needed
+    endDate: new Date().toISOString(),
+  });
+
+  return periods;
+};
+
+const periods = generatePeriods();
+
 export const Dashboard = () => {
   const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState([]);
@@ -179,7 +157,7 @@ export const Dashboard = () => {
   }, [token, navigate]);
   return (
     <div>
-      <div className="flex flex-col items-center px-6 bg-white border-b border-gray-200 flex-shrink-0 rounded-[12px] shadow-[0px_0px_10px_0px_#EDEDED] py-3 mb-4">
+      <div className="flex flex-col items-center px-2 sm:px-6 bg-white border-b border-gray-200 flex-shrink-0 rounded-[12px] shadow-[0px_0px_10px_0px_#EDEDED] py-3 mb-4">
         <div className="flex flex-row justify-between items-center w-full">
           <p className="text-black font-roboto text-2xl font-bold leading-normal">
             Dashboard

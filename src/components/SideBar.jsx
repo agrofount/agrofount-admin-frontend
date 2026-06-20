@@ -135,7 +135,10 @@ const SideBar = () => {
             {can.products && <NavLink to="/list-products" icon={faStore} label="Products" onClick={closeOnMobile} />}
             {can.users && <NavLink to="/users" icon={faUsers} label="Customers" onClick={closeOnMobile} />}
             {can.payments && <NavLink to="/payments" icon={faBriefcase} label="Payments" onClick={closeOnMobile} />}
-            {can.reports && <NavLink to="/" icon={faChartSimple} label="Reports" onClick={closeOnMobile} />}
+              {can.reports && <NavLink to="/" icon={faChartSimple} label="Reports" onClick={closeOnMobile} />}
+          </Section>
+
+          <Section title="Reports">
             <NavLink to="/ayo-ai" icon={faRobot} label="Ayo AI Analytics" badge="New" onClick={closeOnMobile} />
           </Section>
 

@@ -1,18 +1,18 @@
 import { useContext, useState } from "react";
 import { ShopContext } from "../../context/ShopContext";
 import ModalComponent from "../modals/ModalComponent";
-import axios from "axios";
 import { toast } from "react-toastify";
+import { apiClient } from "../../lib/apiClient";
 
 const PaymentTableItem = ({ payment, setPaymentConfirmed }) => {
-  const { currency, backend_url, token } = useContext(ShopContext);
+  const { currency } = useContext(ShopContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
   const handleConfirmPayment = async (status) => {
     try {
-      let url = `${backend_url}/payment/${payment.id}/confirm-transfer-received`;
+      let url = `/payment/${payment.id}/confirm-transfer-received`;
       if (status) url += `?status=${status}`;
 
       if (status === "cancelled") {
@@ -21,11 +21,7 @@ const PaymentTableItem = ({ payment, setPaymentConfirmed }) => {
       if (status === "completed") {
         setProcessing(true);
       }
-      const response = await axios.patch(url, null, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiClient.patch(url);
 
       if (response.status === 200 && response.data) {
         toast.success(
@@ -35,7 +31,7 @@ const PaymentTableItem = ({ payment, setPaymentConfirmed }) => {
       }
     } catch (error) {
       console.log("error", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setIsModalOpen(false);
       setProcessing(false);

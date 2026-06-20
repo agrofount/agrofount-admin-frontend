@@ -8,10 +8,10 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { useCallback, useContext, useEffect, useState } from "react";
-import axios from "axios";
 import { ShopContext } from "../../context/ShopContext";
 import TableSkeleton from "../skeleton/TableSkeleton";
 import UserTableItem from "./AdminItemTable";
+import { apiClient } from "../../lib/apiClient";
 
 const ListAdmins = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -21,13 +21,12 @@ const ListAdmins = () => {
   const [userPage, setUserPage] = useState(1);
   const [itemDeleted, setItemDeleted] = useState(false);
 
-  const { token, backend_url, navigate } = useContext(ShopContext);
+  const { token, navigate } = useContext(ShopContext);
 
   const fetchUsers = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${backend_url}/admin`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await apiClient.get("/admin", {
         params: {
           page: userPage,
           limit: pageLimit,
@@ -44,7 +43,7 @@ const ListAdmins = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [backend_url, token, userPage, pageLimit, searchValue]);
+  }, [userPage, pageLimit, searchValue]);
 
   const handlePageChange = (page) => {
     setUserPage(page);
@@ -91,7 +90,7 @@ const ListAdmins = () => {
     if (!token) {
       navigate("/login");
     }
-  }, [token]);
+  }, [navigate, token]);
 
   return (
     <div>

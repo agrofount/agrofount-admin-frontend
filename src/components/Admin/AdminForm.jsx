@@ -1,4 +1,3 @@
-import axios from "axios";
 import { StatusCodes } from "http-status-codes";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
@@ -10,6 +9,7 @@ import flags from "react-phone-number-input/flags";
 import { Switch } from "@headlessui/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+import { apiClient } from "../../lib/apiClient";
 
 const AdminForm = () => {
   const [firstname, setFirstName] = useState("");
@@ -28,7 +28,7 @@ const AdminForm = () => {
   const [adminData, setAdminData] = useState({});
   const { adminId } = useParams();
 
-  const { token, navigate, backend_url } = useContext(ShopContext);
+  const { navigate } = useContext(ShopContext);
 
   const toggleRole = (roleName, roleId) => {
     setRoleOptions((prevOptions) =>
@@ -117,26 +117,14 @@ const AdminForm = () => {
       setProcessing(true);
       let response;
       if (!adminId) {
-        response = await axios.post(`${backend_url}/admin/register`, payload, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        response = await apiClient.post("/admin/register", payload);
 
         if (response.status === StatusCodes.CREATED) {
           toast.success(response.data.message || "Admin successfully created");
           navigate(`/admins`);
         }
       } else {
-        response = await axios.put(
-          `${backend_url}/admin/${adminData.id}`,
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
+        response = await apiClient.put(`/admin/${adminData.id}`, payload);
 
         if (response.status === StatusCodes.OK) {
           toast.success(response.data.message || "Admin successfully Updated");
@@ -145,10 +133,10 @@ const AdminForm = () => {
       }
     } catch (error) {
       console.error(error);
-      if (Array.isArray(error.response?.data?.message)) {
-        error.response.data.message.forEach((msg) => toast.error(msg));
+      if (Array.isArray(error.data?.message)) {
+        error.data.message.forEach((msg) => toast.error(msg));
       } else {
-        toast.error(error.response?.data?.message || error.message);
+        toast.error(error.message);
       }
     } finally {
       setProcessing(false);
@@ -157,11 +145,7 @@ const AdminForm = () => {
 
   const fetchRoles = useCallback(async () => {
     try {
-      const response = await axios.get(`${backend_url}/role`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiClient.get("/role");
 
       if (response.data) {
         let options = response.data.data.map((role) => {
@@ -178,17 +162,13 @@ const AdminForm = () => {
       }
     } catch (error) {
       console.log("error", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     }
-  }, [backend_url, token]);
+  }, []);
 
   const fetchAdminData = useCallback(async () => {
     try {
-      const response = await axios.get(`${backend_url}/admin/${adminId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiClient.get(`/admin/${adminId}`);
 
       console.log("admin data response", response.data);
       if (response.data) {
@@ -224,7 +204,7 @@ const AdminForm = () => {
       console.log("error", error);
       toast.error(error.response?.data?.message || error.message);
     }
-  }, [backend_url, adminId, token]);
+  }, [adminId]);
 
   useEffect(() => {
     const fetchData = async () => {

@@ -1,5 +1,4 @@
-import { useContext, useState } from "react";
-import { ShopContext } from "../../context/ShopContext";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Dialog,
@@ -8,45 +7,57 @@ import {
   DialogTitle,
 } from "@headlessui/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/16/solid";
-import axios from "axios";
 import { toast } from "react-toastify";
 import { assets } from "../../assets/assets";
+import { apiClient } from "../../lib/apiClient";
+import { ACTIONS, RESOURCES } from "../../constants/permissions";
+import { usePermission } from "../Hooks/usePermission";
 
 const UserTableItem = ({ user, setItemDeleted, setUpdated }) => {
   const [open, setOpen] = useState(false);
-  const { backend_url, token } = useContext(ShopContext);
+  const { hasPermission, isAdmin } = usePermission();
   const [processingActivation, setProcessingActivation] = useState(false);
+  const [processingDelete, setProcessingDelete] = useState(false);
+
+  const canDeleteUser =
+    isAdmin || hasPermission(RESOURCES.USERS, ACTIONS.DELETE);
+  const canUpdateUser =
+    isAdmin ||
+    hasPermission(RESOURCES.USERS, ACTIONS.UPDATE) ||
+    hasPermission(RESOURCES.USERS, ACTIONS.VERIFY_USER) ||
+    hasPermission(RESOURCES.USERS, ACTIONS.BLOCK_USER);
 
   const handleDelete = async () => {
+    if (!canDeleteUser) {
+      toast.error("You do not have permission to delete users.");
+      return;
+    }
+
     try {
-      await axios.delete(`${backend_url}/state/${user.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      setProcessingDelete(true);
+      await apiClient.delete(`/user/${user.id}`);
 
       setItemDeleted(true);
       toast.success("User deleted successfully");
       setUpdated(true);
     } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
+      setProcessingDelete(false);
       setOpen(false);
     }
   };
 
   const handleActivation = async () => {
+    if (!canUpdateUser) {
+      toast.error("You do not have permission to update users.");
+      return;
+    }
+
     try {
       setProcessingActivation(true);
-      const response = await axios.patch(
-        `${backend_url}/user/${user.id}/activate?activate=${!user.isVerified}`,
-        null,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const response = await apiClient.patch(
+        `/user/${user.id}/activate?activate=${!user.isVerified}`
       );
 
       if (response.status === 200) {
@@ -54,8 +65,7 @@ const UserTableItem = ({ user, setItemDeleted, setUpdated }) => {
         setUpdated(true);
       }
     } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setProcessingActivation(false);
     }
@@ -144,14 +154,25 @@ const UserTableItem = ({ user, setItemDeleted, setUpdated }) => {
 
       <td className="px-4 py-5 whitespace-nowrap text-sm text-gray-500">
         <div className="flex flex-row gap-3 items-center">
-          <Link to={`/users/${user.id}/edit`}>
-            <img src={assets.edit_icon} alt="" />
-          </Link>
-          <div onClick={() => setOpen(true)} className="cursor-pointer">
-            <img src={assets.delete_icon} alt="" />
-          </div>
+          {canUpdateUser && (
+            <Link to={`/users/${user.id}/edit`} aria-label={`Edit ${user.username}`}>
+              <img src={assets.edit_icon} alt="" />
+            </Link>
+          )}
+          {canDeleteUser && (
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="cursor-pointer"
+              aria-label={`Delete ${user.username}`}
+            >
+              <img src={assets.delete_icon} alt="" />
+            </button>
+          )}
+          {canUpdateUser && (
           <div className="cursor-pointer">
             <button
+              type="button"
               onClick={handleActivation}
               className={`text-sm ${
                 user.isVerified ? "bg-green-500" : "bg-red-500"
@@ -187,6 +208,7 @@ const UserTableItem = ({ user, setItemDeleted, setUpdated }) => {
               )}
             </button>
           </div>
+          )}
 
           <Dialog open={open} onClose={setOpen} className="relative z-10">
             <DialogBackdrop
@@ -213,12 +235,12 @@ const UserTableItem = ({ user, setItemDeleted, setUpdated }) => {
                           as="h3"
                           className="text-base font-semibold text-gray-900"
                         >
-                          Delete Country
+                          Delete User
                         </DialogTitle>
                         <div className="mt-2">
                           <p className="text-sm text-gray-500">
                             Are you sure you want to delete your {user.username}
-                            ? product location data will be permanently removed.
+                            ? User data will be permanently removed.
                             This action cannot be undone.
                           </p>
                         </div>
@@ -229,9 +251,10 @@ const UserTableItem = ({ user, setItemDeleted, setUpdated }) => {
                     <button
                       type="button"
                       onClick={handleDelete}
+                      disabled={processingDelete}
                       className="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-red-500 sm:ml-3 sm:w-auto"
                     >
-                      Delete
+                      {processingDelete ? "Deleting..." : "Delete"}
                     </button>
                     <button
                       type="button"

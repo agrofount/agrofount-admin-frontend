@@ -1,5 +1,7 @@
 import {
   faBriefcase,
+  faBox,
+  faChartLine,
   faChartSimple,
   faCircleQuestion,
   faGear,
@@ -139,6 +141,10 @@ const SideBar = () => {
           </Section>
 
           <Section title="Reports">
+            <NavLink to="/sales-reports" icon={faChartLine} label="Sales Reports" onClick={closeOnMobile} />
+            <NavLink to="/customer-reports" icon={faUsers} label="Customer Reports" onClick={closeOnMobile} />
+            <NavLink to="/inventory-reports" icon={faBox} label="Inventory Reports" onClick={closeOnMobile} />
+            <NavLink to="/career-reports" icon={faBriefcase} label="Career Reports" onClick={closeOnMobile} />
             <NavLink to="/ayo-ai" icon={faRobot} label="Ayo AI Analytics" badge="New" onClick={closeOnMobile} />
           </Section>
 

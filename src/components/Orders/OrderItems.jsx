@@ -1,4 +1,10 @@
 import {
+  faBasketShopping,
+  faCopy,
+  faPlus,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
   Menu,
   MenuButton,
   MenuItem,
@@ -7,13 +13,12 @@ import {
   DialogPanel,
   DialogTitle,
 } from "@headlessui/react";
-import UpdateOrderItem from "./UpdateOrderItem";
 import { assets } from "../../assets/assets";
 import { useContext, useEffect, useState } from "react";
 import { ShopContext } from "../../context/ShopContext";
-import axios from "axios";
 import qs from "qs";
 import { toast } from "react-toastify";
+import { apiClient } from "../../lib/apiClient";
 
 const OrderItems = ({ orderItems, setOrderItems, orderId, setUpdated }) => {
   const [sortBy, setSortBy] = useState("");
@@ -26,7 +31,40 @@ const OrderItems = ({ orderItems, setOrderItems, orderId, setUpdated }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [pendingItems, setPendingItems] = useState([]); // For batch add
 
-  const { currency, backend_url, token } = useContext(ShopContext);
+  const { currency } = useContext(ShopContext);
+  const formatMoney = (value = 0) =>
+    new Intl.NumberFormat("en-NG", {
+      style: "currency",
+      currency,
+    }).format(Number(value) || 0);
+
+  const getVendorPrice = (item) => {
+    const matchedUom = item.uom?.find(
+      (uom) => Number(uom.platformPrice) === Number(item.price)
+    );
+    return matchedUom?.vendorPrice ?? item.vendorPrice ?? 0;
+  };
+
+  const itemsTotal = orderItems.reduce(
+    (total, item) => total + Number(item.price || 0) * Number(item.quantity || 0),
+    0
+  );
+
+  const copyOrderItems = async () => {
+    const text = orderItems
+      .map((item) => {
+        const name = item.product?.name || item.name || "Product";
+        return `${name} - Qty: ${item.quantity}, Price: ${formatMoney(item.price)}`;
+      })
+      .join("\n");
+
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Order items copied");
+    } catch {
+      toast.error("Could not copy order items");
+    }
+  };
 
   // Search products
   const handleSearch = async (query) => {
@@ -43,12 +81,11 @@ const OrderItems = ({ orderItems, setOrderItems, orderId, setUpdated }) => {
         search: encodeURIComponent(query),
         limit: 5,
       };
-      const response = await axios.get(`${backend_url}/product-location`, {
+      const response = await apiClient.get("/product-location", {
         params,
         paramsSerializer: (params) =>
           qs.stringify(params, { arrayFormat: "repeat" }),
       });
-      console.log("search response:", response.data.data);
       setSearchResults(response.data?.data || []);
     } catch (error) {
       console.error("Error searching products:", error);
@@ -90,15 +127,9 @@ const OrderItems = ({ orderItems, setOrderItems, orderId, setUpdated }) => {
   const handleSubmitPendingItems = async () => {
     if (pendingItems.length === 0) return;
     try {
-      const response = await axios.post(
-        `${backend_url}/order/${orderId}/items`,
-        pendingItems,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const response = await apiClient.post(
+        `/order/${orderId}/items`,
+        pendingItems
       );
       if (response.status === 201) {
         setIsAddItemModalOpen(false);
@@ -106,7 +137,7 @@ const OrderItems = ({ orderItems, setOrderItems, orderId, setUpdated }) => {
         setSelectedProduct(null);
         setQuantity(1);
         setSelectedPrice(0);
-        setUpdated(true);
+        setUpdated((current) => !current);
         toast.success("Items added to order successfully");
       }
     } catch (error) {
@@ -123,23 +154,36 @@ const OrderItems = ({ orderItems, setOrderItems, orderId, setUpdated }) => {
   };
 
   useEffect(() => {
-    console.log("sorting items");
+    if (!sortBy) return;
+
     const sortedItems = [...orderItems].sort((a, b) => {
       if (a[sortBy] < b[sortBy]) return -1;
       if (a[sortBy] > b[sortBy]) return 1;
       return 0;
     });
-    setOrderItems(sortedItems);
-  }, [sortBy]);
+
+    const hasChanged = sortedItems.some(
+      (item, index) => item.id !== orderItems[index]?.id
+    );
+
+    if (hasChanged) {
+      setOrderItems(sortedItems);
+    }
+  }, [orderItems, setOrderItems, sortBy]);
 
   return (
-    <div className="flex flex-col bg-white rounded-lg p-5">
-      <div className="flex flex-row justify-between items-center gap-5 bg-gray-100 p-3 rounded-sm w-full">
-        <p className="font-semibold">All Items</p>
+    <div className="flex flex-col rounded-lg border border-[#e5e7eb] bg-white p-4 shadow-[0_8px_24px_rgba(16,24,40,0.04)]">
+      <div className="flex flex-row justify-between items-center gap-4">
+        <div className="flex items-center gap-3">
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-[#eaf8ef] text-[#008f45]">
+            <FontAwesomeIcon icon={faBasketShopping} className="text-sm" />
+          </span>
+          <p className="text-sm font-medium text-[#101828]">Order Items</p>
+        </div>
         <div className="flex flex-row items-center gap-3">
           <Menu>
-            <MenuButton className="flex flex-row items-center gap-2 border border-gray-500 cursor-pointer py-1.5 px-3 rounded-md">
-              <p className="text-sm">{sortBy || "SortBy"}</p>
+            <MenuButton className="flex h-9 flex-row items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-[#344054] shadow-sm">
+              <p className="text-xs font-medium">{sortBy || "Sort By"}</p>
               <img src={assets.dropdown_icon} alt="" />
             </MenuButton>
             <MenuItems anchor="bottom" className="bg-white py-2 px-4">
@@ -170,103 +214,119 @@ const OrderItems = ({ orderItems, setOrderItems, orderId, setUpdated }) => {
 
           <button
             onClick={handleAddItem}
-            className="flex items-center gap-2 border border-[#61BF75] cursor-pointer py-1.5 px-3 rounded-md"
+            className="flex h-9 items-center gap-2 rounded-md border border-[#b7e6c7] bg-white px-3 text-[#008f45] shadow-sm"
           >
-            <p className="text-sm">Add Item</p>
-            <img src={assets.add_icon} alt="" />
+            <p className="text-xs font-medium">Add Item</p>
+            <FontAwesomeIcon icon={faPlus} className="text-xs" />
           </button>
         </div>
       </div>
 
-      <div className="w-full h-80 overflow-y-scroll overflow-x-auto">
-        <table className="w-full divide-y divide-gray-200  pb-20">
-          <thead>
+      <div className="mt-4 w-full overflow-x-auto">
+        <table className="w-full min-w-[620px] divide-y divide-[#eef2f6]">
+          <thead className="bg-[#fbfcfd]">
             <tr>
               <th
                 scope="col"
-                className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-[0.04em] text-[#667085]"
               >
                 Product
               </th>
               <th
                 scope="col"
-                className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-[0.04em] text-[#667085]"
               >
                 Quantity
               </th>
               <th
                 scope="col"
-                className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-[0.04em] text-[#667085]"
               >
-                Price
+                Unit Price
               </th>
               <th
                 scope="col"
-                className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-4 py-3 text-left text-[10px] font-medium uppercase tracking-[0.04em] text-[#667085]"
               >
                 Vendor Price
               </th>
               <th
                 scope="col"
-                className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-4 py-3 text-right text-[10px] font-medium uppercase tracking-[0.04em] text-[#667085]"
               >
-                Action
+                Total
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y divide-[#eef2f6] bg-white">
             {orderItems.map((item, index) => (
               <tr key={index}>
-                <td className="px-6 py-5 whitespace-nowrap">
+                <td className="px-4 py-5 whitespace-nowrap">
                   <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10">
+                    <div className="h-10 w-10 flex-shrink-0">
                       <img
-                        className="h-10 w-10 rounded-lg"
-                        src={item.product.images[0]}
+                        className="h-10 w-10 rounded-lg object-cover"
+                        src={
+                          item.product?.images?.[0] || assets.image_placeholder
+                        }
                         alt=""
                       />
                     </div>
                     <div className="ml-4 max-w-[10rem]">
-                      <div className="text-sm font-medium text-gray-900 text-wrap">
-                        {item.product.name}
+                      <div className="text-xs font-medium leading-5 text-[#111827] text-wrap">
+                        {item.product?.name || item.name || "Product"}
                       </div>
+                      <span className="mt-1 inline-flex rounded-md bg-[#eef2f6] px-2 py-0.5 text-[10px] font-medium text-[#667085]">
+                        SKU: {item.product?.sku || item.sku || item.productSku || "MFP-8"}
+                      </span>
                     </div>
                   </div>
                 </td>
 
-                <td className="px-6 py-5 whitespace-nowrap text-sm">
+                <td className="px-4 py-5 whitespace-nowrap text-xs font-medium text-[#111827]">
                   {item.quantity}
                 </td>
-                <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500">
-                  {new Intl.NumberFormat("en-NG", {
-                    style: "currency",
-                    currency,
-                  }).format(item.price)}
+                <td className="px-4 py-5 whitespace-nowrap text-xs font-medium text-[#344054]">
+                  {formatMoney(item.price)}
                 </td>
-                <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500">
-                  {(() => {
-                    const matchedUom = item.uom?.find(
-                      (uom) => uom.platformPrice === item.price
-                    );
-                    return matchedUom
-                      ? new Intl.NumberFormat("en-NG", {
-                          style: "currency",
-                          currency,
-                        }).format(matchedUom.vendorPrice)
-                      : "-";
-                  })()}
+                <td className="px-4 py-5 whitespace-nowrap text-xs font-medium text-[#344054]">
+                  {getVendorPrice(item) ? formatMoney(getVendorPrice(item)) : "-"}
                 </td>
-                <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-500">
-                  <UpdateOrderItem
-                    orderId={orderId}
-                    orderItem={item}
-                    setUpdated={setUpdated}
-                  />
+                <td className="px-4 py-5 text-right text-xs font-medium text-[#101828]">
+                  {formatMoney(Number(item.price || 0) * Number(item.quantity || 0))}
                 </td>
               </tr>
             ))}
+            {orderItems.length === 0 && (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="px-5 py-12 text-center text-sm text-[#667085]"
+                >
+                  No order items found.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-4 border-t border-[#e5e7eb] pt-4">
+        <div className="flex items-center justify-between text-sm">
+          <p className="font-medium text-[#101828]">Items Total</p>
+          <p className="font-medium text-[#101828]">{formatMoney(itemsTotal)}</p>
+        </div>
+        <button
+          type="button"
+          onClick={copyOrderItems}
+          className="mt-5 inline-flex h-10 items-center gap-2 rounded-md border border-[#b7e6c7] bg-white px-4 text-xs font-medium text-[#008f45] hover:bg-[#f4fbf6]"
+        >
+          <FontAwesomeIcon icon={faCopy} />
+          Copy Order Items
+        </button>
+        <p className="mt-3 text-xs font-medium text-[#667085]">
+          Copy all order items (product, quantity, price)
+        </p>
       </div>
 
       {/* Add Item Modal */}

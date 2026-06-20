@@ -3,15 +3,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ShopContext } from "../../context/ShopContext";
-import axios from "axios";
 import { toast } from "react-toastify";
 import ProductDetailSkeleton from "../skeleton/ProductDetailSkeleton";
 import OrderTrackComponent from "./OrderTrackComponent";
+import { apiClient } from "../../lib/apiClient";
 
 const TrackOrder = () => {
   const { orderId } = useParams();
-  const { backend_url, token, navigate, frontend_url } =
-    useContext(ShopContext);
+  const { navigate, frontend_url } = useContext(ShopContext);
   const [orderData, setOrderData] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [orderItems, setOrderItems] = useState([]);
@@ -20,11 +19,7 @@ const TrackOrder = () => {
   const fetchOrderData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${backend_url}/order/${orderId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiClient.get(`/order/admin/${orderId}`);
 
       if (response.data) {
         setOrderData(response.data);
@@ -36,11 +31,11 @@ const TrackOrder = () => {
       }
     } catch (error) {
       console.log("error", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setIsLoading(false); // Set loading to false after fetching
     }
-  }, [orderId, backend_url, token]);
+  }, [orderId]);
 
   useEffect(() => {
     fetchOrderData();
@@ -165,6 +160,7 @@ const TrackOrder = () => {
                     className="w-full border border-[#61BF75] rounded-lg py-3 my-5 hover:bg-gray-200 hover:border-none text-center"
                     href={`${frontend_url}/product/${currentItem?.id}`}
                     target="_blank"
+                    rel="noopener noreferrer"
                   >
                     View Shop
                   </a>

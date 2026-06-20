@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { ToastContainer } from "react-toastify";
-import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import SideBar from "./components/SideBar";
 import Navbar from "./components/Navbar";
 import ErrorBoundary from "./components/common/ErrorBoundary";
@@ -123,6 +123,7 @@ const adminRoutes = [
 ];
 
 function Layout() {
+  const { pathname } = useLocation();
   return (
     <div className="min-h-screen bg-[#f7f8fb]">
       <div className="flex">
@@ -130,7 +131,7 @@ function Layout() {
         <div className="flex min-w-0 flex-1 flex-col bg-[#f7f8fb]">
           <Navbar />
           <div className="p-3 md:p-6">
-            <Suspense fallback={<PageSkeletonLoader />}>
+            <Suspense key={pathname} fallback={<PageSkeletonLoader />}>
               <Outlet />
             </Suspense>
           </div>

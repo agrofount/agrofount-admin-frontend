@@ -1,13 +1,13 @@
-import axios from "axios";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { ShopContext } from "../context/ShopContext";
 import { toast } from "react-toastify";
 import { Link } from "react-router-dom";
+import { apiClient } from "../lib/apiClient";
 
 const VerifyEmail = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const { backend_url, setToken, token } = useContext(ShopContext);
+  const { setToken, token } = useContext(ShopContext);
 
   const getTokenFromUrl = () => {
     const params = new URLSearchParams(location.search);
@@ -16,11 +16,11 @@ const VerifyEmail = () => {
 
   const verificationToken = getTokenFromUrl();
 
-  const handleVerifyEmail = async () => {
+  const handleVerifyEmail = useCallback(async () => {
     try {
-      const response = await axios.get(
-        `${backend_url}/admin/verify-email?token=${verificationToken}`
-      );
+      const response = await apiClient.get("/admin/verify-email", {
+        params: { token: verificationToken },
+      });
 
       if (response.data.success) {
         setIsVerified(true);
@@ -33,11 +33,11 @@ const VerifyEmail = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [verificationToken]);
 
   useEffect(() => {
     handleVerifyEmail();
-  }, []);
+  }, [handleVerifyEmail]);
 
   useEffect(() => {
     if (token) {

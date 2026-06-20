@@ -1,26 +1,41 @@
-import { createContext, useCallback, useEffect, useState } from "react";
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
-import { geocode, RequestType, setKey } from "react-geocode";
-import axios from "axios";
+import { setKey } from "react-geocode";
 import { io } from "socket.io-client";
+import { apiClient, setupApiAuthHandlers } from "../lib/apiClient";
+import {
+  clearAuthStorage,
+  getAuthToken,
+  getRefreshToken,
+  setAuthToken,
+} from "../lib/authStorage";
 
 export const ShopContext = createContext();
 
 const ShopContextProvider = (props) => {
-  setKey(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
+  setKey(
+    import.meta.env.VITE_GOOGLE_MAPS_KEY ||
+      import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+  );
 
   const currency = "NGN";
   const delivery_fee = 10;
   const vat = 7.7;
-  const paymentMethods = {
-    COD: "cash_on_delivery",
-    PAY_NOW: "pay_now",
-    PAY_LATER: "pay_later",
-  };
-  const backend_url = import.meta.env.VITE_BACKEND_URL;
-  const web_socket_url = import.meta.env.VITE_WEBSOCKET_URL;
+  const paymentMethods = useMemo(
+    () => ({
+      COD: "cash_on_delivery",
+      PAY_NOW: "pay_now",
+      PAY_LATER: "pay_later",
+    }),
+    []
+  );
+  const backend_url =
+    import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_URL;
+  const web_socket_url =
+    import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_WEBSOCKET_URL;
   const country_id = import.meta.env.VITE_COUNTRY_ID;
   const frontend_url = import.meta.env.VITE_FRONTEND_URL;
 
@@ -33,103 +48,29 @@ const ShopContextProvider = (props) => {
   });
   const [page, setProductPage] = useState(1);
 
-  const [token, setToken] = useState(localStorage.getItem("token") || "");
+  const [token, setTokenState] = useState(getAuthToken());
   const [user, setUser] = useState(null); // Add user state
+  const [authLoading, setAuthLoading] = useState(Boolean(getAuthToken()));
+  const [authInitialized, setAuthInitialized] = useState(!getAuthToken());
   const [isCollectionLoading, setIsCollectionLoading] = useState(true);
   const [reviewAdded, setReviewAdded] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [socket, setSocket] = useState(null);
 
-  const socket = io(web_socket_url);
+  const toggleSidebar = useCallback(() => {
+    setSidebarVisible((visible) => !visible);
+  }, []);
 
-  socket.on("connect", () => {
-    console.log("Connected to WebSocket server");
-  });
-
-  socket.on("uploadProgress", (data) => {
-    console.log(`Upload progress for ${data.name}: ${data.percentage}%`);
-  });
-
-  const toggleSidebar = () => {
-    setSidebarVisible(!sidebarVisible);
-  };
+  const closeSidebar = useCallback(() => {
+    setSidebarVisible(false);
+  }, []);
 
   const navigate = useNavigate();
 
-  const getLocation = async () => {
-    // Helper function to get geolocation
-    const getCurrentPosition = () => {
-      return new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          resolve,
-          (error) => {
-            reject(error);
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0,
-          },
-        );
-      });
-    };
-
-    try {
-      const position = await getCurrentPosition();
-      const { latitude, longitude } = position.coords;
-
-      // Get formatted address, city, state, country from latitude & longitude.
-      const geocodeResponse = await geocode(
-        RequestType.LATLNG,
-        `${latitude},${longitude}`,
-        {
-          location_type: "ROOFTOP",
-          enable_address_descriptor: true,
-        },
-      );
-
-      const { results } = geocodeResponse;
-      const address = results[0].formatted_address;
-      const { city, state, country } = results[0].address_components.reduce(
-        (acc, component) => {
-          if (component.types.includes("locality"))
-            acc.city = component.long_name;
-          else if (component.types.includes("administrative_area_level_1"))
-            acc.state = component.long_name;
-          else if (component.types.includes("country"))
-            acc.country = component.long_name;
-          return acc;
-        },
-        { city: null, state: null, country: null },
-      );
-
-      console.log(city, state, country);
-      console.log(address);
-      return { city, state, country, address };
-    } catch (error) {
-      console.error("Error getting location:", error);
-
-      // Handle specific geolocation errors
-      if (error.code) {
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            toast.error("Location access denied by the user.");
-            break;
-          case error.POSITION_UNAVAILABLE:
-            toast.error("Location information is unavailable.");
-            break;
-          case error.TIMEOUT:
-            toast.error("The request to get user location timed out.");
-            break;
-          default:
-            toast.error("An unknown error occurred while fetching location.");
-        }
-      } else {
-        toast.error("Failed to fetch location data.");
-      }
-
-      return { city: null, state: null, country: null, address: null };
-    }
-  };
+  const setToken = useCallback((nextToken, nextRefreshToken) => {
+    setAuthToken(nextToken, nextRefreshToken);
+    setTokenState(nextToken || "");
+  }, []);
 
   const getProductData = useCallback(
     async (filter = "", search = "") => {
@@ -138,7 +79,7 @@ const ShopContextProvider = (props) => {
 
         // const geocodeResponse = await getLocation();
 
-        const response = await axios.get(`${backend_url}/product-location`, {
+        const response = await apiClient.get("/product-location", {
           params: {
             page,
             filter,
@@ -151,60 +92,77 @@ const ShopContextProvider = (props) => {
           setProductLocations(response.data);
         }
       } catch (error) {
-        console.error(error);
-        toast.error(error.response?.data?.message || error.message);
+        toast.error(error.message);
       } finally {
         setIsCollectionLoading(false);
       }
     },
-    [backend_url, page],
+    [page],
   );
 
   const handleTokenExpiry = useCallback(() => {
     toast.error("Session expired. Please log in again.");
-    setToken("");
+    clearAuthStorage();
+    setTokenState("");
     setUser(null);
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    setAuthInitialized(true);
     navigate("/login");
   }, [navigate]);
 
   // Fetch user profile when token changes
   const fetchUserProfile = useCallback(
-    async (authToken) => {
+    async (fallbackUser = null) => {
       try {
-        const response = await axios.get(`${backend_url}/admin/profile`, {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        });
-
-        console.log("this is the user data: ", user);
+        const response = await apiClient.get("/admin/profile");
 
         if (response.data) {
-          setUser(response.data);
-
-          // Store user data in localStorage for persistence
-          localStorage.setItem("user", JSON.stringify(response.data));
+          setUser((currentUser) => ({
+            ...(fallbackUser || currentUser || {}),
+            ...response.data,
+          }));
         }
       } catch (error) {
-        console.error("Error fetching user profile:", error);
-        if (error.response?.status === 401) {
+        if (error.status === 401) {
           handleTokenExpiry();
+        } else {
+          if (fallbackUser) setUser(fallbackUser);
+          toast.error(error.message || "Unable to fetch user profile.");
         }
+      } finally {
+        setAuthLoading(false);
+        setAuthInitialized(true);
       }
     },
-    [backend_url, handleTokenExpiry],
+    [handleTokenExpiry],
   );
 
-  const logout = () => {
-    setToken("");
+  const logout = useCallback(() => {
+    clearAuthStorage();
+    setTokenState("");
     setUser(null);
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    socket?.disconnect();
     navigate("/login");
     toast.success("Logged out successfully");
-  };
+  }, [navigate, socket]);
+
+  useEffect(() => setupApiAuthHandlers({ onUnauthorized: handleTokenExpiry }), [
+    handleTokenExpiry,
+  ]);
+
+  useEffect(() => {
+    const handleTokenRefreshed = (event) => {
+      setTokenState(event.detail?.token || getAuthToken());
+    };
+
+    window.addEventListener("agrofount:token-refreshed", handleTokenRefreshed);
+
+    return () => {
+      window.removeEventListener(
+        "agrofount:token-refreshed",
+        handleTokenRefreshed
+      );
+    };
+  }, []);
 
   useEffect(() => {
     getProductData();
@@ -215,30 +173,54 @@ const ShopContextProvider = (props) => {
       try {
         const decodedToken = jwtDecode(token);
         const currentTime = Date.now() / 1000;
-        if (decodedToken.exp < currentTime) {
-          // Token has expired
+        if (decodedToken.exp < currentTime && !getRefreshToken()) {
           handleTokenExpiry();
         } else {
-          // Fetch user profile
-          fetchUserProfile(token);
-
-          // Try to get user from localStorage first for immediate display
-          const storedUser = localStorage.getItem("user");
-          if (storedUser) {
-            setUser(JSON.parse(storedUser));
-          }
-          // getCartData(token);
+          setAuthLoading(true);
+          setUser((currentUser) => ({
+            ...(currentUser || {}),
+            ...decodedToken,
+          }));
+          fetchUserProfile(decodedToken);
         }
-      } catch (error) {
-        console.error("Error decoding token:", error);
+      } catch {
         handleTokenExpiry();
       }
     } else {
+      setAuthLoading(false);
+      setAuthInitialized(true);
       setUser(null);
     }
   }, [token, handleTokenExpiry, fetchUserProfile]);
 
-  const value = {
+  useEffect(() => {
+    if (!token || !web_socket_url) {
+      setSocket((currentSocket) => {
+        currentSocket?.disconnect();
+        return null;
+      });
+      return undefined;
+    }
+
+    const nextSocket = io(web_socket_url, {
+      auth: { token },
+      transports: ["websocket"],
+    });
+
+    const handleConnectError = () => {
+      toast.error("Realtime connection failed.");
+    };
+
+    nextSocket.on("connect_error", handleConnectError);
+    setSocket(nextSocket);
+
+    return () => {
+      nextSocket.off("connect_error", handleConnectError);
+      nextSocket.disconnect();
+    };
+  }, [token, web_socket_url]);
+
+  const value = useMemo(() => ({
     productLocations,
     currency,
     delivery_fee,
@@ -263,10 +245,36 @@ const ShopContextProvider = (props) => {
     setReviewAdded,
     sidebarVisible,
     toggleSidebar,
+    closeSidebar,
     socket,
     user,
     logout,
-  };
+    authLoading,
+    authInitialized,
+  }), [
+    productLocations,
+    showSearch,
+    cartItems,
+    navigate,
+    token,
+    backend_url,
+    web_socket_url,
+    frontend_url,
+    country_id,
+    isCollectionLoading,
+    paymentMethods,
+    getProductData,
+    reviewAdded,
+    sidebarVisible,
+    socket,
+    user,
+    logout,
+    authLoading,
+    authInitialized,
+    setToken,
+    toggleSidebar,
+    closeSidebar,
+  ]);
 
   return (
     <ShopContext.Provider value={value}>{props.children}</ShopContext.Provider>

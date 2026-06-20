@@ -7,7 +7,7 @@ const TopNav = () => {
         get 35% off for new products
       </p>
       <Link
-        to="/shop"
+        to="/list-products"
         className="flex font-normal leading-normal text-[16px] text-white px-10 py-2 border rounded-full cursor-pointer"
       >
         shop now

@@ -65,6 +65,7 @@ const ListShipments = lazy(() =>
 );
 const ListCarts = lazy(() => import("./components/Cart/ListCarts"));
 const AyoAIAnalytics = lazy(() => import("./components/AyoAI/AyoAIAnalytics"));
+const Settings = lazy(() => import("./components/Settings/Settings"));
 const CareersOverview = lazy(() => import("./components/Careers/CareersOverview"));
 const JobOpenings = lazy(() => import("./components/Careers/JobOpenings"));
 const JobDetail = lazy(() => import("./components/Careers/JobDetail"));
@@ -120,6 +121,7 @@ const adminRoutes = [
   { path: "/careers/applications", element: <Applications /> },
   { path: "/careers/create", element: <CreateJob /> },
   { path: "/ayo-ai", element: <AyoAIAnalytics /> },
+  { path: "/settings", element: <Settings /> },
 ];
 
 function Layout() {

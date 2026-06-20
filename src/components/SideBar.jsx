@@ -169,7 +169,7 @@ const SideBar = () => {
 
           <Section title="Settings">
             {can.roles && <NavLink to="/roles" icon={faUsers} label="Users & Roles" onClick={closeOnMobile} />}
-            <NavLink to="/countries" icon={faGear} label="Settings" onClick={closeOnMobile} />
+            <NavLink to="/settings" icon={faGear} label="Settings" onClick={closeOnMobile} />
             <NavLink to="/" icon={faCircleQuestion} label="Help Center" onClick={closeOnMobile} />
           </Section>
         </nav>

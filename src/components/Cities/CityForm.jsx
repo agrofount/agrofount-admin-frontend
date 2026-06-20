@@ -1,11 +1,12 @@
 import { Field, Label, Select, Switch } from "@headlessui/react";
-import axios, { HttpStatusCode } from "axios";
+import { HttpStatusCode } from "axios";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { ShopContext } from "../../context/ShopContext";
 import { useParams } from "react-router-dom";
 import { ChevronDownIcon } from "@heroicons/react/16/solid";
 import clsx from "clsx";
+import { apiClient } from "../../lib/apiClient";
 
 const CityForm = () => {
   const [name, setName] = useState("");
@@ -19,7 +20,7 @@ const CityForm = () => {
   const countryId = queryParams.get("countryId");
   const stateId = queryParams.get("stateId");
 
-  const { token, navigate, backend_url } = useContext(ShopContext);
+  const { navigate } = useContext(ShopContext);
 
   const [active, setActive] = useState(false);
 
@@ -40,11 +41,7 @@ const CityForm = () => {
       setProcessing(true);
       let response;
       if (!cityId) {
-        response = await axios.post(`${backend_url}/city`, payload, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        response = await apiClient.post("/city", payload);
 
         if (response.status === HttpStatusCode.Created) {
           toast.success(response.data.message || "City successfully created");
@@ -53,15 +50,7 @@ const CityForm = () => {
           );
         }
       } else {
-        response = await axios.put(
-          `${backend_url}/city/${cityData.id}`,
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        response = await apiClient.put(`/city/${cityData.id}`, payload);
 
         if (response.status === HttpStatusCode.Ok) {
           toast.success(response.data.message || "City successfully Updated");
@@ -72,7 +61,7 @@ const CityForm = () => {
       }
     } catch (error) {
       console.error(error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setProcessing(false);
     }
@@ -80,7 +69,7 @@ const CityForm = () => {
 
   const fetchCityData = useCallback(async () => {
     try {
-      const response = await axios.get(`${backend_url}/city/${cityId}`);
+      const response = await apiClient.get(`/city/${cityId}`);
       if (response.data) {
         setCityData(response.data);
         setName(response.data.name || "");
@@ -93,14 +82,13 @@ const CityForm = () => {
       }
     } catch (error) {
       console.log("error", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     }
-  }, [backend_url, cityId]);
+  }, [cityId]);
 
   const fetchStates = useCallback(async () => {
     try {
-      const response = await axios.get(`${backend_url}/state`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await apiClient.get("/state", {
         params: {
           "filter.country.id": countryId,
         },
@@ -117,9 +105,9 @@ const CityForm = () => {
       }
     } catch (error) {
       console.log("error", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     }
-  }, [backend_url, countryId]);
+  }, [countryId, stateId]);
 
   useEffect(() => {
     const fetchData = async () => {

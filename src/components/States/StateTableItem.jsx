@@ -1,5 +1,4 @@
-import { useContext, useState } from "react";
-import { ShopContext } from "../../context/ShopContext";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Dialog,
@@ -8,27 +7,22 @@ import {
   DialogTitle,
 } from "@headlessui/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/16/solid";
-import axios from "axios";
 import { toast } from "react-toastify";
 import { assets } from "../../assets/assets";
+import { apiClient } from "../../lib/apiClient";
 
 const StateTableItem = ({ state, setItemDeleted }) => {
   const [open, setOpen] = useState(false);
-  const { backend_url, token } = useContext(ShopContext);
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`${backend_url}/state/${state.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await apiClient.delete(`/state/${state.id}`);
 
       setItemDeleted(true);
       toast.success("state location deleted successfully");
     } catch (error) {
       console.error(error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setOpen(false);
     }

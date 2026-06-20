@@ -8,10 +8,10 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { useCallback, useContext, useEffect, useState } from "react";
-import axios from "axios";
 import { ShopContext } from "../../context/ShopContext";
 import TableSkeleton from "../skeleton/TableSkeleton";
 import CountryTableItem from "./CountryTableItem";
+import { apiClient } from "../../lib/apiClient";
 
 const ListCountries = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -21,13 +21,12 @@ const ListCountries = () => {
   const [countryPage, setCountryPage] = useState(1);
   const [itemDeleted, setItemDeleted] = useState(false);
 
-  const { token, backend_url, navigate } = useContext(ShopContext);
+  const { token, navigate } = useContext(ShopContext);
 
   const fetchCountries = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${backend_url}/country`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await apiClient.get("/country", {
         params: { page: countryPage, limit: pageLimit, search: searchValue },
       });
 
@@ -37,7 +36,7 @@ const ListCountries = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [backend_url, token, countryPage, pageLimit, searchValue]);
+  }, [countryPage, pageLimit, searchValue]);
 
   const handlePageChange = (page) => {
     setCountryPage(page);
@@ -82,7 +81,7 @@ const ListCountries = () => {
     if (!token) {
       navigate("/login");
     }
-  }, [token]);
+  }, [navigate, token]);
 
   return (
     <div>

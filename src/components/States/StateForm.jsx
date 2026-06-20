@@ -1,11 +1,12 @@
 import { Field, Label, Select, Switch } from "@headlessui/react";
-import axios, { HttpStatusCode } from "axios";
+import { HttpStatusCode } from "axios";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { ShopContext } from "../../context/ShopContext";
 import { useParams } from "react-router-dom";
 import { ChevronDownIcon } from "@heroicons/react/16/solid";
 import clsx from "clsx";
+import { apiClient } from "../../lib/apiClient";
 
 const StateForm = () => {
   const [name, setName] = useState("");
@@ -16,7 +17,7 @@ const StateForm = () => {
   const [selectedCountry, setSelectedCountry] = useState(null);
   const { stateId } = useParams();
 
-  const { token, navigate, backend_url } = useContext(ShopContext);
+  const { navigate } = useContext(ShopContext);
 
   const [active, setActive] = useState(false);
 
@@ -37,11 +38,7 @@ const StateForm = () => {
       setProcessing(true);
       let response;
       if (!stateId) {
-        response = await axios.post(`${backend_url}/state`, payload, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        response = await apiClient.post("/state", payload);
 
         if (response.status === HttpStatusCode.Created) {
           toast.success(response.data.message || "State successfully created");
@@ -50,15 +47,7 @@ const StateForm = () => {
           );
         }
       } else {
-        response = await axios.put(
-          `${backend_url}/state/${stateData.id}`,
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        response = await apiClient.put(`/state/${stateData.id}`, payload);
 
         if (response.status === HttpStatusCode.Ok) {
           toast.success(response.data.message || "State successfully Updated");
@@ -69,7 +58,7 @@ const StateForm = () => {
       }
     } catch (error) {
       console.error(error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setProcessing(false);
     }
@@ -77,7 +66,7 @@ const StateForm = () => {
 
   const fetchStateData = useCallback(async () => {
     try {
-      const response = await axios.get(`${backend_url}/state/${stateId}`);
+      const response = await apiClient.get(`/state/${stateId}`);
       if (response.data) {
         setStateData(response.data);
         setName(response.data.name || "");
@@ -90,13 +79,13 @@ const StateForm = () => {
       }
     } catch (error) {
       console.log("error", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     }
-  }, [backend_url, stateId]);
+  }, [stateId]);
 
   const fetchCountries = useCallback(async () => {
     try {
-      const response = await axios.get(`${backend_url}/country`);
+      const response = await apiClient.get("/country");
       if (response.status === HttpStatusCode.Ok) {
         setCountries(response.data.data);
         if (!selectedCountry && response.data.data.length > 0) {
@@ -105,9 +94,9 @@ const StateForm = () => {
       }
     } catch (error) {
       console.log("error", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     }
-  }, [backend_url, selectedCountry]);
+  }, [selectedCountry]);
 
   useEffect(() => {
     const fetchData = async () => {

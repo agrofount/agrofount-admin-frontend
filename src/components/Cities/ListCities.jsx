@@ -8,10 +8,10 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { useCallback, useContext, useEffect, useState } from "react";
-import axios from "axios";
 import { ShopContext } from "../../context/ShopContext";
 import TableSkeleton from "../skeleton/TableSkeleton";
 import CityTableItem from "./CityTableItem";
+import { apiClient } from "../../lib/apiClient";
 
 const ListCities = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -26,13 +26,12 @@ const ListCities = () => {
   const stateId = queryParams.get("stateId");
   const countryId = queryParams.get("countryId");
 
-  const { token, backend_url, navigate } = useContext(ShopContext);
+  const { token, navigate } = useContext(ShopContext);
 
   const fetchCities = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${backend_url}/city`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await apiClient.get("/city", {
         params: {
           page: cityPage,
           limit: pageLimit,
@@ -47,7 +46,7 @@ const ListCities = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [backend_url, token, cityPage, pageLimit, searchValue]);
+  }, [cityPage, pageLimit, searchValue, stateId]);
 
   const handlePageChange = (page) => {
     setCityPage(page);
@@ -94,7 +93,7 @@ const ListCities = () => {
     if (!token) {
       navigate("/login");
     }
-  }, [token]);
+  }, [navigate, token]);
 
   return (
     <div>

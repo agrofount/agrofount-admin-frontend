@@ -1,9 +1,10 @@
 import { Switch } from "@headlessui/react";
-import axios, { HttpStatusCode } from "axios";
+import { HttpStatusCode } from "axios";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { ShopContext } from "../../context/ShopContext";
 import { useParams } from "react-router-dom";
+import { apiClient } from "../../lib/apiClient";
 
 const CountryForm = () => {
   const [name, setName] = useState("");
@@ -12,7 +13,7 @@ const CountryForm = () => {
   const { countryId } = useParams();
   const [countryData, setCountryData] = useState({});
 
-  const { token, navigate, backend_url } = useContext(ShopContext);
+  const { navigate } = useContext(ShopContext);
 
   const [active, setActive] = useState(false);
 
@@ -28,11 +29,7 @@ const CountryForm = () => {
       setProcessing(true);
       let response;
       if (!countryId) {
-        response = await axios.post(`${backend_url}/country`, payload, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        response = await apiClient.post("/country", payload);
         if (response.status === HttpStatusCode.Created) {
           toast.success(
             response.data.message || "Country successfully created"
@@ -40,15 +37,7 @@ const CountryForm = () => {
           navigate("/countries");
         }
       } else {
-        response = await axios.put(
-          `${backend_url}/country/${countryData.id}`,
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        response = await apiClient.put(`/country/${countryData.id}`, payload);
 
         if (response.status === HttpStatusCode.Ok) {
           toast.success(
@@ -59,7 +48,7 @@ const CountryForm = () => {
       }
     } catch (error) {
       console.error(error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setProcessing(false);
     }
@@ -67,7 +56,7 @@ const CountryForm = () => {
 
   const fetchCountryData = useCallback(async () => {
     try {
-      const response = await axios.get(`${backend_url}/country/${countryId}`);
+      const response = await apiClient.get(`/country/${countryId}`);
       if (response.data) {
         setCountryData(response.data);
         setName(response.data.name || "");
@@ -79,9 +68,9 @@ const CountryForm = () => {
       }
     } catch (error) {
       console.log("error", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     }
-  }, [backend_url, token]);
+  }, [countryId]);
 
   useEffect(() => {
     const fetchData = async () => {

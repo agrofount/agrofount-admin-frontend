@@ -8,10 +8,10 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { useCallback, useContext, useEffect, useState } from "react";
-import axios from "axios";
 import { ShopContext } from "../../../context/ShopContext";
 import TableSkeleton from "../../skeleton/TableSkeleton";
 import ShipmentItemTable from "./ShipmentItemTable";
+import { apiClient } from "../../../lib/apiClient";
 
 const ListShipments = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -21,23 +21,19 @@ const ListShipments = () => {
   const [shipmentPage, setShipmentPage] = useState(1);
   const [itemDeleted, setItemDeleted] = useState(false);
 
-  const { token, backend_url, navigate } = useContext(ShopContext);
+  const { token, navigate } = useContext(ShopContext);
 
   const fetchDrivers = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(
-        `${backend_url}/supply-chain/shipments`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          params: {
-            page: shipmentPage,
-            limit: pageLimit,
-            search: searchValue,
-            //   "filter.country.id": countryId,
-          },
-        }
-      );
+      const response = await apiClient.get("/supply-chain/shipments", {
+        params: {
+          page: shipmentPage,
+          limit: pageLimit,
+          search: searchValue,
+          //   "filter.country.id": countryId,
+        },
+      });
 
       if (response.status === 200) setShipments(response.data);
     } catch (error) {
@@ -45,7 +41,7 @@ const ListShipments = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [backend_url, token, shipmentPage, pageLimit, searchValue]);
+  }, [shipmentPage, pageLimit, searchValue]);
 
   const handlePageChange = (page) => {
     setShipmentPage(page);

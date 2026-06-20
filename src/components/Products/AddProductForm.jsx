@@ -11,12 +11,14 @@ import { CheckIcon, ChevronDownIcon } from "@heroicons/react/16/solid";
 import clsx from "clsx";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import axios from "axios";
 import { toast } from "react-toastify";
 import { ShopContext } from "../../context/ShopContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import DescriptionEditor from "./ProductDescriptionEditor";
+import { apiClient } from "../../lib/apiClient";
+import { IMAGE_MIME_TYPES, validateImageFiles } from "../../lib/uploadValidation";
+import { UploadLoadingList } from "../common/LoadingStates";
 
 const brands = [
   { id: "chikun", name: "Chikun" },
@@ -51,73 +53,82 @@ const AddProductForm = ({ setShowProductForm }) => {
   const [files, setFiles] = useState([]);
   const [images, setImages] = useState([]);
 
-  const { backend_url, token, socket } = useContext(ShopContext);
+  const { socket } = useContext(ShopContext);
 
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await axios.get(
-        `${backend_url}/product/livestock-feed-categories`
-      );
+      const response = await apiClient.get("/product/livestock-feed-categories");
       if (response.data) {
         setCategories(response.data.livestock);
         setPrimaryCategories(response.data.primaryCategories);
         setSelectedCategory(Object.keys(response.data.livestock)[0]);
       }
     } catch (error) {
-      console.log("error", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     }
-  }, [backend_url]);
+  }, []);
 
-  const onDrop = useCallback((acceptedFiles) => {
-    // Handle the dropped files
-    console.log(acceptedFiles);
-    if (acceptedFiles.length < 3) {
-      toast.error("You need to add at least 3 images");
+  const onDrop = useCallback(async (acceptedFiles) => {
+    const validationError = validateImageFiles(acceptedFiles, {
+      min: 3,
+      max: 8,
+    });
+
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
+
     setUploadProgress({});
     setUploading(true);
 
-    // Create a FormData object
     const formData = new FormData();
     acceptedFiles.forEach((file) => {
       formData.append("files", file);
     });
-    formData.append("clientId", socket.id);
+    formData.append("clientId", socket?.id || "");
 
-    // Send the files using Axios
-    axios
-      .post(`${backend_url}/upload`, formData, {
+    try {
+      const response = await apiClient.post("/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
-      })
-      .then((response) => {
-        console.log("Files uploaded successfully:", response.data);
-        setFiles(
-          acceptedFiles.map((file) =>
-            Object.assign(file, {
-              preview: URL.createObjectURL(file),
-            })
-          )
-        );
-        setImages(response.data.images);
-        setUploading(false);
-      })
-      .catch((error) => {
-        console.error("Error uploading files:", error);
-        setUploadProgress({});
-        setUploading(false);
       });
-  }, []);
+
+      setFiles(
+        acceptedFiles.map((file) =>
+          Object.assign(file, {
+            preview: URL.createObjectURL(file),
+          })
+        )
+      );
+      setImages(response.data.images);
+    } catch (error) {
+      toast.error(error.message);
+      setUploadProgress({});
+    } finally {
+      setUploading(false);
+    }
+  }, [socket?.id]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      "image/*": [],
+      "image/jpeg": [],
+      "image/png": [],
+      "image/webp": [],
     },
+    maxFiles: 8,
+    multiple: true,
   });
+
+  const uploadItems = files.map((file) => ({
+    name: file.name,
+    type: file.type?.startsWith("image/") ? "image" : "pdf",
+    meta: uploading ? `${Math.round(file.size / 1024 / 1024 * 10) / 10} MB • Uploading...` : `${Math.round(file.size / 1024 / 1024 * 10) / 10} MB • Upload complete`,
+    progress: uploadProgress[file.name] || (uploading ? 25 : 100),
+    status: uploading ? "uploading" : "complete",
+  }));
 
   const handleProductForm = async () => {
     const payload = {
@@ -132,18 +143,13 @@ const AddProductForm = ({ setShowProductForm }) => {
 
     try {
       setProcessing(true);
-      const response = await axios.post(`${backend_url}/product`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiClient.post("/product", payload);
 
       if (response.status === 201) {
         setShowProductForm(false);
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message);
-      console.error(error);
+      toast.error(error.message);
     } finally {
       setProcessing(false);
     }
@@ -156,7 +162,7 @@ const AddProductForm = ({ setShowProductForm }) => {
 
     setSubCategories(sub);
     setSelectedSubCategory(sub[0]);
-  }, [selectedCategory]);
+  }, [categories, selectedCategory]);
 
   useEffect(() => {
     return () => {
@@ -166,16 +172,20 @@ const AddProductForm = ({ setShowProductForm }) => {
 
   useEffect(() => {
     fetchCategories();
-    socket.on("uploadProgress", (data) => {
+    if (!socket) return undefined;
+
+    const handleUploadProgress = (data) => {
       const { name, percentage } = data;
       setUploadProgress((prevProgress) => ({
         ...prevProgress,
         [name]: percentage,
       }));
-    });
+    };
+
+    socket.on("uploadProgress", handleUploadProgress);
 
     return () => {
-      socket.off("uploadProgress");
+      socket.off("uploadProgress", handleUploadProgress);
     };
   }, [fetchCategories, socket]);
 
@@ -190,7 +200,7 @@ const AddProductForm = ({ setShowProductForm }) => {
             className="flex flex-row gap-2 text-[15px] font-bold leading-normal tracking-[0.3px] text-black cursor-pointer"
             onClick={() => setShowProductForm(false)}
           >
-            <p className="">
+            <p>
               <FontAwesomeIcon
                 icon={faArrowLeft}
                 size="5rem"
@@ -224,11 +234,11 @@ const AddProductForm = ({ setShowProductForm }) => {
                 </div>
               ))}
 
-          <div
-            {...getRootProps()}
-            className="border border-gray-500 rounded-lg p-3 flex flex-col items-center justify-center hover:border-[#61BF75] cursor-pointer "
-          >
-            <input {...getInputProps()} />
+            <div
+              {...getRootProps()}
+              className="border border-gray-500 rounded-lg p-3 flex flex-col items-center justify-center hover:border-[#61BF75] cursor-pointer "
+            >
+            <input {...getInputProps()} accept={IMAGE_MIME_TYPES.join(",")} />
             {uploading ? (
               <div
                 className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-e-transparent align-[-0.125em] text-surface motion-reduce:animate-[spin_1.5s_linear_infinite"
@@ -269,6 +279,12 @@ const AddProductForm = ({ setShowProductForm }) => {
             </div>
           </div>
         </div>
+
+        {uploadItems.length > 0 && (
+          <div className="mt-4">
+            <UploadLoadingList uploads={uploadItems} />
+          </div>
+        )}
 
         <p className="text-sm text-gray-500 py-2">
           You need to add at least 3 images. Pay attention to the quality of the
@@ -469,6 +485,7 @@ const AddProductForm = ({ setShowProductForm }) => {
         <button
           className="w-1/2  py-3 bg-[#61BF75] text-white rounded-full"
           onClick={() => handleProductForm()}
+          disabled={processing || uploading}
         >
           {processing ? (
             <div className="flex items-center space-x-2">

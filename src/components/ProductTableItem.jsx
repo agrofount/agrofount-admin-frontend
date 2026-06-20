@@ -9,29 +9,22 @@ import {
   DialogTitle,
 } from "@headlessui/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/16/solid";
-import axios from "axios";
 import { toast } from "react-toastify";
+import { apiClient } from "../lib/apiClient";
 
 const ProductTableItem = ({ productLocation, setItemDeleted }) => {
   const [open, setOpen] = useState(false);
-  const { currency, backend_url, token } = useContext(ShopContext);
+  const { currency } = useContext(ShopContext);
 
   const handleDelete = async () => {
     try {
-      await axios.delete(
-        `${backend_url}/product-location/${productLocation.productSlug}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      await apiClient.delete(`/product-location/${productLocation.productSlug}`);
 
       setItemDeleted(true);
       toast.success("Product location deleted successfully");
     } catch (error) {
       console.error(error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setOpen(false);
     }

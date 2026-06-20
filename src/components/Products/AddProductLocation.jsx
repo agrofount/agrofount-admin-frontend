@@ -1,239 +1,250 @@
 import {
-  faCheckCircle,
-  faChevronRight,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
-import { CheckIcon, ChevronDownIcon } from "@heroicons/react/16/solid";
-import { Link } from "react-router-dom";
-import AddProductForm from "./AddProductForm";
-import {
   Combobox,
   ComboboxButton,
   ComboboxInput,
   ComboboxOption,
   ComboboxOptions,
-  Field,
-  Label,
   Listbox,
   ListboxButton,
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/react";
-import clsx from "clsx";
-import { useCallback, useContext, useEffect, useState } from "react";
-import { assets, uoms } from "../../assets/assets";
-import axios from "axios";
-import { ShopContext } from "../../context/ShopContext";
+import {
+  faArrowLeft,
+  faBold,
+  faCalendarDays,
+  faChevronDown,
+  faChevronRight,
+  faCloudArrowUp,
+  faImage,
+  faItalic,
+  faLink,
+  faList,
+  faListOl,
+  faPlus,
+  faRotateLeft,
+  faRotateRight,
+  faTableCells,
+  faTrashCan,
+  faUnderline,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CheckIcon } from "@heroicons/react/16/solid";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
+import { assets, uoms } from "../../assets/assets";
+import { ShopContext } from "../../context/ShopContext";
+import { apiClient } from "../../lib/apiClient";
+import { FormSkeletonLoader, LoadingButtonContent } from "../common/LoadingStates";
+
+const brands = [
+  { id: "ultima", name: "Ultima Feeds" },
+  { id: "chikun", name: "Chikun" },
+  { id: "olam", name: "Olam" },
+  { id: "new-hope", name: "New Hope" },
+];
+
+const sampleImages = [
+  assets.broiler_starter_mash_1,
+  assets.soya,
+  assets.image_placeholder,
+];
+
+const FieldLabel = ({ children, required = false }) => (
+  <label className="mb-2 block text-xs font-semibold text-[#101828]">
+    {children} {required && <span className="text-[#ef3340]">*</span>}
+  </label>
+);
+
+const Card = ({ title, description, children, className = "" }) => (
+  <section className={`rounded-lg border border-[#e5e7eb] bg-white p-4 shadow-[0_8px_24px_rgba(16,24,40,0.04)] ${className}`}>
+    <div className="mb-4">
+      <h2 className="text-sm font-semibold text-[#101828]">{title}</h2>
+      {description && <p className="mt-2 text-xs font-medium text-[#667085]">{description}</p>}
+    </div>
+    {children}
+  </section>
+);
+
+const TextInput = ({ className = "", ...props }) => (
+  <input
+    {...props}
+    className={`h-10 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-xs text-[#101828] outline-none placeholder:text-[#98a2b3] focus:border-[#008f45] ${className}`}
+  />
+);
+
+const SelectButton = ({ children, placeholder }) => (
+  <ListboxButton className="relative h-10 w-full rounded-md border border-[#d0d5dd] bg-white px-3 pr-9 text-left text-xs text-[#101828] outline-none focus:border-[#008f45]">
+    {children || <span className="text-[#667085]">{placeholder}</span>}
+    <FontAwesomeIcon icon={faChevronDown} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[#667085]" />
+  </ListboxButton>
+);
+
+const SelectOptions = ({ children }) => (
+  <ListboxOptions
+    anchor="bottom"
+    transition
+    className="z-20 mt-1 max-h-60 w-[var(--button-width)] overflow-auto rounded-md border border-[#e5e7eb] bg-white p-1 shadow-lg"
+  >
+    {children}
+  </ListboxOptions>
+);
+
+const SelectOption = ({ value, children }) => (
+  <ListboxOption
+    value={value}
+    className="group flex cursor-pointer items-center gap-2 rounded px-3 py-1.5 text-xs text-[#344054] data-[focus]:bg-[#f8fafc]"
+  >
+    <CheckIcon className="invisible h-4 w-4 fill-[#008f45] group-data-[selected]:visible" />
+    {children}
+  </ListboxOption>
+);
 
 const AddProducts = () => {
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const [formLoading, setFormLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [price, setPrice] = useState("");
+  const [selectedBrand, setSelectedBrand] = useState(brands[0]);
+  const [price, setPrice] = useState("5000");
   const [locations, setLocations] = useState([]);
   const [processing, setProcessing] = useState(false);
-  const [productLocationCreated, setProductLocationCreated] = useState(false);
-  const [showProductForm, setShowProductForm] = useState(false);
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState([]);
-  const [availableDates, setAvailableDates] = useState([]);
+  const [availableFrom, setAvailableFrom] = useState("2025-12-05");
+  const [availableTo, setAvailableTo] = useState("");
   const [moq, setMoq] = useState(5);
+  const [currentStock, setCurrentStock] = useState("0");
+  const [sku, setSku] = useState("BRL-ST-001");
+  const [description, setDescription] = useState(
+    "Ultima Broiler Starter Feed is a complete and balanced feed specially formulated for broiler chicks from day-old to 3 weeks. It contains the right combination of proteins, vitamins, and minerals to support strong growth, healthy development, and digestive efficiency."
+  );
 
   const [uomSections, setUomSections] = useState([
     {
       id: 1,
       unit: uoms[0].name,
-      vendorPrice: "",
-      platformPrice: "",
-      vtp: [
-        {
-          minVolume: "",
-          maxVolume: "",
-          price: "",
-          discount: "",
-        },
-      ],
+      vendorPrice: 4500,
+      platformPrice: 5000,
+      vtp: [{ minVolume: 1, maxVolume: 10, price: 5000, discount: 2 }],
     },
   ]);
 
-  const { backend_url, token, country_id } = useContext(ShopContext);
+  const { country_id, navigate } = useContext(ShopContext);
+
+  const filteredProducts = useMemo(
+    () =>
+      query === ""
+        ? products
+        : products.filter((product) =>
+            product.name?.toLowerCase().includes(query.toLowerCase())
+          ),
+    [products, query]
+  );
+
+  const getLocations = useCallback(async () => {
+    try {
+      const response = await apiClient.get("/state", {
+        params: { "filter.country.id": country_id },
+      });
+      if (response.status === 200) setLocations(response.data.data || []);
+    } catch (error) {
+      toast.error(error.message || "Unable to load locations.");
+    }
+  }, [country_id]);
+
+  const fetchProducts = useCallback(async () => {
+    try {
+      const response = await apiClient.get("/product");
+      const productData = response.data?.data || [];
+      setProducts(productData);
+      setSelectedProduct((current) => current || productData[0] || null);
+    } catch (error) {
+      toast.error(error.message || "Unable to load products.");
+    }
+  }, []);
+
+  useEffect(() => {
+    const loadFormOptions = async () => {
+      try {
+        setFormLoading(true);
+        await Promise.all([fetchProducts(), getLocations()]);
+      } finally {
+        setFormLoading(false);
+      }
+    };
+
+    loadFormOptions();
+  }, [fetchProducts, getLocations]);
 
   const handleKeyDown = (event) => {
-    if (event.key === "-" || event.key === "e") {
-      event.preventDefault();
-    }
+    if (event.key === "-" || event.key === "e") event.preventDefault();
   };
 
-  // Function to handle adding a new date
-  const handleAddDate = (event) => {
-    const selectedDate = event.target.value;
-    if (selectedDate && !availableDates.includes(selectedDate)) {
-      if (availableDates.length < 4) {
-        setAvailableDates((prevDates) => [...prevDates, selectedDate]);
-      } else {
-        toast.warn("You can only select up to 4 dates.");
-      }
-    }
+  const handleInputChange = (index, field, value) => {
+    setUomSections((sections) =>
+      sections.map((section, sectionIndex) =>
+        sectionIndex === index ? { ...section, [field]: Number(value) } : section
+      )
+    );
   };
 
-  // Function to remove a date
-  const handleRemoveDate = (dateToRemove) => {
-    setAvailableDates((prevDates) =>
-      prevDates.filter((date) => date !== dateToRemove)
+  const handleVtpChange = (uomIndex, vtpIndex, field, value) => {
+    setUomSections((sections) =>
+      sections.map((section, sectionIndex) => {
+        if (sectionIndex !== uomIndex) return section;
+        const nextVtp = section.vtp.map((vtp, index) => {
+          if (index !== vtpIndex) return vtp;
+          const next = { ...vtp, [field]: Number(value) };
+          if (field === "discount" && section.platformPrice) {
+            next.price = section.platformPrice - (section.platformPrice * Number(value)) / 100;
+          }
+          return next;
+        });
+        return { ...section, vtp: nextVtp };
+      })
+    );
+  };
+
+  const handleUomChange = (index, selectedUom) => {
+    setUomSections((sections) =>
+      sections.map((section, sectionIndex) =>
+        sectionIndex === index ? { ...section, unit: selectedUom.name } : section
+      )
     );
   };
 
   const addUomSection = () => {
     const usedUnits = uomSections.map((section) => section.unit);
-
-    // Find the first available unit that hasn't been used yet
-    const availableUnit =
-      uoms.find((uom) => !usedUnits.includes(uom.name)) || uoms[0];
-
-    setUomSections([
-      ...uomSections,
+    const availableUnit = uoms.find((uom) => !usedUnits.includes(uom.name)) || uoms[0];
+    setUomSections((sections) => [
+      ...sections,
       {
-        id: uomSections.length + 1,
+        id: Date.now(),
         unit: availableUnit.name,
         vendorPrice: "",
         platformPrice: "",
-        vtp: [
-          {
-            minVolume: "",
-            maxVolume: "",
-            price: "",
-            discount: "",
-          },
-        ],
+        vtp: [{ minVolume: "", maxVolume: "", price: "", discount: "" }],
       },
     ]);
   };
 
-  const handleAddVTP = (index) => {
-    const newUomSections = [...uomSections];
-    const currentVtp = newUomSections[index].vtp;
-
-    // Optional: Prevent adding too many VTP entries
-    if (currentVtp.length >= 3) {
-      toast.warn("Maximum 3 volume tiers per UOM");
-      return;
-    }
-
-    // Optional: Validate current VTP before adding a new one
-    const lastVtp = currentVtp[currentVtp.length - 1];
-    if (!lastVtp.minVolume || !lastVtp.maxVolume || !lastVtp.price) {
-      toast.warn("Please fill the current volume tier before adding a new one");
-      return;
-    }
-
-    // Add new VTP entry with default values
-    currentVtp.push({
-      minVolume: Number(lastVtp.maxVolume) + 1, // Auto-increment from last max
-      maxVolume: "",
-      price: "",
-      discount: "",
-    });
-
-    setUomSections(newUomSections);
-  };
-
-  const handleRemoveVTP = (uomIndex, vtpIndex) => {
-    const newUomSections = [...uomSections];
-    const currentVtp = newUomSections[uomIndex].vtp;
-
-    // Prevent removing the last VTP entry
-    if (currentVtp.length <= 1) {
-      toast.warn("At least one volume tier is required");
-      return;
-    }
-    newUomSections[uomIndex].vtp = currentVtp.filter(
-      (_, index) => index !== vtpIndex
-    );
-    setUomSections(newUomSections);
-  };
-
-  const handleUomChange = (index, selectedUom) => {
-    const newUomSections = [...uomSections];
-    newUomSections[index].unit = selectedUom.name;
-    console.log("this is the new uom unit:", newUomSections[index].unit);
-    setUomSections(newUomSections);
-  };
-
-  const handleInputChange = (index, field, value) => {
-    const newUomSections = [...uomSections];
-    newUomSections[index][field] = Number(value);
-    setUomSections(newUomSections);
-  };
-
-  const handleVtpChange = (uomIndex, vtpIndex, field, value) => {
-    const newUomSections = [...uomSections];
-    const currentVtp = newUomSections[uomIndex].vtp[vtpIndex];
-    const platformPrice = newUomSections[uomIndex].platformPrice;
-
-    currentVtp[field] = Number(value);
-
-    if (
-      (field === "discount" || field === "platformPrice") &&
-      platformPrice &&
-      currentVtp.discount
-    ) {
-      const discountAmount = (platformPrice * currentVtp.discount) / 100;
-      currentVtp.price = platformPrice - discountAmount;
-    }
-
-    setUomSections(newUomSections);
-  };
-
   const removeUomSection = (index) => {
-    const newUomSections = uomSections.filter((_, i) => i !== index);
-    setUomSections(newUomSections);
+    if (uomSections.length === 1) {
+      toast.warn("At least one unit is required.");
+      return;
+    }
+    setUomSections((sections) => sections.filter((_, sectionIndex) => sectionIndex !== index));
   };
-
-  const filteredProducts =
-    query === ""
-      ? products
-      : products.filter((product) =>
-          product.name?.toLowerCase().includes(query.toLowerCase())
-        );
-
-  const getLocations = useCallback(async () => {
-    try {
-      const response = await axios.get(`${backend_url}/state`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        params: {
-          "filter.country.id": country_id,
-        },
-      });
-
-      if (response.status === 200) {
-        setLocations(response.data.data);
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  }, [backend_url, token, country_id]);
-
-  const fetchProducts = useCallback(async () => {
-    try {
-      const response = await axios.get(`${backend_url}/product`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setProducts(response.data.data);
-    } catch (error) {
-      console.error("an error occurred: ", error);
-    }
-  }, [backend_url, token]);
 
   const handleCreateProductLocation = async () => {
-    if (!selectedLocation) {
-      toast.error("Please select a location");
-      return;
-    }
     if (!selectedProduct) {
       toast.error("Please select a product");
+      return;
+    }
+    if (!selectedLocation) {
+      toast.error("Please select a location");
       return;
     }
     if (!price || isNaN(Number(price))) {
@@ -241,30 +252,22 @@ const AddProducts = () => {
       return;
     }
 
-    // Validate UOM sections
     for (const section of uomSections) {
       if (!section.unit) {
         toast.error("Please select a unit for all UOM sections");
         return;
       }
-      if (section.vendorPrice >= section.platformPrice) {
+      if (Number(section.vendorPrice) >= Number(section.platformPrice)) {
         toast.error("Vendor price must be less than platform price");
         return;
       }
-
-      // Validate VTP ranges
       for (const vtp of section.vtp) {
-        if (vtp.minVolume >= vtp.maxVolume) {
-          toast.error(
-            `Invalid volume range (${vtp.minVolume}-${vtp.maxVolume}): 
-             Min must be less than Max`
-          );
+        if (Number(vtp.minVolume) >= Number(vtp.maxVolume)) {
+          toast.error("Minimum volume must be less than maximum volume");
           return;
         }
       }
     }
-
-    setProcessing(true);
 
     const payload = {
       countryId: country_id,
@@ -273,566 +276,266 @@ const AddProducts = () => {
       price: Number(price),
       uom: uomSections,
       moq: Number(moq),
-      availableDates,
+      availableDates: availableFrom ? [availableFrom] : [],
     };
 
     try {
-      const response = await axios.post(
-        `${backend_url}/product-location`,
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
+      setProcessing(true);
+      const response = await apiClient.post("/product-location", payload);
       if (response.status === 201) {
-        console.log("Product Location created successfully");
-        setProductLocationCreated(true);
+        toast.success("Product created successfully");
+        navigate("/list-products");
       }
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to create product location");
+      toast.error(error.message || "Failed to create product location");
     } finally {
       setProcessing(false);
     }
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      await fetchProducts();
-      await getLocations();
-    };
-
-    fetchData();
-  }, [fetchProducts, getLocations]);
-
-  useEffect(() => {
-    fetchProducts();
-  }, [showProductForm, fetchProducts]);
+  const selectedImages = selectedProduct?.images?.length ? selectedProduct.images.slice(0, 3) : sampleImages;
 
   return (
-    <div>
-      <div className="flex flex-row justify-between items-center gap-5">
-        <p className="text-black text-[25px] font-bold leading-normal tracking-[0.5px]">
-          Add product
-        </p>
-        <div className="flex flex-row items-center gap-2">
-          <Link to="/">
-            <p className="text-[#6E6E6E] font-roboto text-[13px] font-normal leading-normal tracking-[0.26px]">
-              Dashboard
-            </p>
-          </Link>
-          <p>
-            <FontAwesomeIcon
-              icon={faChevronRight}
-              size="sm"
-              className="pt-1 h-3 text-[#6E6E6E]"
-            />
+    <div className="space-y-4 text-[#101828]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h1 className="text-lg font-semibold">Add Product</h1>
+          <p className="mt-1 text-xs font-medium text-[#667085]">
+            Create a new product and add all the necessary details.
           </p>
-          <Link to="/product-list">
-            <p className="text-[#6E6E6E] font-roboto text-[13px] font-normal leading-normal tracking-[0.26px]">
-              Add product
-            </p>
+        </div>
+        <div className="flex flex-col gap-3 sm:items-end">
+          <div className="flex items-center gap-2 text-sm text-[#667085]">
+            <Link to="/" className="hover:text-[#008f45]">Dashboard</Link>
+            <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+            <Link to="/list-products" className="hover:text-[#008f45]">Products</Link>
+            <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+            <span>Add Product</span>
+          </div>
+          <Link to="/list-products" className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-4 text-xs font-semibold text-[#101828] shadow-sm">
+            <FontAwesomeIcon icon={faArrowLeft} />
+            Back to products
           </Link>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <div className="p-3 bg-white rounded-lg shadow-sm">
-          {!showProductForm && (
-            <div className="grid grid-cols-4 gap-3">
-              <div className="col-span-4 lg:col-span-3">
-                <Combobox
-                  value={selectedProduct}
-                  onChange={(value) => setSelectedProduct(value)}
-                  onClose={() => setQuery("")}
-                >
+      {formLoading ? (
+        <FormSkeletonLoader />
+      ) : (
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(480px,0.98fr)]">
+        <div className="space-y-4">
+          <Card title="Product Images" description="Upload up to 5 high-quality images of your product.">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {selectedImages.map((image, index) => (
+                <div key={`${image}-${index}`} className="relative h-24 overflow-hidden rounded-md border border-[#e5e7eb] bg-[#f8fafc]">
+                  <img src={image} alt="" className="h-full w-full object-cover" />
+                  <button className="absolute right-1.5 top-1.5 grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] text-[#667085] shadow-sm">
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                </div>
+              ))}
+              <button className="flex h-24 flex-col items-center justify-center rounded-md border border-dashed border-[#cbd5e1] bg-white text-center text-[11px] text-[#667085]">
+                <FontAwesomeIcon icon={faCloudArrowUp} className="mb-1.5 text-2xl text-[#008f45]" />
+                <span className="font-semibold text-[#008f45]">Upload Image</span>
+                <span className="mt-1">or drag and drop</span>
+                <span>PNG, JPG up to 5MB</span>
+              </button>
+            </div>
+            <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-[#008f45]">
+              <span className="grid h-4 w-4 place-items-center rounded-full border border-[#008f45] text-[10px]">✓</span>
+              Minimum 3 images required
+            </p>
+          </Card>
+
+          <Card title="Basic Information">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <FieldLabel required>Product Name</FieldLabel>
+                <Combobox value={selectedProduct} onChange={setSelectedProduct} onClose={() => setQuery("")}>
                   <div className="relative">
                     <ComboboxInput
-                      className={clsx(
-                        "w-full border border-gray-500 rounded-full p-3 mt-2 text-sm text-gray-500 focus:outline-[#61BF75]",
-                        "focus:outline-none data-[focus]:outline-2 data-[focus]:-outline-offset-2 data-[focus]:outline-white/25"
-                      )}
-                      displayValue={(person) => person?.name}
+                      className="h-10 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-xs outline-none focus:border-[#008f45]"
+                      displayValue={(product) => product?.name || ""}
                       onChange={(event) => setQuery(event.target.value)}
+                      placeholder="Broiler Starter Feed"
                     />
-                    <ComboboxButton className="group absolute inset-y-0 right-0 px-2.5">
-                      <ChevronDownIcon className="size-4 fill-white/60 group-data-[hover]:fill-white" />
+                    <ComboboxButton className="absolute inset-y-0 right-0 px-4 text-[#667085]">
+                      <FontAwesomeIcon icon={faChevronDown} className="text-xs" />
                     </ComboboxButton>
                   </div>
-
-                  <ComboboxOptions
-                    anchor="bottom"
-                    transition
-                    className={clsx(
-                      "w-[var(--input-width)] rounded-xl border border-white/5 bg-white p-1 [--anchor-gap:var(--spacing-1)] empty:invisible z-10",
-                      "transition duration-100 ease-in data-[leave]:data-[closed]:opacity-0"
-                    )}
-                  >
+                  <ComboboxOptions anchor="bottom" className="z-20 mt-1 max-h-60 w-[var(--input-width)] overflow-auto rounded-md border border-[#e5e7eb] bg-white p-1 shadow-lg">
                     {filteredProducts.map((product) => (
-                      <ComboboxOption
-                        key={product.id}
-                        value={product}
-                        className="group flex cursor-default items-center gap-2 rounded-lg py-1.5 px-3 select-none data-[focus]:bg-white/10"
-                      >
-                        <CheckIcon className="invisible size-4 fill-gray-500 group-data-[selected]:visible" />
-                        <div className="text-sm/6 text-gray-500">
-                          {product.name}
-                        </div>
+                      <ComboboxOption key={product.id} value={product} className="group flex cursor-pointer items-center gap-2 rounded px-3 py-1.5 text-xs text-[#344054] data-[focus]:bg-[#f8fafc]">
+                        <CheckIcon className="invisible h-4 w-4 fill-[#008f45] group-data-[selected]:visible" />
+                        {product.name}
                       </ComboboxOption>
                     ))}
                   </ComboboxOptions>
                 </Combobox>
+                <p className="mt-2 text-xs text-[#667085]">Do not exceed 100 characters.</p>
               </div>
-              <div className="col-span-2 col-start-2 lg:col-span-1 mt-2">
-                <button
-                  className="w-full flex flex-row justify-center gap-2 py-2.5 border border-[#61BF75] text-black rounded-full cursor-pointer"
-                  onClick={() => setShowProductForm(true)}
-                >
-                  <img src={assets.add_icon} className="mt-1" alt="" />
-                  <p>new product</p>
-                </button>
+              <div>
+                <FieldLabel required>Brand</FieldLabel>
+                <Listbox value={selectedBrand} onChange={setSelectedBrand}>
+                  <SelectButton>{selectedBrand?.name}</SelectButton>
+                  <SelectOptions>
+                    {brands.map((brand) => <SelectOption key={brand.id} value={brand}>{brand.name}</SelectOption>)}
+                  </SelectOptions>
+                </Listbox>
               </div>
             </div>
-          )}
 
-          {showProductForm && (
-            <AddProductForm setShowProductForm={setShowProductForm} />
-          )}
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>
+                <FieldLabel required>Primary Category</FieldLabel>
+                <TextInput value="Feed" readOnly />
+              </div>
+              <div>
+                <FieldLabel required>Category</FieldLabel>
+                <TextInput value={selectedProduct?.category || "Poultry"} readOnly />
+              </div>
+              <div>
+                <FieldLabel required>Sub Category</FieldLabel>
+                <TextInput value={selectedProduct?.subCategory || "Broiler"} readOnly />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <FieldLabel required>Description</FieldLabel>
+              <div className="overflow-hidden rounded-md border border-[#d0d5dd]">
+                <div className="flex flex-wrap items-center gap-2 border-b border-[#e5e7eb] bg-[#f8fafc] p-2 text-[#344054]">
+                  {[faBold, faItalic, faUnderline, faList, faListOl, faLink, faImage, faTableCells].map((icon) => (
+                    <button key={icon.iconName} className="grid h-7 w-7 place-items-center rounded border border-[#d0d5dd] bg-white text-xs">
+                      <FontAwesomeIcon icon={icon} />
+                    </button>
+                  ))}
+                  <button className="h-7 rounded border border-[#d0d5dd] bg-white px-2 text-xs">Paragraph <FontAwesomeIcon icon={faChevronDown} className="ml-2 text-[10px]" /></button>
+                  <button className="grid h-7 w-7 place-items-center rounded border border-[#d0d5dd] bg-white text-xs"><FontAwesomeIcon icon={faRotateLeft} /></button>
+                  <button className="grid h-7 w-7 place-items-center rounded border border-[#d0d5dd] bg-white text-xs"><FontAwesomeIcon icon={faRotateRight} /></button>
+                </div>
+                <textarea
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  className="min-h-28 w-full resize-none p-3 text-xs leading-6 outline-none"
+                />
+                <p className="border-t border-[#eef2f6] px-4 py-2 text-right text-xs text-[#667085]">Characters: {description.length}</p>
+              </div>
+            </div>
+          </Card>
         </div>
 
-        <div className="p-3 bg-white rounded-lg shadow-sm">
-          {productLocationCreated ? (
-            <div className="flex flex-col items-center gap-2 py-10">
-              <FontAwesomeIcon
-                icon={faCheckCircle}
-                size="2x"
-                className="text-[#61BF75]"
-              />
-              <p>Product Location created successfully</p>
-              <button
-                className="flex flex-row justify-center gap-2 border border-[#61BF75] py-3 rounded-full mt-5 w-1/2"
-                onClick={() => setProductLocationCreated(false)}
-              >
-                <img src={assets.add_icon} alt="add icon" />
-                <p className="text-gray-700 text-sm">Add more</p>
-              </button>
+        <div className="space-y-4">
+          <Card title="Pricing & Availability">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <FieldLabel required>Price</FieldLabel>
+                <div className="flex h-10 overflow-hidden rounded-md border border-[#d0d5dd] bg-white focus-within:border-[#008f45]">
+                  <span className="grid place-items-center px-3 text-xs font-semibold text-[#667085]">₦</span>
+                  <input value={price} onChange={(event) => setPrice(event.target.value)} onKeyDown={handleKeyDown} className="min-w-0 flex-1 text-xs outline-none" />
+                  <span className="flex items-center gap-2 border-l border-[#e5e7eb] px-3 text-xs font-medium text-[#344054]">NGN <FontAwesomeIcon icon={faChevronDown} className="text-[10px]" /></span>
+                </div>
+              </div>
+              <div>
+                <FieldLabel required>Location</FieldLabel>
+                <Listbox value={selectedLocation} onChange={setSelectedLocation}>
+                  <SelectButton placeholder="Select location">{selectedLocation?.name}</SelectButton>
+                  <SelectOptions>
+                    {locations.map((location) => <SelectOption key={location.id || location.name} value={location}>{location.name}</SelectOption>)}
+                  </SelectOptions>
+                </Listbox>
+              </div>
             </div>
-          ) : (
-            <div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-3">
-                <div>
-                  <label
-                    htmlFor="price"
-                    className="text-[15px] font-bold leading-normal tracking-[0.3px] text-black"
-                  >
-                    Price
-                  </label>
-                  <div className="mt-2">
-                    <div className="flex items-center w-full border border-gray-500 rounded-full bg-white pl-3 outline-1 -outline-offset-1 outline-gray-300 has-[input:focus-within]:outline-2 has-[input:focus-within]:-outline-offset-2 has-[input:focus-within]:outline-[#61BF75] p-1.5">
-                      <div className="shrink-0 text-base text-gray-500 select-none sm:text-sm/6">
-                        ₦
-                      </div>
-                      <input
-                        id="price"
-                        name="price"
-                        type="text"
-                        placeholder="0.00"
-                        onChange={(e) => setPrice(e.target.value)}
-                        className="block min-w-0 grow py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
-                      />
-                      <div className="grid shrink-0 grid-cols-1 focus-within:relative">
-                        <select
-                          id="currency"
-                          name="currency"
-                          aria-label="Currency"
-                          className="col-start-1 row-start-1 w-full appearance-none rounded-md py-1.5 pr-7 pl-3 text-base text-gray-500 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
-                        >
-                          <option>NGN</option>
-                          <option>GHS</option>
-                          <option>CFA</option>
-                        </select>
-                        <ChevronDownIcon
-                          aria-hidden="true"
-                          className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                        />
-                      </div>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>
+                <FieldLabel required>Minimum Order Quantity</FieldLabel>
+                <TextInput type="number" min={0} value={moq} onKeyDown={handleKeyDown} onChange={(event) => setMoq(event.target.value)} />
+              </div>
+              <div>
+                <FieldLabel required>Available From</FieldLabel>
+                <div className="relative">
+                  <TextInput type="date" value={availableFrom} onChange={(event) => setAvailableFrom(event.target.value)} className="pr-10" />
+                  <FontAwesomeIcon icon={faCalendarDays} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#667085]" />
+                </div>
+              </div>
+              <div>
+                <FieldLabel>Available To (Optional)</FieldLabel>
+                <div className="relative">
+                  <TextInput type="date" value={availableTo} onChange={(event) => setAvailableTo(event.target.value)} className="pr-10" />
+                  <FontAwesomeIcon icon={faCalendarDays} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#667085]" />
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card title="Unit of Measurement">
+            <div className="space-y-3">
+              {uomSections.map((section, index) => {
+                const tier = section.vtp[0] || {};
+                return (
+                  <div key={section.id} className="grid grid-cols-2 gap-2.5 md:grid-cols-[0.85fr_1fr_1fr_0.65fr_0.65fr_0.7fr_0.65fr_auto]">
+                    <div>
+                      <FieldLabel>Unit</FieldLabel>
+                      <Listbox value={section.unit} onChange={(uom) => handleUomChange(index, uom)}>
+                        <SelectButton>{section.unit}</SelectButton>
+                        <SelectOptions>
+                          {uoms.map((uom) => <SelectOption key={uom.name} value={uom}>{uom.name}</SelectOption>)}
+                        </SelectOptions>
+                      </Listbox>
                     </div>
-                  </div>
-                </div>
-
-                <div>
-                  <Field>
-                    <Label className="text-[15px] font-bold leading-normal tracking-[0.3px] text-black">
-                      Location <span className="text-red-600">*</span>
-                    </Label>
-                    <Listbox
-                      value={selectedLocation}
-                      onChange={setSelectedLocation}
-                    >
-                      <ListboxButton
-                        className={clsx(
-                          "relative block w-full border border-gray-500 rounded-full bg-white/5 py-3 pr-8 pl-3 text-left text-gray-500 focus:outline-[#61BF75] text-sm mt-2",
-                          "data-[focus]:outline-2 data-[focus]:-outline-offset-2 data-[focus]:outline-[#61BF75]"
-                        )}
-                      >
-                        {selectedLocation?.name || "Select location"}
-                        <ChevronDownIcon
-                          className="group pointer-events-none absolute top-2.5 right-2.5 size-4 fill-gray-500"
-                          aria-hidden="true"
-                        />
-                      </ListboxButton>
-                      <ListboxOptions
-                        anchor="bottom"
-                        transition
-                        className={clsx(
-                          "w-[var(--button-width)] rounded-xl border border-white/5 bg-white p-1 [--anchor-gap:var(--spacing-1)] focus:outline-[#61BF75]",
-                          "transition duration-100 ease-in data-[leave]:data-[closed]:opacity-0"
-                        )}
-                      >
-                        {locations.map((location) => (
-                          <ListboxOption
-                            key={location.name}
-                            value={location}
-                            className="group flex cursor-default items-center gap-2 rounded-lg py-1.5 px-3 select-none data-[focus]:bg-white/10"
-                          >
-                            <CheckIcon className="invisible size-4 fill-white group-data-[selected]:visible" />
-                            <div className="text-sm text-gray-500">
-                              {location.name}
-                            </div>
-                          </ListboxOption>
-                        ))}
-                      </ListboxOptions>
-                    </Listbox>
-                  </Field>
-                </div>
-              </div>
-
-              <div className="flex flex-row gap-5 justify-start items-center">
-                <div>
-                  <p className="text-[15px] font-bold leading-normal tracking-[0.3px] text-black mt-4">
-                    Minimum Order Quantity
-                  </p>
-                  <input
-                    type="number"
-                    min={0}
-                    onKeyDown={handleKeyDown}
-                    placeholder="5"
-                    value={moq}
-                    onChange={(e) => setMoq(e.target.value)}
-                    className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 focus:outline-[#61BF75]"
-                  />
-                </div>
-                <div>
-                  <p className="text-[15px] font-bold leading-normal tracking-[0.3px] text-black mt-4">
-                    Available dates
-                  </p>
-                  <input
-                    type="date"
-                    onChange={handleAddDate}
-                    className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 focus:outline-[#61BF75]"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-row gap-2 mt-3">
-                {availableDates.map((date, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between border border-gray-300 rounded-full px-3 py-2 mb-2"
-                  >
-                    <span className="text-sm text-gray-700">{date}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveDate(date)}
-                      className="text-red-500 ml-3 cursor-pointer"
-                    >
-                      x
+                    <div><FieldLabel>Platform Price (₦)</FieldLabel><TextInput type="number" min={0} value={section.platformPrice} onKeyDown={handleKeyDown} onChange={(e) => handleInputChange(index, "platformPrice", e.target.value)} /></div>
+                    <div><FieldLabel>Vendor Price (₦)</FieldLabel><TextInput type="number" min={0} value={section.vendorPrice} onKeyDown={handleKeyDown} onChange={(e) => handleInputChange(index, "vendorPrice", e.target.value)} /></div>
+                    <div><FieldLabel>Min Volume</FieldLabel><TextInput type="number" min={0} value={tier.minVolume} onKeyDown={handleKeyDown} onChange={(e) => handleVtpChange(index, 0, "minVolume", e.target.value)} /></div>
+                    <div><FieldLabel>Max Volume</FieldLabel><TextInput type="number" min={0} value={tier.maxVolume} onKeyDown={handleKeyDown} onChange={(e) => handleVtpChange(index, 0, "maxVolume", e.target.value)} /></div>
+                    <div><FieldLabel>Price (₦)</FieldLabel><TextInput type="number" min={0} value={tier.price} onKeyDown={handleKeyDown} onChange={(e) => handleVtpChange(index, 0, "price", e.target.value)} /></div>
+                    <div><FieldLabel>Discount (%)</FieldLabel><TextInput type="number" min={0} value={tier.discount} onKeyDown={handleKeyDown} onChange={(e) => handleVtpChange(index, 0, "discount", e.target.value)} /></div>
+                    <button type="button" onClick={() => removeUomSection(index)} className="mt-7 text-sm text-[#ef3340]">
+                      <FontAwesomeIcon icon={faTrashCan} />
                     </button>
                   </div>
-                ))}
-              </div>
-
-              <div>
-                <p className="text-[15px] font-bold leading-normal border-b-2 border-b-gray-300 tracking-[0.3px] text-black py-2 ">
-                  Unit of Measurement
-                </p>
-                {uomSections.map((section, index) => (
-                  <>
-                    <div className="grid grid-cols-8 gap-6" key={section.id}>
-                      <div className="mt-3 col-span-2">
-                        <Field>
-                          <Label className="text-sm/6 font-medium text-black">
-                            Unit <span className="text-red-600">*</span>
-                          </Label>
-
-                          <Listbox
-                            value={section.unit}
-                            onChange={(selectedUom) =>
-                              handleUomChange(index, selectedUom)
-                            }
-                          >
-                            <ListboxButton
-                              className={clsx(
-                                "relative block w-full border border-gray-500 rounded-full bg-white/5 py-3 pr-8 pl-3 text-left text-gray-500 focus:outline-[#61BF75] text-sm",
-                                "data-[focus]:outline-2 data-[focus]:-outline-offset-2 data-[focus]:outline-[#61BF75]"
-                              )}
-                            >
-                              {section.unit}
-                              <ChevronDownIcon
-                                className="group pointer-events-none absolute top-2.5 right-2.5 size-4 fill-gray-500"
-                                aria-hidden="true"
-                              />
-                            </ListboxButton>
-                            <ListboxOptions
-                              anchor="bottom"
-                              transition
-                              className={clsx(
-                                "w-[var(--button-width)] rounded-xl border border-white/5 bg-white p-1 [--anchor-gap:var(--spacing-1)] focus:outline-[#61BF75]",
-                                "transition duration-100 ease-in data-[leave]:data-[closed]:opacity-0"
-                              )}
-                            >
-                              {uoms.map((uom) => (
-                                <ListboxOption
-                                  key={uom.name}
-                                  value={uom}
-                                  className="group flex cursor-default items-center gap-2 rounded-lg py-1.5 px-3 select-none data-[focus]:bg-white/10"
-                                >
-                                  <CheckIcon className="invisible size-4 fill-white group-data-[selected]:visible" />
-                                  <div className="text-sm text-gray-500">
-                                    {uom.name}
-                                  </div>
-                                </ListboxOption>
-                              ))}
-                            </ListboxOptions>
-                          </Listbox>
-                        </Field>
-                      </div>
-
-                      <div className="mt-3 col-span-2">
-                        <Field>
-                          <Label className="text-sm/6 font-medium text-black">
-                            Platform Price
-                          </Label>
-                          <input
-                            type="number"
-                            min={0}
-                            onKeyDown={handleKeyDown}
-                            placeholder="5000"
-                            value={section.platformPrice}
-                            onChange={(e) =>
-                              handleInputChange(
-                                index,
-                                "platformPrice",
-                                e.target.value
-                              )
-                            }
-                            className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 focus:outline-[#61BF75]"
-                          />
-                        </Field>
-                      </div>
-                      <div className="mt-3 col-span-2">
-                        <Field>
-                          <Label className="text-sm/6 font-medium text-black">
-                            Vendor Price
-                          </Label>
-                          <input
-                            type="number"
-                            min={0}
-                            onKeyDown={handleKeyDown}
-                            placeholder="5000"
-                            value={section.vendorPrice}
-                            onChange={(e) => {
-                              const value = Number(e.target.value);
-                              if (value >= section.platformPrice) {
-                                const newUomSections = [...uomSections];
-                                newUomSections[index].error =
-                                  "Vendor Price cannot be greater than or equal to Platform Price.";
-                                setUomSections(newUomSections);
-                              } else {
-                                const newUomSections = [...uomSections];
-                                newUomSections[index].error = ""; // Clear the error
-                                setUomSections(newUomSections);
-                                handleInputChange(index, "vendorPrice", value);
-                              }
-                            }}
-                            className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 focus:outline-[#61BF75]"
-                          />
-                        </Field>
-                      </div>
-
-                      <div className="mt-10">
-                        <button
-                          type="button"
-                          onClick={() => removeUomSection(index)}
-                          className="border border-red-800 rounded-full py-1 px-3 text-red-600 hover:text-red-800"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                    {section.error && (
-                      <p className="text-red-500 text-xs text-center mt-1">
-                        {section.error}
-                      </p>
-                    )}
-
-                    <div className="w-4/5">
-                      {section.vtp.map((vtp, vtpIndex) => (
-                        <div
-                          key={vtpIndex}
-                          className="flex flex-row justify-between items-center gap-3 mt-3"
-                        >
-                          <div
-                            className="border border-[#61BF75] w-9 h-9 py-1 text-center  rounded-full"
-                            onClick={() => handleAddVTP(index)}
-                          >
-                            +
-                          </div>
-                          <div className="grid grid-cols-8 gap-1 mt-3">
-                            <div className="col-span-4">
-                              <Field>
-                                <Label className="text-sm/6 font-medium text-black">
-                                  Min Volume
-                                </Label>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  onKeyDown={handleKeyDown}
-                                  placeholder="1"
-                                  value={vtp.minVolume}
-                                  onChange={(e) =>
-                                    handleVtpChange(
-                                      index,
-                                      vtpIndex,
-                                      "minVolume",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 bg-gray-100 focus:outline-[#61BF75]"
-                                />
-                              </Field>
-                            </div>
-
-                            <div className="col-span-4">
-                              <Field>
-                                <Label className="text-sm/6 font-medium text-black">
-                                  Max Volume
-                                </Label>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  onKeyDown={handleKeyDown}
-                                  placeholder="10"
-                                  value={vtp.maxVolume}
-                                  onChange={(e) =>
-                                    handleVtpChange(
-                                      index,
-                                      vtpIndex,
-                                      "maxVolume",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 bg-gray-100 focus:outline-[#61BF75]"
-                                />
-                              </Field>
-                            </div>
-
-                            <div className="col-span-4">
-                              <Field>
-                                <Label className="text-sm/6 font-medium text-black">
-                                  Price
-                                </Label>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  onKeyDown={handleKeyDown}
-                                  value={vtp.price}
-                                  readOnly
-                                  className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 bg-gray-100"
-                                />
-                              </Field>
-                            </div>
-
-                            <div className="col-span-4">
-                              <Field>
-                                <Label className="text-sm/6 font-medium text-black">
-                                  Discount
-                                </Label>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={3}
-                                  onKeyDown={handleKeyDown}
-                                  placeholder="2"
-                                  value={vtp.discount}
-                                  onChange={(e) =>
-                                    handleVtpChange(
-                                      index,
-                                      vtpIndex,
-                                      "discount",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 bg-gray-100 focus:outline-[#61BF75]"
-                                />
-                              </Field>
-                            </div>
-                          </div>
-                          <div
-                            className="p-2 border border-[#e63946] w-9 h-9 py-1 text-center rounded-full"
-                            onClick={() => handleRemoveVTP(index, vtpIndex)}
-                          >
-                            x{" "}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ))}
-              </div>
-
-              <div className="mt-9">
-                <button
-                  type="button"
-                  className="flex items-center justify-center w-full h-11 border border-[#61BF75] text-black rounded-full"
-                  onClick={addUomSection}
-                >
-                  <span className="px-2">
-                    <img src={assets.add_icon} alt="" />
-                  </span>
-                  Add UOM
-                </button>
-              </div>
-
-              <div className="flex flex-row justify-center mt-3 items-center">
-                <button
-                  className="w-1/2  py-3 bg-[#61BF75] text-white rounded-full"
-                  onClick={() => handleCreateProductLocation()}
-                >
-                  {processing ? (
-                    <div className="flex items-center space-x-2">
-                      <div
-                        className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent align-[-0.125em] text-surface motion-reduce:animate-[spin_1.5s_linear_infinite] dark:text-white"
-                        role="status"
-                      >
-                        <span className="sr-only">Processing...</span>
-                      </div>
-                      <span className="text-surface text-white">
-                        Processing...
-                      </span>
-                    </div>
-                  ) : (
-                    "Add product Location"
-                  )}
-                </button>
-              </div>
+                );
+              })}
             </div>
-          )}
+            <button type="button" onClick={addUomSection} className="mt-4 flex h-9 w-full items-center justify-center gap-2 rounded-md border border-[#20a45b] text-xs font-semibold text-[#008f45]">
+              <FontAwesomeIcon icon={faPlus} />
+              Add More Unit
+            </button>
+          </Card>
+
+          <Card title="Stock Information">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div><FieldLabel>Current Stock</FieldLabel><TextInput type="number" min={0} value={currentStock} onChange={(e) => setCurrentStock(e.target.value)} /></div>
+              <div><FieldLabel>SKU (Stock Keeping Unit)</FieldLabel><TextInput value={sku} onChange={(e) => setSku(e.target.value)} /></div>
+            </div>
+          </Card>
+
+          <Card title="Product Location" description="Add locations where this product is available.">
+            <button className="flex h-9 w-full items-center justify-center gap-2 rounded-md border border-[#20a45b] text-xs font-semibold text-[#008f45]">
+              <FontAwesomeIcon icon={faPlus} />
+              Add Product Location
+            </button>
+          </Card>
         </div>
       </div>
+      )}
+
+      {!formLoading && <section className="rounded-lg border border-[#e5e7eb] bg-white p-4 shadow-[0_8px_24px_rgba(16,24,40,0.04)]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <Link to="/list-products" className="inline-flex h-10 items-center justify-center rounded-md border border-[#d0d5dd] px-14 text-xs font-semibold text-[#344054]">
+            Cancel
+          </Link>
+          <button
+            type="button"
+            onClick={handleCreateProductLocation}
+            disabled={processing}
+            className="inline-flex h-10 min-w-60 items-center justify-center rounded-md bg-[#008f45] px-6 text-xs font-semibold text-white disabled:opacity-60"
+          >
+            {processing ? <LoadingButtonContent label="Saving..." /> : "Save & Publish Product"}
+          </button>
+          <button className="grid h-10 w-10 place-items-center rounded-md bg-[#00813f] text-white">
+            <FontAwesomeIcon icon={faChevronDown} />
+          </button>
+        </div>
+      </section>}
     </div>
   );
 };

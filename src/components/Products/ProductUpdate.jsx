@@ -1,10 +1,10 @@
-import axios from "axios";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ShopContext } from "../../context/ShopContext";
 import { toast } from "react-toastify";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  faArrowLeft,
   faCheckCircle,
   faChevronRight,
 } from "@fortawesome/free-solid-svg-icons";
@@ -21,10 +21,34 @@ import {
 import clsx from "clsx";
 import UpdateProductForm from "./UpdateProductForm";
 import SEOForm from "./SEOForm";
+import { apiClient } from "../../lib/apiClient";
+import { FormSkeletonLoader, LoadingButtonContent } from "../common/LoadingStates";
+
+const FieldLabel = ({ children, required = false }) => (
+  <label className="mb-2 block text-xs font-semibold text-[#101828]">
+    {children} {required && <span className="text-[#ef3340]">*</span>}
+  </label>
+);
+
+const Card = ({ title, description, children }) => (
+  <section className="rounded-lg border border-[#e5e7eb] bg-white p-4 shadow-[0_8px_24px_rgba(16,24,40,0.04)]">
+    <div className="mb-4">
+      <h2 className="text-sm font-semibold text-[#101828]">{title}</h2>
+      {description && <p className="mt-2 text-xs font-medium text-[#667085]">{description}</p>}
+    </div>
+    {children}
+  </section>
+);
+
+const inputClass =
+  "h-10 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-xs text-[#101828] outline-none placeholder:text-[#98a2b3] focus:border-[#008f45]";
+
+const selectButtonClass =
+  "relative block h-10 w-full rounded-md border border-[#d0d5dd] bg-white px-3 pr-8 text-left text-xs text-[#101828] outline-none focus:border-[#008f45]";
 
 const ProductUpdate = () => {
   const { slug } = useParams();
-  const { backend_url, token, country_id } = useContext(ShopContext);
+  const { country_id } = useContext(ShopContext);
   const [productLocationData, setProductLocationData] = useState({});
   const [isLoading, setIsLoading] = useState(true); // Add loading state
   const [productLocationUpdated, setProductLocationUpdated] = useState(false);
@@ -169,10 +193,7 @@ const ProductUpdate = () => {
 
   const getLocations = useCallback(async () => {
     try {
-      const response = await axios.get(`${backend_url}/state`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await apiClient.get("/state", {
         params: {
           "filter.country.id": country_id,
         },
@@ -184,13 +205,11 @@ const ProductUpdate = () => {
     } catch (error) {
       console.error(error);
     }
-  }, [backend_url, token]);
+  }, [country_id]);
 
   const fetchProductData = useCallback(async () => {
     try {
-      const response = await axios.get(
-        `${backend_url}/product-location/${slug}`
-      );
+      const response = await apiClient.get(`/product-location/${slug}`);
       if (response.data) {
         setProductLocationData(response.data);
         setAvailableDates(response.data.availableDates);
@@ -201,11 +220,11 @@ const ProductUpdate = () => {
       }
     } catch (error) {
       console.log("error", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setIsLoading(false); // Set loading to false after fetching
     }
-  }, [backend_url, slug]);
+  }, [slug]);
 
   const handleUpdateProductLocation = async () => {
     try {
@@ -219,17 +238,13 @@ const ProductUpdate = () => {
         stateId: selectedLocation?.id || productLocationData?.location_id,
       };
 
-      await axios.put(`${backend_url}/product-location/${slug}`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await apiClient.put(`/product-location/${slug}`, payload);
 
       setProductLocationUpdated(true);
       toast.success("Product Location updated successfully");
     } catch (error) {
       console.error("an error occured: ", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setProcessing(false);
     }
@@ -254,69 +269,62 @@ const ProductUpdate = () => {
   }, [productLocationData]);
 
   return (
-    <div>
-      <div className="flex flex-row justify-between items-center gap-5">
-        <p className="text-black text-[25px] font-bold leading-normal tracking-[0.5px]">
-          Update product
-        </p>
-        <div className="flex flex-row items-center gap-2">
-          <Link to="/">
-            <p className="text-[#6E6E6E] font-roboto text-[13px] font-normal leading-normal tracking-[0.26px]">
-              Dashboard
-            </p>
-          </Link>
-          <p>
-            <FontAwesomeIcon
-              icon={faChevronRight}
-              size="sm"
-              className="pt-1 h-3 text-[#6E6E6E]"
-            />
+    <div className="space-y-4 text-[#101828]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h1 className="text-lg font-semibold">Update Product</h1>
+          <p className="mt-1 text-xs font-medium text-[#667085]">
+            Edit product details, pricing, stock, and availability.
           </p>
-          <Link to="/product-list">
-            <p className="text-[#6E6E6E] font-roboto text-[13px] font-normal leading-normal tracking-[0.26px]">
-              Update Product
-            </p>
+        </div>
+        <div className="flex flex-col gap-3 sm:items-end">
+          <div className="flex items-center gap-2 text-sm text-[#667085]">
+            <Link to="/" className="hover:text-[#008f45]">Dashboard</Link>
+            <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+            <Link to="/list-products" className="hover:text-[#008f45]">Products</Link>
+            <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+            <span>Update Product</span>
+          </div>
+          <Link to="/list-products" className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-4 text-xs font-semibold text-[#101828] shadow-sm">
+            <FontAwesomeIcon icon={faArrowLeft} />
+            Back to products
           </Link>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <div className="p-3 bg-white rounded-lg shadow-sm">
-          <UpdateProductForm
-            productLocationData={productLocationData}
-            isLoading={isLoading}
-          />
+      {isLoading ? (
+        <FormSkeletonLoader />
+      ) : (
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(480px,0.98fr)]">
+        <div>
+          <UpdateProductForm productLocationData={productLocationData} />
         </div>
-        <div className="flex flex-col gap-3">
-          <div className="p-3 bg-white rounded-lg shadow-sm">
+        <div className="flex flex-col gap-4">
+          <Card title="Pricing & Availability">
             {productLocationUpdated ? (
-              <div className="flex flex-col items-center gap-2 py-10">
+              <div className="flex flex-col items-center gap-2 py-8">
                 <FontAwesomeIcon
                   icon={faCheckCircle}
                   size="2x"
-                  className="text-[#61BF75]"
+                  className="text-[#008f45]"
                 />
-                <p>Product Location Updated successfully</p>
+                <p className="text-sm font-semibold text-[#008f45]">Product location updated successfully</p>
                 <button
-                  className="flex flex-row justify-center gap-2 border bg-[#f86767] py-3 rounded-full mt-5 w-1/3 text-white"
+                  type="button"
+                  className="mt-4 h-10 rounded-md border border-[#d0d5dd] px-5 text-xs font-semibold text-[#101828]"
                   onClick={() => setProductLocationUpdated(false)}
                 >
-                  <p className="text-sm">Back</p>
+                  Continue editing
                 </button>
               </div>
             ) : (
               <div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-3">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label
-                      htmlFor="price"
-                      className="text-[15px] font-bold leading-normal tracking-[0.3px] text-black"
-                    >
-                      Price
-                    </label>
+                    <FieldLabel required>Price</FieldLabel>
                     <div className="mt-2">
-                      <div className="flex items-center w-full border border-gray-500 rounded-full bg-white pl-3 outline-1 -outline-offset-1 outline-gray-300 has-[input:focus-within]:outline-2 has-[input:focus-within]:-outline-offset-2 has-[input:focus-within]:outline-[#61BF75] p-1.5">
-                        <div className="shrink-0 text-base text-gray-500 select-none sm:text-sm/6">
+                      <div className="flex h-10 items-center rounded-md border border-[#d0d5dd] bg-white pl-3 focus-within:border-[#008f45]">
+                        <div className="shrink-0 select-none text-xs text-[#667085]">
                           ₦
                         </div>
                         <input
@@ -328,14 +336,14 @@ const ProductUpdate = () => {
                           max="10000000"
                           value={price ?? productLocationData.price}
                           onChange={(e) => Number(setPrice(e.target.value))}
-                          className="block min-w-0 grow py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
+                          className="block min-w-0 grow px-2 text-xs text-[#101828] outline-none placeholder:text-[#98a2b3]"
                         />
-                        <div className="grid shrink-0 grid-cols-1 focus-within:relative">
+                        <div className="grid shrink-0 grid-cols-1">
                           <select
                             id="currency"
                             name="currency"
                             aria-label="Currency"
-                            className="col-start-1 row-start-1 w-full appearance-none rounded-md py-1.5 pr-7 pl-3 text-base text-gray-500 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                            className="col-start-1 row-start-1 h-8 appearance-none rounded-md bg-white py-1 pr-7 pl-3 text-xs text-[#667085] outline-none"
                           >
                             <option>NGN</option>
                             <option>GHS</option>
@@ -343,7 +351,7 @@ const ProductUpdate = () => {
                           </select>
                           <ChevronDownIcon
                             aria-hidden="true"
-                            className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
+                            className="pointer-events-none col-start-1 row-start-1 mr-2 size-4 self-center justify-self-end text-[#667085]"
                           />
                         </div>
                       </div>
@@ -351,17 +359,14 @@ const ProductUpdate = () => {
                   </div>
 
                   <div>
-                    <Field>
-                      <Label className="text-[15px] font-bold leading-normal tracking-[0.3px] text-black">
-                        Location <span className="text-red-600">*</span>
-                      </Label>
+                    <FieldLabel required>Location</FieldLabel>
                       <Listbox
                         value={selectedLocation}
                         onChange={setSelectedLocation}
                       >
                         <ListboxButton
                           className={clsx(
-                            "relative block w-full border border-gray-500 rounded-full bg-white/5 py-3 pr-8 pl-3 text-left text-gray-500 focus:outline-[#61BF75] text-sm mt-2",
+                            selectButtonClass,
                             "data-[focus]:outline-2 data-[focus]:-outline-offset-2 data-[focus]:outline-[#61BF75]"
                           )}
                         >
@@ -395,15 +400,12 @@ const ProductUpdate = () => {
                           ))}
                         </ListboxOptions>
                       </Listbox>
-                    </Field>
                   </div>
                 </div>
 
-                <div className="flex flex-row gap-5 justify-start items-center">
+                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <p className="text-[15px] font-bold leading-normal tracking-[0.3px] text-black mt-4">
-                      Minimum Order Quantity
-                    </p>
+                    <FieldLabel required>Minimum Order Quantity</FieldLabel>
                     <input
                       type="number"
                       min={0}
@@ -411,17 +413,15 @@ const ProductUpdate = () => {
                       placeholder="5"
                       value={moq}
                       onChange={(e) => setMoq(e.target.value)}
-                      className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 focus:outline-[#61BF75]"
+                      className={inputClass}
                     />
                   </div>
                   <div>
-                    <p className="text-[15px] font-bold leading-normal tracking-[0.3px] text-black mt-4">
-                      Available dates
-                    </p>
+                    <FieldLabel>Available Dates</FieldLabel>
                     <input
                       type="date"
                       onChange={handleAddDate}
-                      className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 focus:outline-[#61BF75]"
+                      className={inputClass}
                     />
                   </div>
                 </div>
@@ -430,13 +430,13 @@ const ProductUpdate = () => {
                   {availableDates.map((date, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between border border-gray-300 rounded-full px-3 py-2 mb-2"
+                      className="mb-2 flex items-center justify-between rounded-md border border-[#d0d5dd] px-3 py-2"
                     >
-                      <span className="text-sm text-gray-700">{date}</span>
+                      <span className="text-xs text-[#344054]">{date}</span>
                       <button
                         type="button"
                         onClick={() => handleRemoveDate(date)}
-                        className="text-red-500 ml-3 cursor-pointer"
+                        className="ml-3 cursor-pointer text-xs text-[#ef3340]"
                       >
                         x
                       </button>
@@ -445,15 +445,13 @@ const ProductUpdate = () => {
                 </div>
 
                 <div>
-                  <p className="text-[15px] font-bold leading-normal tracking-[0.3px] text-black mt-4">
-                    Unit of Measurement
-                  </p>
+                  <h2 className="mt-4 text-sm font-semibold text-[#101828]">Unit of Measurement</h2>
                   {uomSections?.map((section, index) => (
-                    <>
-                      <div className="grid grid-cols-8 gap-6" key={section.id}>
-                        <div className="mt-3 col-span-2">
+                    <div key={section.id || index} className="mt-3 rounded-md border border-[#e5e7eb] p-3">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+                        <div>
                           <Field>
-                            <Label className="text-sm/6 font-medium text-black">
+                            <Label className="mb-2 block text-xs font-semibold text-[#101828]">
                               Unit <span className="text-red-600">*</span>
                             </Label>
 
@@ -465,7 +463,7 @@ const ProductUpdate = () => {
                             >
                               <ListboxButton
                                 className={clsx(
-                                  "relative block w-full border border-gray-500 rounded-full bg-white/5 py-3 pr-8 pl-3 text-left text-gray-500 focus:outline-[#61BF75] text-sm",
+                                  selectButtonClass,
                                   "data-[focus]:outline-2 data-[focus]:-outline-offset-2 data-[focus]:outline-[#61BF75]"
                                 )}
                               >
@@ -487,10 +485,10 @@ const ProductUpdate = () => {
                                   <ListboxOption
                                     key={uom.name}
                                     value={uom}
-                                    className="group flex cursor-default items-center gap-2 rounded-lg py-1.5 px-3 select-none data-[focus]:bg-white/10"
+                                    className="group flex cursor-default items-center gap-2 rounded-lg py-1.5 px-3 text-xs select-none data-[focus]:bg-[#f8fafc]"
                                   >
                                     <CheckIcon className="invisible size-4 fill-white group-data-[selected]:visible" />
-                                    <div className="text-sm text-gray-500">
+                                    <div className="text-xs text-[#344054]">
                                       {uom.name}
                                     </div>
                                   </ListboxOption>
@@ -499,9 +497,9 @@ const ProductUpdate = () => {
                             </Listbox>
                           </Field>
                         </div>
-                        <div className="mt-3 col-span-2">
+                        <div>
                           <Field>
-                            <Label className="text-sm/6 font-medium text-black">
+                            <Label className="mb-2 block text-xs font-semibold text-[#101828]">
                               Vendor Price
                             </Label>
                             <input
@@ -517,14 +515,14 @@ const ProductUpdate = () => {
                                   e.target.value
                                 )
                               }
-                              className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 focus:outline-[#61BF75]"
+                              className={inputClass}
                             />
                           </Field>
                         </div>
 
-                        <div className="mt-3 col-span-2">
+                        <div>
                           <Field>
-                            <Label className="text-sm/6 font-medium text-black">
+                            <Label className="mb-2 block text-xs font-semibold text-[#101828]">
                               Platform Price
                             </Label>
                             <input
@@ -540,15 +538,15 @@ const ProductUpdate = () => {
                                   e.target.value
                                 )
                               }
-                              className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 focus:outline-[#61BF75]"
+                              className={inputClass}
                             />
                           </Field>
                         </div>
-                        <div className="mt-10">
+                        <div className="flex items-end">
                           <button
                             type="button"
                             onClick={() => removeUomSection(index)}
-                            className="border border-red-800 rounded-full py-1 px-3 text-red-600 hover:text-red-800"
+                            className="h-10 rounded-md border border-[#fecdd3] px-3 text-xs font-semibold text-[#ef3340] hover:bg-[#fff1f2]"
                           >
                             Remove
                           </button>
@@ -561,22 +559,23 @@ const ProductUpdate = () => {
                         </p>
                       )}
 
-                      <div className="w-4/5">
+                      <div className="mt-3 space-y-3">
                         {section.vtp.map((vtp, vtpIndex) => (
                           <div
                             key={vtpIndex}
-                            className="flex flex-row justify-between items-center gap-3 mt-3"
+                            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-3"
                           >
-                            <div
-                              className="border border-[#61BF75] w-9 h-9 py-1 text-center  rounded-full"
+                            <button
+                              type="button"
+                              className="grid h-9 w-9 place-items-center rounded-md border border-[#008f45] text-[#008f45]"
                               onClick={() => handleAddVTP(index)}
                             >
                               +
-                            </div>
-                            <div className="grid grid-cols-8 gap-1 mt-3">
-                              <div className="col-span-4">
+                            </button>
+                            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                              <div>
                                 <Field>
-                                  <Label className="text-sm/6 font-medium text-black">
+                                  <Label className="mb-2 block text-xs font-semibold text-[#101828]">
                                     Min Volume
                                   </Label>
                                   <input
@@ -593,14 +592,14 @@ const ProductUpdate = () => {
                                         e.target.value
                                       )
                                     }
-                                    className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 bg-gray-100 focus:outline-[#61BF75]"
+                                    className={inputClass}
                                   />
                                 </Field>
                               </div>
 
-                              <div className="col-span-4">
+                              <div>
                                 <Field>
-                                  <Label className="text-sm/6 font-medium text-black">
+                                  <Label className="mb-2 block text-xs font-semibold text-[#101828]">
                                     Max Volume
                                   </Label>
                                   <input
@@ -617,14 +616,14 @@ const ProductUpdate = () => {
                                         e.target.value
                                       )
                                     }
-                                    className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 bg-gray-100 focus:outline-[#61BF75]"
+                                    className={inputClass}
                                   />
                                 </Field>
                               </div>
 
-                              <div className="col-span-4">
+                              <div>
                                 <Field>
-                                  <Label className="text-sm/6 font-medium text-black">
+                                  <Label className="mb-2 block text-xs font-semibold text-[#101828]">
                                     Price
                                   </Label>
                                   <input
@@ -633,14 +632,14 @@ const ProductUpdate = () => {
                                     onKeyDown={handleKeyDown}
                                     value={vtp.price}
                                     readOnly
-                                    className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 bg-gray-100"
+                                    className={`${inputClass} bg-[#f8fafc]`}
                                   />
                                 </Field>
                               </div>
 
-                              <div className="col-span-4">
+                              <div>
                                 <Field>
-                                  <Label className="text-sm/6 font-medium text-black">
+                                  <Label className="mb-2 block text-xs font-semibold text-[#101828]">
                                     Discount
                                   </Label>
                                   <input
@@ -658,65 +657,55 @@ const ProductUpdate = () => {
                                         e.target.value
                                       )
                                     }
-                                    className="w-full border border-gray-500 rounded-full p-3 text-sm text-gray-500 bg-gray-100 focus:outline-[#61BF75]"
+                                    className={inputClass}
                                   />
                                 </Field>
                               </div>
                             </div>
-                            <div
-                              className="p-2 border border-[#e63946] w-9 h-9 py-1 text-center rounded-full"
+                            <button
+                              type="button"
+                              className="grid h-9 w-9 place-items-center rounded-md border border-[#fecdd3] text-[#ef3340]"
                               onClick={() => handleRemoveVTP(index, vtpIndex)}
                             >
-                              x{" "}
-                            </div>
+                              x
+                            </button>
                           </div>
                         ))}
                       </div>
-                    </>
+                    </div>
                   ))}
                 </div>
 
-                <div className="mt-9">
+                <div className="mt-4">
                   <button
                     type="button"
-                    className="flex items-center justify-center w-full h-11 border border-[#61BF75] text-black rounded-full"
+                    className="flex h-10 w-full items-center justify-center rounded-md border border-[#008f45] text-xs font-semibold text-[#008f45]"
                     onClick={addUomSection}
                   >
-                    <span className="px-2">
+                    <span className="px-2 [&_img]:h-3 [&_img]:w-3">
                       <img src={assets.add_icon} alt="" />
                     </span>
                     Add UOM
                   </button>
                 </div>
 
-                <div className="flex flex-row justify-center mt-3 items-center">
+                <div className="mt-4 flex justify-end">
                   <button
-                    className="w-1/2  py-3 bg-[#61BF75] text-white rounded-full"
+                    type="button"
+                    className="inline-flex h-10 min-w-48 items-center justify-center rounded-md bg-[#008f45] px-5 text-xs font-semibold text-white shadow-sm hover:bg-[#007a3b] disabled:cursor-not-allowed disabled:opacity-70"
                     onClick={() => handleUpdateProductLocation()}
+                    disabled={processing}
                   >
-                    {processing ? (
-                      <div className="flex items-center space-x-2">
-                        <div
-                          className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent align-[-0.125em] text-surface motion-reduce:animate-[spin_1.5s_linear_infinite] dark:text-white"
-                          role="status"
-                        >
-                          <span className="sr-only">Processing...</span>
-                        </div>
-                        <span className="text-surface text-white">
-                          Processing...
-                        </span>
-                      </div>
-                    ) : (
-                      "Update product Location"
-                    )}
+                    {processing ? <LoadingButtonContent label="Updating..." /> : "Update Product Location"}
                   </button>
                 </div>
               </div>
             )}
-          </div>
+          </Card>
           <SEOForm productLocationData={productLocationData} />
         </div>
       </div>
+      )}
     </div>
   );
 };

@@ -13,7 +13,7 @@ const SearchBar = () => {
     try {
       setProcessing(true);
       getProductData("", search);
-      navigate("/shop");
+      navigate("/list-products");
       setSearch("");
     } catch (error) {
       toast.error(error.message);
@@ -23,19 +23,22 @@ const SearchBar = () => {
   };
 
   return (
-    <div className="hidden md:block text-center">
-      <div className="inline-flex items-center justify-between border border-gray-400 pl-2 w-full rounded-full">
-        <div className="flex items-center">
-          <img src={assets.search_icon} className="mr-2" />
+    <div className="hidden w-full max-w-[620px] md:block">
+      <div className="flex h-10 items-center rounded-full border border-gray-200 bg-white px-4 shadow-sm">
+        <div className="flex w-full items-center">
+          <img src={assets.search_icon} className="mr-3 h-4 w-4 opacity-60" alt="" />
           <input
             value={search}
-            className="flex-1 outline-none bg-inherit text-sm ml-2 w-full sm:w-[200px] md:w-[300px] lg:w-[400px] text-[#6E6E6E] font-light "
+            className="min-w-0 flex-1 bg-transparent text-xs font-medium text-[#667085] outline-none placeholder:text-[#8a94a6]"
             type="text"
-            placeholder="Search here"
+            placeholder="Search for products, orders, customers..."
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") handleSearch();
+            }}
           />
           <button
-            className="bg-[#61bf75] text-white px-4 py-2 sm:px-6 md:px-8 lg:px-10 rounded-r-full leading-normal cursor-pointer"
+            className="sr-only"
             onClick={handleSearch}
           >
             {processing ? (

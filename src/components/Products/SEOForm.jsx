@@ -1,11 +1,12 @@
 import { useCallback, useContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { ShopContext } from "../../context/ShopContext";
-import axios from "axios";
 import { useDropzone } from "react-dropzone";
 import { assets } from "../../assets/assets";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheckCircle } from "@fortawesome/free-solid-svg-icons";
+import { apiClient } from "../../lib/apiClient";
+import { IMAGE_MIME_TYPES, validateImageFiles } from "../../lib/uploadValidation";
 
 const SEOForm = ({ productLocationData }) => {
   const [title, setTitle] = useState("");
@@ -17,58 +18,62 @@ const SEOForm = ({ productLocationData }) => {
   const [files, setFiles] = useState([]);
   const [images, setImages] = useState("");
   const [processing, setProcessing] = useState(false);
-  const { backend_url, socket, token } = useContext(ShopContext);
+  const { socket } = useContext(ShopContext);
   const [SEOCreated, setSEOCreated] = useState(false);
   const [slug, setSlug] = useState(null);
 
-  const onDrop = useCallback((acceptedFiles) => {
-    // Handle the dropped files
-    console.log(acceptedFiles);
-    if (acceptedFiles.length < 1) {
-      toast.error("You need to add at least 1 image");
+  const onDrop = useCallback(async (acceptedFiles) => {
+    const validationError = validateImageFiles(acceptedFiles, {
+      min: 1,
+      max: 1,
+    });
+
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
+
     setUploadProgress({});
     setUploading(true);
 
-    // Create a FormData object
     const formData = new FormData();
     acceptedFiles.forEach((file) => {
       formData.append("files", file);
     });
-    formData.append("clientId", socket.id);
+    formData.append("clientId", socket?.id || "");
 
-    // Send the files using Axios
-    axios
-      .post(`${backend_url}/upload`, formData, {
+    try {
+      const response = await apiClient.post("/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
-      })
-      .then((response) => {
-        console.log("Files uploaded successfully:", response.data);
-        setFiles(
-          acceptedFiles.map((file) =>
-            Object.assign(file, {
-              preview: URL.createObjectURL(file),
-            })
-          )
-        );
-        setImages(response.data.images[0]);
-        setUploading(false);
-      })
-      .catch((error) => {
-        console.error("Error uploading files:", error);
-        setUploadProgress({});
-        setUploading(false);
       });
-  }, []);
+
+      setFiles(
+        acceptedFiles.map((file) =>
+          Object.assign(file, {
+            preview: URL.createObjectURL(file),
+          })
+        )
+      );
+      setImages(response.data.images[0]);
+    } catch (error) {
+      toast.error(error.message);
+      setUploadProgress({});
+    } finally {
+      setUploading(false);
+    }
+  }, [socket?.id]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      "image/*": [],
+      "image/jpeg": [],
+      "image/png": [],
+      "image/webp": [],
     },
+    maxFiles: 1,
+    multiple: false,
   });
 
   const handleSubmit = async (e) => {
@@ -88,21 +93,10 @@ const SEOForm = ({ productLocationData }) => {
         altText,
         imgUrl: images || "",
       };
-      const response = await axios.post(
-        `${backend_url}/product-location/${slug}/seo`,
-        data,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      console.log("SEO data created successfully:", response.data);
+      await apiClient.post(`/product-location/${slug}/seo`, data);
       setSEOCreated(true);
     } catch (error) {
-      console.error("Error creating SEO data:", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setProcessing(false);
     }
@@ -228,7 +222,10 @@ const SEOForm = ({ productLocationData }) => {
                     {...getRootProps()}
                     className="border border-gray-500 rounded-lg p-3 flex flex-col items-center justify-center hover:border-[#61BF75] cursor-pointer "
                   >
-                    <input {...getInputProps()} />
+                    <input
+                      {...getInputProps()}
+                      accept={IMAGE_MIME_TYPES.join(",")}
+                    />
                     {uploading ? (
                       <div
                         className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-e-transparent align-[-0.125em] text-surface motion-reduce:animate-[spin_1.5s_linear_infinite"
@@ -310,6 +307,7 @@ const SEOForm = ({ productLocationData }) => {
                 <button
                   type="submit"
                   className="w-1/2  py-3 bg-[#61BF75] text-white rounded-full"
+                  disabled={processing || uploading}
                 >
                   {processing ? (
                     <div className="flex items-center space-x-2">

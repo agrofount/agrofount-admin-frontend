@@ -1,21 +1,16 @@
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { assets } from "../assets/assets";
-import { ShopContext } from "../context/ShopContext";
-import axios from "axios";
 import ReviewListSkeleton from "./skeleton/ReviewListSkeleton";
+import { apiClient } from "../lib/apiClient";
 
 const DashboardReviewList = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [reviews, setReviews] = useState({ data: [], links: {}, meta: {} });
-  const { token, backend_url } = useContext(ShopContext);
 
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${backend_url}/review`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await apiClient.get("/review", {
         params: {
           page: 1,
           limit: 10,
@@ -28,11 +23,11 @@ const DashboardReviewList = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchReviews();
-  }, []);
+  }, [fetchReviews]);
 
   return (
     <div className="flex flex-col gap-4 mt-4 overflow-y-scroll w-full">

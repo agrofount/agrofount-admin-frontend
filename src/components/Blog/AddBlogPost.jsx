@@ -1,10 +1,12 @@
 import { useCallback, useContext, useEffect, useState } from "react";
 import DescriptionEditor from "../Products/ProductDescriptionEditor";
-import axios, { HttpStatusCode } from "axios";
+import { HttpStatusCode } from "axios";
 import { ShopContext } from "../../context/ShopContext";
 import { toast } from "react-toastify";
 import { useDropzone } from "react-dropzone";
 import { assets } from "../../assets/assets";
+import { apiClient } from "../../lib/apiClient";
+import { IMAGE_MIME_TYPES, validateImageFiles } from "../../lib/uploadValidation";
 
 const AddBlogPost = ({ post }) => {
   const [title, setTitle] = useState("");
@@ -15,14 +17,17 @@ const AddBlogPost = ({ post }) => {
   const [files, setFiles] = useState([]);
   const [images, setImages] = useState([]);
   const [processing, setProcessing] = useState(false);
-  const { backend_url, token, socket, navigate } = useContext(ShopContext);
+  const { socket, navigate } = useContext(ShopContext);
 
   const onDrop = useCallback(
-    (acceptedFiles) => {
-      // Handle the dropped files
-      console.log(acceptedFiles);
-      if (acceptedFiles.length < 1) {
-        toast.error("You need to add at least 1 image");
+    async (acceptedFiles) => {
+      const validationError = validateImageFiles(acceptedFiles, {
+        min: 1,
+        max: 1,
+      });
+
+      if (validationError) {
+        toast.error(validationError);
         return;
       }
 
@@ -33,39 +38,40 @@ const AddBlogPost = ({ post }) => {
       // Create a FormData object
       const formData = new FormData();
       formData.append("files", file);
-      formData.append("clientId", socket.id);
+      formData.append("clientId", socket?.id || "");
 
-      // Send the files using Axios
-      axios
-        .post(`${backend_url}/upload`, formData, {
+      try {
+        const response = await apiClient.post("/upload", formData, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
-        })
-        .then((response) => {
-          console.log("Files uploaded successfully:", response.data);
-          setFiles([
-            Object.assign(file, {
-              preview: URL.createObjectURL(file),
-            }),
-          ]);
-          setImages(response.data.images[0]);
-          setUploading(false);
-        })
-        .catch((error) => {
-          console.error("Error uploading files:", error);
-          setUploadProgress({});
-          setUploading(false);
         });
+
+        setFiles([
+          Object.assign(file, {
+            preview: URL.createObjectURL(file),
+          }),
+        ]);
+        setImages(response.data.images[0]);
+      } catch (error) {
+        toast.error(error.message);
+        setUploadProgress({});
+      } finally {
+        setUploading(false);
+      }
     },
-    [backend_url, socket.id]
+    [socket?.id]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      "image/*": [],
+      "image/jpeg": [],
+      "image/png": [],
+      "image/webp": [],
     },
+    maxFiles: 1,
+    multiple: false,
   });
 
   const handleSubmit = async (e) => {
@@ -74,6 +80,7 @@ const AddBlogPost = ({ post }) => {
     // Validate form fields
     if (!title || !content) {
       toast.error("Please fill in all required fields.");
+      setProcessing(false);
       return;
     }
 
@@ -90,55 +97,43 @@ const AddBlogPost = ({ post }) => {
 
       if (post && post.id) {
         // Update existing blog post
-        response = await axios.put(
-          `${backend_url}/posts/${post.slug}`,
-          blogPostData,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        response = await apiClient.put(`/posts/${post.slug}`, blogPostData);
 
         if (response.status === HttpStatusCode.Ok) {
           toast.success("Blog post updated successfully!");
         }
       } else {
         // Create new blog post
-        response = await axios.post(`${backend_url}/posts`, blogPostData, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        response = await apiClient.post("/posts", blogPostData);
 
         if (response.status === HttpStatusCode.Created) {
           toast.success("Blog post created successfully!");
         }
       }
 
-      console.log("Blog post response:", response);
       navigate(`/blogs`);
     } catch (error) {
-      console.error("Error saving blog post:", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setProcessing(false);
     }
   };
 
   useEffect(() => {
-    socket.on("uploadProgress", (data) => {
+    if (!socket) return undefined;
+
+    const handleUploadProgress = (data) => {
       const { name, percentage } = data;
       setUploadProgress((prevProgress) => ({
         ...prevProgress,
         [name]: percentage,
       }));
-    });
+    };
+
+    socket.on("uploadProgress", handleUploadProgress);
 
     return () => {
-      socket.off("uploadProgress");
+      socket.off("uploadProgress", handleUploadProgress);
     };
   }, [socket]);
 
@@ -226,7 +221,7 @@ const AddBlogPost = ({ post }) => {
               {...getRootProps()}
               className="border border-gray-500 rounded-lg p-3 flex flex-col items-center justify-center hover:border-[#61BF75] cursor-pointer "
             >
-              <input {...getInputProps()} />
+              <input {...getInputProps()} accept={IMAGE_MIME_TYPES.join(",")} />
               {uploading ? (
                 <div
                   className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-e-transparent align-[-0.125em] text-surface motion-reduce:animate-[spin_1.5s_linear_infinite"
@@ -274,6 +269,7 @@ const AddBlogPost = ({ post }) => {
         <button
           type="submit"
           className="px-4 rounded-lg w-1/2  py-3 mx-auto bg-[#61BF75] text-white"
+          disabled={processing || uploading}
         >
           {processing ? (
             <div className="flex items-center space-x-2">

@@ -1,6 +1,5 @@
-import axios, { HttpStatusCode } from "axios";
-import { useCallback, useContext, useEffect, useState } from "react";
-import { ShopContext } from "../context/ShopContext";
+import { useCallback, useEffect, useState } from "react";
+import { apiClient } from "../lib/apiClient";
 
 const DashboardTargetChart = () => {
   const [result, setResult] = useState({
@@ -10,23 +9,17 @@ const DashboardTargetChart = () => {
     message: "",
   });
 
-  const { backend_url, token } = useContext(ShopContext);
-
   const fetchTargetResult = useCallback(async () => {
     try {
-      const response = await axios.get(`${backend_url}/order/monthly-target`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.status == HttpStatusCode.Ok) {
+      const response = await apiClient.get("/order/monthly-target");
+      if (response.status === 200) {
         console.log("successfully fetch target result.");
         setResult(response.data);
       }
     } catch (error) {
       console.error("an error occured: ", error);
     }
-  }, [backend_url, token]);
+  }, []);
 
   useEffect(() => {
     fetchTargetResult();

@@ -1,4 +1,3 @@
-import axios from "axios";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { ShopContext } from "../../context/ShopContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,6 +6,7 @@ import { DashboardOrderListSkeleton } from "../skeleton/DashboardOrderListSkelet
 import { assets } from "../../assets/assets";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { Link } from "react-router-dom";
+import { apiClient } from "../../lib/apiClient";
 
 const ListCarts = () => {
   const [carts, setCarts] = useState([]);
@@ -14,17 +14,13 @@ const ListCarts = () => {
   const [pageLimit, setPageLimit] = useState(10);
   const [searchValue, setSearchValue] = useState("");
 
-  const { backend_url, token, currency } = useContext(ShopContext);
+  const { currency } = useContext(ShopContext);
   const searchTimeout = useRef();
 
   const fetchCarts = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${backend_url}/cart/all`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiClient.get("/cart/all");
 
       console.log("Carts response: ", response.data);
 
@@ -36,7 +32,7 @@ const ListCarts = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [backend_url, token]);
+  }, []);
 
   const handleSearchChange = (e) => {
     const value = e.target.value;

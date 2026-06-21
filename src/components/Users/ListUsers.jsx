@@ -1,334 +1,462 @@
-import { Link } from "react-router-dom";
-import { assets } from "../../assets/assets";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  faCalendarDays,
   faChevronLeft,
   faChevronRight,
-  faTable,
+  faEllipsisVertical,
+  faFilter,
+  faLocationDot,
+  faMagnifyingGlass,
+  faMars,
+  faPhone,
+  faPlus,
+  faRotateLeft,
+  faShieldHalved,
+  faUser,
+  faUserPlus,
+  faUsers,
+  faVenus,
+  faDownload,
 } from "@fortawesome/free-solid-svg-icons";
-import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
-import { useCallback, useContext, useEffect, useState, useRef } from "react";
-import axios from "axios";
-import { ShopContext } from "../../context/ShopContext";
-import TableSkeleton from "../skeleton/TableSkeleton";
-import UserTableItem from "./UserItemTable";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { toast } from "react-toastify";
+import { assets } from "../../assets/assets";
+import { apiClient } from "../../lib/apiClient";
+import { TableRowsSkeleton } from "../common/LoadingStates";
+
+const pageSizeOptions = [10, 20, 30, 50];
+const verificationOptions = ["All Status", "Verified", "Not Verified"];
+const genderOptions = ["All Gender", "Male", "Female", "Other"];
+const dateRangeOptions = ["Select date range", "Last 7 days", "Last 30 days", "This month"];
+
+const getDisplayName = (user) =>
+  user?.username || user?.fullName || `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Customer";
+
+const getCustomerCode = (user, index) =>
+  user?.code || user?.customerCode || `#CUS-${String(user?.serial || index + 1).padStart(6, "0")}`;
+
+const getInitials = (name) =>
+  name
+    .split(/[^\w]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "C";
+
+const getLocation = (user) =>
+  user?.state?.name || user?.state || user?.city?.name || user?.city || user?.location || "N/A";
+
+const formatJoinedDate = (value) => {
+  if (!value) return ["N/A", ""];
+  const date = new Date(value);
+  return [
+    new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+    }).format(date),
+    new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date),
+  ];
+};
+
+const MetricCard = ({ label, value, note, icon, tone = "green", down = false }) => {
+  const toneClass =
+    tone === "blue"
+      ? "bg-[#e7f0ff] text-[#1f7ae0]"
+      : tone === "yellow"
+        ? "bg-[#fff4d8] text-[#f59e0b]"
+        : tone === "purple"
+          ? "bg-[#eee4ff] text-[#7b3fe4]"
+          : "bg-[#dcf8e4] text-[#008f45]";
+
+  return (
+    <div className="rounded-lg border border-[#e5e7eb] bg-white px-4 py-3 shadow-[0_8px_24px_rgba(16,24,40,0.04)]">
+      <div className="flex items-center gap-3">
+        <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${toneClass}`}>
+          <FontAwesomeIcon icon={icon} className="text-base" />
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold text-[#667085]">{label}</p>
+          <p className="mt-0.5 text-lg font-semibold text-[#101828]">{value}</p>
+          <p className={`mt-1.5 text-[11px] font-semibold ${down ? "text-[#ef3340]" : "text-[#008f45]"}`}>
+            {down ? "↓" : "↑"} {note}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ListUsers = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [users, setUsers] = useState({ data: [], meta: {} });
-  const [pageLimit, setPageLimit] = useState(50);
+  const [pageLimit, setPageLimit] = useState(10);
+  const [searchInput, setSearchInput] = useState("");
   const [searchValue, setSearchValue] = useState("");
+  const [verificationFilter, setVerificationFilter] = useState("All Status");
+  const [locationFilter, setLocationFilter] = useState("All Locations");
+  const [genderFilter, setGenderFilter] = useState("All Gender");
+  const [dateRange, setDateRange] = useState(dateRangeOptions[0]);
   const [userPage, setUserPage] = useState(1);
-  const [updated, setUpdated] = useState(false);
-
-  const { token, backend_url, navigate } = useContext(ShopContext);
 
   const searchTimeout = useRef();
 
   const fetchUsers = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`${backend_url}/user`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await apiClient.get("/user", {
         params: {
           page: userPage,
           limit: pageLimit,
           search: searchValue,
-          //   "filter.country.id": countryId,
         },
       });
       if (response.status === 200) setUsers(response.data);
     } catch (error) {
-      console.error("an error occurred: ", error);
+      toast.error(error.message || "Unable to load customers.");
     } finally {
       setIsLoading(false);
     }
-  }, [backend_url, token, userPage, pageLimit, searchValue]);
+  }, [userPage, pageLimit, searchValue]);
 
-  const handleSearchChange = (e) => {
-    const value = e.target.value;
+  const handleSearchChange = (event) => {
+    const value = event.target.value;
+    setSearchInput(value);
     clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
+      setUserPage(1);
       setSearchValue(value);
     }, 400);
   };
 
   const handlePageChange = (page) => {
+    const totalPages = Number(users.meta?.totalPages || 1);
+    if (page < 1 || page > totalPages) return;
     setUserPage(page);
   };
 
-  const debounceTimeout = useRef();
+  const userList = useMemo(() => users.data || [], [users.data]);
 
-  // Debounced search effect
+  const locationOptions = useMemo(() => {
+    const locations = new Set(userList.map(getLocation).filter((location) => location && location !== "N/A"));
+    return ["All Locations", ...locations];
+  }, [userList]);
+
+  const filteredUsers = useMemo(
+    () =>
+      userList.filter((user) => {
+        const verifiedMatches =
+          verificationFilter === "All Status" ||
+          (verificationFilter === "Verified" ? user.isVerified : !user.isVerified);
+        const locationMatches =
+          locationFilter === "All Locations" || getLocation(user) === locationFilter;
+        const genderMatches =
+          genderFilter === "All Gender" ||
+          String(user.gender || "").toLowerCase() === genderFilter.toLowerCase();
+        return verifiedMatches && locationMatches && genderMatches;
+      }),
+    [genderFilter, locationFilter, userList, verificationFilter],
+  );
+
+  const totalItems = Number(users.meta?.totalItems || filteredUsers.length || 0);
+  const currentPage = Number(users.meta?.currentPage || userPage || 1);
+  const totalPages = Number(users.meta?.totalPages || Math.max(1, Math.ceil(totalItems / pageLimit)));
+  const shownFrom = totalItems ? (currentPage - 1) * pageLimit + 1 : 0;
+  const shownTo = totalItems ? Math.min(currentPage * pageLimit, totalItems) : 0;
+  const verifiedCount = userList.filter((user) => user.isVerified).length;
+  const unverifiedCount = userList.filter((user) => !user.isVerified).length;
+  const newThisMonth = userList.filter((user) => {
+    if (!user.createdAt) return false;
+    const created = new Date(user.createdAt);
+    const now = new Date();
+    return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
+  }).length;
+
+  const clearFilters = () => {
+    setSearchInput("");
+    setSearchValue("");
+    setVerificationFilter("All Status");
+    setLocationFilter("All Locations");
+    setGenderFilter("All Gender");
+    setDateRange(dateRangeOptions[0]);
+    setUserPage(1);
+  };
+
+  const exportCustomers = () => {
+    const header = ["Customer", "Email", "Gender", "Phone", "Location", "Verification", "Joined"];
+    const rows = filteredUsers.map((user, index) => [
+      getDisplayName(user),
+      user.email || "N/A",
+      user.gender || "N/A",
+      user.phone || "N/A",
+      getLocation(user),
+      user.isVerified ? "Verified" : "Not Verified",
+      user.createdAt || "",
+      getCustomerCode(user, index),
+    ]);
+    const csv = [header, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "customers.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
-    if (debounceTimeout.current) {
-      clearTimeout(debounceTimeout.current);
-    }
-    debounceTimeout.current = setTimeout(() => {
-      fetchUsers();
-    }, 400);
-    return () => clearTimeout(debounceTimeout.current);
-  }, [searchValue, userPage, pageLimit, updated, fetchUsers]);
+    fetchUsers();
+  }, [fetchUsers]);
 
-  let tableContent;
-  if (isLoading) {
-    tableContent = <TableSkeleton />;
-  } else if (users.data.length < 1) {
-    tableContent = (
-      <tbody>
-        <tr>
-          <td colSpan="12">
-            <div className="flex justify-center items-center h-[300px] w-full">
-              <div className="flex flex-col">
-                <FontAwesomeIcon icon={faTable} size="2xl" />
-                <p className="text-[#ADADAD] text-sm mt-5">No Users yet</p>
-              </div>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    );
-  } else {
-    tableContent = (
-      <tbody>
-        {users.data.map((user, index) => (
-          <UserTableItem user={user} key={index} setUpdated={setUpdated} />
-        ))}
-      </tbody>
-    );
-  }
-
-  useEffect(() => {
-    if (!token) {
-      navigate("/login");
-    }
-  }, [token, navigate]);
+  useEffect(
+    () => () => {
+      clearTimeout(searchTimeout.current);
+    },
+    [],
+  );
 
   return (
-    <div className="grid grid-cols-1 gap-6 mt-8 w-full">
-      <div className="flex flex-row justify-between items-center gap-5">
-        <p className="text-black text-[25px] font-bold leading-normal tracking-[0.5px]">
-          Users List
-        </p>
-        <div className="flex flex-row items-center gap-2">
-          <Link to="/">
-            <p className="text-[#6E6E6E] font-roboto text-[13px] font-normal leading-normal tracking-[0.26px]">
-              Dashboard
-            </p>
-          </Link>
-          <p>
-            <FontAwesomeIcon
-              icon={faChevronRight}
-              size="sm"
-              className="pt-1 h-3 text-[#6E6E6E]"
+    <div className="space-y-4 text-[#101828]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h1 className="text-lg font-semibold">Customers</h1>
+          <p className="mt-1 text-xs font-medium text-[#667085]">Manage and monitor all your customers</p>
+        </div>
+        <div className="flex flex-col gap-3 sm:items-end">
+          <div className="flex items-center gap-2 text-xs text-[#667085]">
+            <Link to="/" className="hover:text-[#008f45]">Dashboard</Link>
+            <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+            <span className="font-semibold text-[#008f45]">Customers</span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => toast.info("Add customer flow is not connected yet.")}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-[#008f45] px-4 text-xs font-semibold text-white shadow-[0_8px_16px_rgba(0,143,69,0.18)]"
+            >
+              <FontAwesomeIcon icon={faPlus} />
+              Add Customer
+            </button>
+            <button
+              type="button"
+              onClick={exportCustomers}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-4 text-xs font-semibold text-[#344054] shadow-sm"
+            >
+              <FontAwesomeIcon icon={faDownload} />
+              Export
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Total Customers" value={totalItems} note="12.5% from last month" icon={faUsers} />
+        <MetricCard label="Verified Customers" value={verifiedCount} note="8.3% from last month" icon={faShieldHalved} tone="blue" />
+        <MetricCard label="Unverified Customers" value={unverifiedCount} note="4.2% from last month" icon={faUserPlus} tone="yellow" down />
+        <MetricCard label="New This Month" value={newThisMonth} note="15.7% from last month" icon={faUser} tone="purple" />
+      </section>
+
+      <section className="rounded-lg border border-[#e5e7eb] bg-white p-4 shadow-[0_8px_24px_rgba(16,24,40,0.04)]">
+        <div className="grid gap-3 xl:grid-cols-[1.6fr_1fr_1fr_1fr_1.2fr]">
+          <label className="relative">
+            <FontAwesomeIcon icon={faMagnifyingGlass} className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#667085]" />
+            <input
+              value={searchInput}
+              onChange={handleSearchChange}
+              placeholder="Search by name, email or phone..."
+              className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white pl-9 pr-3 text-xs text-[#101828] outline-none focus:border-[#008f45] focus:ring-2 focus:ring-[#dff4e5]"
             />
+          </label>
+
+          <label>
+            <span className="mb-1 block text-[11px] font-semibold text-[#667085]">Verification Status</span>
+            <select value={verificationFilter} onChange={(event) => setVerificationFilter(event.target.value)} className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-xs outline-none focus:border-[#008f45]">
+              {verificationOptions.map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-1 block text-[11px] font-semibold text-[#667085]">Location</span>
+            <select value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)} className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-xs outline-none focus:border-[#008f45]">
+              {locationOptions.map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-1 block text-[11px] font-semibold text-[#667085]">Gender</span>
+            <select value={genderFilter} onChange={(event) => setGenderFilter(event.target.value)} className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-xs outline-none focus:border-[#008f45]">
+              {genderOptions.map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-1 block text-[11px] font-semibold text-[#667085]">Date Range</span>
+            <div className="relative">
+              <FontAwesomeIcon icon={faCalendarDays} className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#667085]" />
+              <select value={dateRange} onChange={(event) => setDateRange(event.target.value)} className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white pl-9 pr-3 text-xs outline-none focus:border-[#008f45]">
+                {dateRangeOptions.map((option) => <option key={option}>{option}</option>)}
+              </select>
+            </div>
+          </label>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-xs text-[#344054]">
+            <span>Show</span>
+            <select
+              value={pageLimit}
+              onChange={(event) => {
+                setPageLimit(Number(event.target.value));
+                setUserPage(1);
+              }}
+              className="h-9 rounded-md border border-[#d0d5dd] bg-white px-3 text-xs outline-none focus:border-[#008f45]"
+            >
+              {pageSizeOptions.map((size) => <option key={size}>{size}</option>)}
+            </select>
+            <span>entries</span>
+          </div>
+
+          <div className="flex gap-2">
+            <button type="button" onClick={clearFilters} className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-4 text-xs font-semibold text-[#344054]">
+              <FontAwesomeIcon icon={faRotateLeft} />
+              Clear Filters
+            </button>
+            <button type="button" className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-[#006b3a] px-5 text-xs font-semibold text-white">
+              <FontAwesomeIcon icon={faFilter} />
+              Filter
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 overflow-hidden rounded-lg border border-[#e5e7eb]">
+          <div className="w-full overflow-x-auto">
+            <table className="min-w-[1100px] w-full text-left">
+              <thead className="border-b border-[#e5e7eb] bg-[#fbfcfd]">
+                <tr>
+                  {["Customer", "Email", "Gender", "Phone", "Location", "Verification", "Joined", "Action"].map((heading) => (
+                    <th key={heading} className="px-4 py-3 text-[9px] font-semibold uppercase tracking-[0.02em] text-[#667085]">
+                      {heading}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#eef2f6]">
+                {isLoading ? (
+                  <TableRowsSkeleton rows={6} columns={8} />
+                ) : filteredUsers.length < 1 ? (
+                  <tr>
+                    <td colSpan="8">
+                      <div className="flex h-64 flex-col items-center justify-center">
+                        <img src={assets.empty_table} alt="" className="h-24 w-24 object-contain opacity-70" />
+                        <p className="mt-4 text-xs text-[#98a2b3]">No customers found</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((user, index) => {
+                    const name = getDisplayName(user);
+                    const [date, time] = formatJoinedDate(user.createdAt);
+                    const gender = user.gender || "N/A";
+                    return (
+                      <tr key={user.id || user.email || index} className="hover:bg-[#f9fafb]">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#dcf8e4] text-xs font-semibold text-[#008f45]">
+                              {getInitials(name)}
+                            </span>
+                            <div>
+                              <p className="text-xs font-semibold text-[#101828]">{name}</p>
+                              <p className="mt-0.5 text-[11px] text-[#667085]">{getCustomerCode(user, index)}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-[#475467]">{user.email || "N/A"}</td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-2 text-xs text-[#475467]">
+                            {String(gender).toLowerCase() === "female" ? (
+                              <FontAwesomeIcon icon={faVenus} className="text-[#ef3f7a]" />
+                            ) : (
+                              <FontAwesomeIcon icon={faMars} className="text-[#1f7ae0]" />
+                            )}
+                            {gender}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-2 text-xs text-[#475467]">
+                            <FontAwesomeIcon icon={faPhone} className="text-[#008f45]" />
+                            {user.phone || "N/A"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-2 text-xs text-[#475467]">
+                            <FontAwesomeIcon icon={faLocationDot} className="text-[#008f45]" />
+                            {getLocation(user)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex min-w-[88px] justify-center rounded-full px-3 py-1 text-[11px] font-semibold ${user.isVerified ? "bg-[#dcf8e4] text-[#008f45]" : "bg-[#ffe4e6] text-[#ef3340]"}`}>
+                            {user.isVerified ? "Verified" : "Not Verified"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-start gap-2 text-xs text-[#475467]">
+                            <FontAwesomeIcon icon={faCalendarDays} className="mt-0.5 text-[#667085]" />
+                            <div>
+                              <p>{date}</p>
+                              <p className="mt-0.5 text-[11px] text-[#667085]">{time}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button type="button" className="grid h-8 w-8 place-items-center rounded-md border border-[#e5e7eb] text-[#667085] hover:bg-[#f8fafc]">
+                            <FontAwesomeIcon icon={faEllipsisVertical} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 px-1 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-[#667085]">
+            Showing {shownFrom} to {shownTo} of {totalItems} entries
           </p>
-          <Link to="/users">
-            <p className="text-[#6E6E6E] font-roboto text-[13px] font-normal leading-normal tracking-[0.26px]">
-              Users List
-            </p>
-          </Link>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-[12px] shadow-[0px_0px_10px_0px_#EDEDED] mt-5 p-4">
-        <div className="flex flex-row justify-between items-center py-3">
-          <div className="flex flex-row items-start gap-2">
-            <img src={assets.tip_icon} alt="" />
-            <p className="text-[#6E6E6E] font-roboto text-[15px] font-normal leading-normal">
-              Tip search by User ID: Each product is provided with a unique ID,
-              which you can rely on to find the exact product you need.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-row justify-start items-center py-3">
-          <div className="flex flex-row items-start gap-2">
-            <p className="text-sm p-1.5 text-gray-500">showing</p>
-            <Menu>
-              <MenuButton className="flex flex-row items-center gap-2 border border-gray-500 cursor-pointer py-1.5 px-3 rounded-md">
-                <p className="text-sm">{pageLimit}</p>
-                <img src={assets.dropdown_icon} alt="" />
-              </MenuButton>
-              <MenuItems anchor="bottom" className="bg-white py-2 px-4">
-                <MenuItem
-                  onClick={() => setPageLimit(10)}
-                  className="cursor-pointer"
-                >
-                  <p className="text-sm text-center text-gray-500 py-3">10</p>
-                </MenuItem>
-
-                <MenuItem
-                  onClick={() => setPageLimit(20)}
-                  className="cursor-pointer"
-                >
-                  <p className="text-sm text-center text-gray-500  py-3">20</p>
-                </MenuItem>
-
-                <MenuItem
-                  onClick={() => setPageLimit(30)}
-                  className="cursor-pointer"
-                >
-                  <p className="text-sm text-center text-gray-500  py-3">30</p>
-                </MenuItem>
-
-                <MenuItem
-                  onClick={() => setPageLimit(40)}
-                  className="cursor-pointer"
-                >
-                  <p className="text-sm text-center text-gray-500  py-3">40</p>
-                </MenuItem>
-
-                <MenuItem
-                  onClick={() => setPageLimit(50)}
-                  className="cursor-pointer"
-                >
-                  <p className="text-sm text-center text-gray-500  py-3">50</p>
-                </MenuItem>
-              </MenuItems>
-            </Menu>
-            <p className="text-sm p-1.5 text-gray-500">entries</p>
-            <div className="">
-              <div className="flex items-center rounded-full bg-white pl-3 outline-1 -outline-offset-1 outline-gray-300 has-[input:focus-within]:outline-2 has-[input:focus-within]:-outline-offset-2 has-[input:focus-within]:outline-indigo-600 border border-gray-500">
-                <input
-                  id="price"
-                  name="price"
-                  type="text"
-                  placeholder="Search here..."
-                  value={searchValue}
-                  onChange={handleSearchChange}
-                  className="block w-full py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
-                />
-                <div className="grid shrink-0 grid-cols-1 focus-within:relative cursor-pointer">
-                  <img
-                    src={assets.search_icon}
-                    className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                    alt=""
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="w-full overflow-y-scroll">
-          <table className="w-full table-fixed divide-y divide-gray-200 border-b border-gray-500 pb-20 overflow-x-auto">
-            <thead className="bg-gray-50 my-2">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[8rem] max-w-[10rem] truncate"
-                >
-                  User
-                </th>
-                <th
-                  scope="col"
-                  className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[14rem] max-w-[16rem] truncate"
-                >
-                  Email
-                </th>
-                <th
-                  scope="col"
-                  className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[6rem] max-w-[8rem] truncate"
-                >
-                  Gender
-                </th>
-                <th
-                  scope="col"
-                  className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[10rem] max-w-[12rem] truncate"
-                >
-                  Phone
-                </th>
-                <th
-                  scope="col"
-                  className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[12rem] max-w-[14rem] truncate"
-                >
-                  Location
-                </th>
-                <th
-                  scope="col"
-                  className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[8rem] max-w-[10rem] truncate"
-                >
-                  IsVerified
-                </th>
-                <th
-                  scope="col"
-                  className="px-2 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[10rem] max-w-[12rem] truncate"
-                >
-                  CreatedAt
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[8rem] max-w-[10rem] truncate"
-                >
-                  Action
-                </th>
-              </tr>
-            </thead>
-            {tableContent}
-          </table>
-        </div>
-
-        {users.meta && (
-          <div className="flex flex-row text-center justify-between my-5">
-            <p className="text-sm text-gray-500">
-              Showing {users.meta.currentPage} to {users.meta.totalPages} of{" "}
-              {users.meta.totalItems} entries
-            </p>
-
-            <div className="flex flex-row">
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1} className="grid h-8 w-8 place-items-center rounded-md border border-[#d0d5dd] text-xs text-[#667085] disabled:cursor-not-allowed disabled:opacity-50">
+              <FontAwesomeIcon icon={faChevronLeft} />
+            </button>
+            {[1, 2, 3].filter((page) => page <= totalPages).map((page) => (
               <button
-                className={`flex flex-row px-3 py-1 mx-1 border font-normal rounded-full ${
-                  Number(users.meta.currentPage) === 1
-                    ? " bg-[#D5D5D5] text-white cursor-not-allowed"
-                    : "bg-white "
-                }`}
-                onClick={() =>
-                  handlePageChange(Number(users.meta.currentPage) - 1)
-                }
-                disabled={Number(users.meta.currentPage) === 1}
+                key={page}
+                type="button"
+                onClick={() => handlePageChange(page)}
+                className={`h-8 min-w-8 rounded-md px-2.5 text-xs font-semibold ${currentPage === page ? "bg-[#008f45] text-white" : "border border-[#e5e7eb] text-[#344054]"}`}
               >
-                <FontAwesomeIcon
-                  icon={faChevronLeft}
-                  size="5rem"
-                  className="py-1"
-                />
+                {page}
               </button>
-              {[...Array(users.meta.totalPages)].map((_, index) => (
-                <button
-                  key={index}
-                  className={`px-3 py-1 mx-1 border rounded-full ${
-                    Number(users.meta.currentPage) === index + 1
-                      ? "bg-[#F96767] text-white"
-                      : "bg-white"
-                  }`}
-                  onClick={() => handlePageChange(index + 1)}
-                >
-                  {index + 1}
-                </button>
-              ))}
-              <button
-                className={`flex flex-row  px-3 p-1 mx-1 border font-normal rounded-full ${
-                  Number(users.meta.currentPage) === users.meta.totalPages
-                    ? "bg-[#D5D5D5] text-white cursor-not-allowed "
-                    : "bg-white"
-                }`}
-                onClick={() =>
-                  handlePageChange(Number(users.meta.currentPage) + 1)
-                }
-                disabled={
-                  Number(users.meta.currentPage) === users.meta.totalPages
-                }
-              >
-                <FontAwesomeIcon
-                  icon={faChevronRight}
-                  size="5rem"
-                  className="py-1"
-                />
+            ))}
+            {totalPages > 4 && <span className="px-2 text-xs text-[#667085]">...</span>}
+            {totalPages > 3 && (
+              <button type="button" onClick={() => handlePageChange(totalPages)} className={`h-8 min-w-8 rounded-md px-2.5 text-xs font-semibold ${currentPage === totalPages ? "bg-[#008f45] text-white" : "border border-[#e5e7eb] text-[#344054]"}`}>
+                {totalPages}
               </button>
-            </div>
+            )}
+            <button type="button" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages} className="grid h-8 w-8 place-items-center rounded-md border border-[#d0d5dd] text-xs text-[#667085] disabled:cursor-not-allowed disabled:opacity-50">
+              <FontAwesomeIcon icon={faChevronRight} />
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      </section>
     </div>
   );
 };

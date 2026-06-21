@@ -1,716 +1,189 @@
 import {
-  faBook,
+  faBriefcase,
+  faBox,
+  faChartLine,
   faChartSimple,
+  faCircleQuestion,
+  faGear,
+  faHouse,
   faLandmark,
-  faMoneyCheck,
+  faListCheck,
+  faNewspaper,
+  faPlus,
+  faReceipt,
+  faRobot,
+  faStore,
+  faTruckFast,
+  faUsers,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useMemo } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { assets } from "../assets/assets";
-import { Link } from "react-router-dom";
+import { ACTIONS, RESOURCES } from "../constants/permissions";
 import { ShopContext } from "../context/ShopContext";
-import { RESOURCES, ACTIONS } from "../constants/permissions";
 import { usePermission } from "./Hooks/usePermission";
 
-const SideBar = () => {
-  // eslint-disable-next-line no-unused-vars
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [openSubmenu, setOpenSubmenu] = useState(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-
-  const { sidebarVisible, toggleSidebar } = useContext(ShopContext);
-  const { hasPermission, isAdmin } = usePermission();
-
-  // Check if mobile on resize
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  // Close sidebar on route change (mobile only)
-  useEffect(() => {
-    if (isMobile && sidebarVisible) {
-      // Use a small timeout to ensure navigation happens first
-      setTimeout(() => {
-        toggleSidebar();
-      }, 100);
-    }
-  }, [location.pathname]); // Trigger when route changes
-
-  const toggleSubmenu = (menu) => {
-    setOpenSubmenu(openSubmenu === menu ? null : menu);
-  };
-
-  // Handle link click - close sidebar and set active tab
-  const handleLinkClick = (tabName) => {
-    console.log("closing tab: ", tabName);
-    setActiveTab(tabName);
-    // Close sidebar on mobile after selecting an option
-    if (window.innerWidth < 768) {
-      toggleSidebar();
-    }
-  };
-
-  // Permission check helpers
-  const canViewDashboard =
-    isAdmin || hasPermission(RESOURCES.DASHBOARD, ACTIONS.READ);
-  const canViewEcommerce =
-    isAdmin ||
-    hasPermission(RESOURCES.PRODUCTS, ACTIONS.READ) ||
-    hasPermission(RESOURCES.PRODUCTS, ACTIONS.CREATE);
-  const canViewProducts =
-    isAdmin || hasPermission(RESOURCES.PRODUCTS, ACTIONS.READ);
-  const canAddProducts =
-    isAdmin || hasPermission(RESOURCES.PRODUCTS, ACTIONS.CREATE);
-
-  const canViewCategories =
-    isAdmin ||
-    hasPermission(RESOURCES.CATEGORIES, ACTIONS.READ) ||
-    hasPermission(RESOURCES.CATEGORIES, ACTIONS.CREATE);
-  const canAddCategories =
-    isAdmin || hasPermission(RESOURCES.CATEGORIES, ACTIONS.CREATE);
-  const canManageCategories =
-    isAdmin || hasPermission(RESOURCES.CATEGORIES, ACTIONS.UPDATE);
-
-  const canViewCreditFacility =
-    isAdmin ||
-    hasPermission(RESOURCES.CREDIT_FACILITY, ACTIONS.READ) ||
-    hasPermission(RESOURCES.CREDIT_FACILITY, ACTIONS.MANAGE);
-  const canViewCreditRequests =
-    isAdmin || hasPermission(RESOURCES.CREDIT_FACILITY, ACTIONS.READ);
-
-  const canViewOrders =
-    isAdmin || hasPermission(RESOURCES.ORDERS, ACTIONS.READ);
-  const canViewCarts = isAdmin || hasPermission(RESOURCES.CARTS, ACTIONS.READ);
-  const canViewPayments =
-    isAdmin || hasPermission(RESOURCES.PAYMENTS, ACTIONS.READ);
-
-  const canViewAdmins =
-    isAdmin ||
-    // hasPermission(RESOURCES.ADMINS, ACTIONS.READ) ||
-    hasPermission(RESOURCES.ADMINS, ACTIONS.CREATE);
-  const canListAdmins =
-    isAdmin || hasPermission(RESOURCES.ADMINS, ACTIONS.READ);
-  const canInviteAdmins =
-    isAdmin || hasPermission(RESOURCES.ADMINS, ACTIONS.CREATE);
-
-  const canViewUsers = isAdmin || hasPermission(RESOURCES.USERS, ACTIONS.READ);
-
-  const canViewRoles =
-    isAdmin ||
-    hasPermission(RESOURCES.ROLES, ACTIONS.READ) ||
-    hasPermission(RESOURCES.ROLES, ACTIONS.CREATE);
-  const canListRoles = isAdmin || hasPermission(RESOURCES.ROLES, ACTIONS.READ);
-  const canAddRoles = isAdmin || hasPermission(RESOURCES.ROLES, ACTIONS.CREATE);
-
-  const canViewBlog =
-    isAdmin ||
-    hasPermission(RESOURCES.BLOG_POSTS, ACTIONS.READ) ||
-    hasPermission(RESOURCES.BLOG_POSTS, ACTIONS.CREATE);
-  const canListPosts =
-    isAdmin || hasPermission(RESOURCES.BLOG_POSTS, ACTIONS.READ);
-  const canCreatePosts =
-    isAdmin || hasPermission(RESOURCES.BLOG_POSTS, ACTIONS.CREATE);
-
-  const canViewSupplyChain =
-    isAdmin ||
-    hasPermission(RESOURCES.SUPPLY_CHAIN, ACTIONS.READ) ||
-    hasPermission(RESOURCES.DRIVERS, ACTIONS.READ) ||
-    hasPermission(RESOURCES.SHIPMENTS, ACTIONS.READ);
-  const canViewDrivers =
-    isAdmin || hasPermission(RESOURCES.DRIVERS, ACTIONS.READ);
-  const canViewShipments =
-    isAdmin || hasPermission(RESOURCES.SHIPMENTS, ACTIONS.READ);
-
-  const canViewReports =
-    isAdmin || hasPermission(RESOURCES.REPORTS, ACTIONS.READ);
-
-  const canViewLocation =
-    isAdmin ||
-    hasPermission(RESOURCES.LOCATIONS, ACTIONS.READ) ||
-    hasPermission(RESOURCES.COUNTRIES, ACTIONS.READ) ||
-    hasPermission(RESOURCES.STATES, ACTIONS.READ) ||
-    hasPermission(RESOURCES.CITIES, ACTIONS.READ);
-  const canViewCountries =
-    isAdmin || hasPermission(RESOURCES.COUNTRIES, ACTIONS.READ);
-
-  const canViewSettings =
-    isAdmin || hasPermission(RESOURCES.SETTINGS, ACTIONS.READ);
-
-  // Check if user has any visible menu items
-  const hasAnyMenuItems =
-    canViewDashboard ||
-    canViewEcommerce ||
-    canViewCategories ||
-    canViewCreditFacility ||
-    canViewOrders ||
-    canViewCarts ||
-    canViewPayments ||
-    canViewAdmins ||
-    canViewUsers ||
-    canViewRoles ||
-    canViewBlog ||
-    canViewSupplyChain ||
-    canViewReports ||
-    canViewLocation ||
-    canViewSettings;
-
-  if (!hasAnyMenuItems) {
-    return (
-      <div
-        className={`fixed inset-0 z-30 md:relative md:inset-auto md:flex flex-col w-64 bg-white transition-transform transform ${
-          sidebarVisible
-            ? "translate-x-0"
-            : "-translate-x-full md:translate-x-0"
-        }`}
-      >
-        <div className="flex flex-col flex-1 overflow-y-auto">
-          <nav className="flex flex-col flex-1 overflow-y-auto px-2 py-2 gap-1">
-            <div className="flex flex-row justify-between border-b border-gray-300 pb-3 h-20">
-              <img src={assets.agrofount_logo} className="w-32 px-4" alt="" />
-              <div
-                onClick={toggleSidebar}
-                className="flex md:hidden cursor-pointer"
-              >
-                <FontAwesomeIcon
-                  icon={faXmark}
-                  size="2x"
-                  className="py-4 pr-4 text-cursor-pointer"
-                />
-              </div>
-            </div>
-            <div className="flex justify-center items-center h-64">
-              <p className="text-gray-400 text-center px-4">
-                You don`&apos;`t have permission to view any menu items
-              </p>
-            </div>
-          </nav>
-        </div>
-      </div>
-    );
-  }
+const NavLink = ({ to, icon, label, badge, end = false, onClick }) => {
+  const location = useLocation();
+  const active =
+    to === "/"
+      ? location.pathname === "/" && label === "Dashboard"
+      : location.pathname === to || (!end && location.pathname.startsWith(`${to}/`));
 
   return (
-    <div
-      className={`fixed inset-0 z-30 md:relative md:inset-auto md:flex flex-col w-64 bg-white transition-transform transform ${
-        sidebarVisible ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+    <Link
+      to={to}
+      onClick={onClick}
+      className={`flex h-9 items-center gap-3 rounded-md px-3 text-[12px] font-medium transition ${
+        active
+          ? "bg-white/15 text-white shadow-[inset_3px_0_0_rgba(255,255,255,0.5)]"
+          : "text-white/90 hover:bg-white/10"
       }`}
     >
-      <div className="flex flex-col flex-1 overflow-y-auto">
-        <nav className="flex flex-col flex-1 overflow-y-auto px-2 py-2 gap-1">
-          <div className="flex flex-row justify-between border-b border-gray-300 pb-3 h-20">
-            <img src={assets.agrofount_logo} className="w-32 px-4" alt="" />
-            <div
-              onClick={toggleSidebar}
-              className="flex md:hidden cursor-pointer"
-            >
-              <FontAwesomeIcon
-                icon={faXmark}
-                size="2x"
-                className="py-4 pr-4 text-cursor-pointer"
-              />
-            </div>
-          </div>
+      <FontAwesomeIcon icon={icon} className="w-4 text-white/95" />
+      <span className="flex-1">{label}</span>
+      {badge && (
+        <span className="rounded-full bg-[#2bc06b] px-2 py-0.5 text-[10px] text-white">
+          {badge}
+        </span>
+      )}
+    </Link>
+  );
+};
 
-          {/* MAIN HOME Section */}
-          <p className="text-[#ADADAD] font-roboto text-[13px] font-extrabold leading-normal p-4">
-            MAIN HOME
-          </p>
+const Section = ({ title, children }) => (
+  <div className="mt-4">
+    <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wide text-white/75">
+      {title}
+    </p>
+    <div className="space-y-1">{children}</div>
+  </div>
+);
 
-          {/* Dashboard */}
-          {canViewDashboard && (
-            <div>
-              <Link
-                to="/"
-                className="flex justify-start items-center px-4 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                onClick={() => handleLinkClick("dashboard")}
-              >
-                <div className="flex">
-                  <img
-                    src={assets.dashboard_icon}
-                    className="w-5 h-5 p-0.5"
-                    alt=""
-                  />
-                  <span className="px-3 text-sm font-medium">Dashboard</span>
-                </div>
-              </Link>
-            </div>
+const SideBar = () => {
+  const { sidebarVisible, closeSidebar } = useContext(ShopContext);
+  const { hasPermission, isAdmin } = usePermission();
+
+  const can = useMemo(
+    () => ({
+      dashboard: isAdmin || hasPermission(RESOURCES.DASHBOARD, ACTIONS.READ),
+      products:
+        isAdmin ||
+        hasPermission(RESOURCES.PRODUCTS, ACTIONS.READ) ||
+        hasPermission(RESOURCES.PRODUCT_LOCATIONS, ACTIONS.READ),
+      orders: isAdmin || hasPermission(RESOURCES.ORDERS, ACTIONS.READ),
+      users: isAdmin || hasPermission(RESOURCES.USERS, ACTIONS.READ),
+      payments: isAdmin || hasPermission(RESOURCES.PAYMENTS, ACTIONS.READ),
+      reports: isAdmin || hasPermission(RESOURCES.REPORTS, ACTIONS.READ),
+      suppliers: isAdmin || hasPermission(RESOURCES.SUPPLIERS, ACTIONS.READ),
+      creditFacility:
+        isAdmin ||
+        hasPermission(RESOURCES.CREDIT_FACILITY, ACTIONS.READ) ||
+        hasPermission(RESOURCES.CREDIT_FACILITY, ACTIONS.MANAGE),
+      supply:
+        isAdmin ||
+        hasPermission(RESOURCES.SUPPLY_CHAIN, ACTIONS.READ) ||
+        hasPermission(RESOURCES.DRIVERS, ACTIONS.READ),
+      careers: isAdmin || hasPermission(RESOURCES.CAREERS, ACTIONS.READ),
+      blog: isAdmin || hasPermission(RESOURCES.BLOG_POSTS, ACTIONS.READ),
+      roles:
+        isAdmin ||
+        hasPermission(RESOURCES.USERS, ACTIONS.READ) ||
+        hasPermission(RESOURCES.ROLES, ACTIONS.READ),
+    }),
+    [hasPermission, isAdmin]
+  );
+
+  const closeOnMobile = () => {
+    if (window.innerWidth < 768) closeSidebar();
+  };
+
+  return (
+    <>
+      {sidebarVisible && (
+        <button
+          type="button"
+          aria-label="Close sidebar backdrop"
+          onClick={closeSidebar}
+          className="fixed inset-0 z-20 bg-black/35 md:hidden"
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-30 flex w-[260px] flex-col bg-gradient-to-b from-[#006638] via-[#006235] to-[#004e2b] px-3 py-4 text-white shadow-2xl transition-transform duration-200 ease-out md:sticky md:top-0 md:h-screen ${
+          sidebarVisible ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+      >
+        <div className="mb-5 flex items-center justify-between px-2">
+          <img src={assets.agrofount_logo} className="w-32" alt="Agrofount" />
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            onClick={closeSidebar}
+            className="grid h-9 w-9 place-items-center rounded-md text-white/90 hover:bg-white/10 md:hidden"
+          >
+            <FontAwesomeIcon icon={faXmark} />
+          </button>
+        </div>
+
+        <nav className="min-h-0 flex-1 overflow-y-auto pr-1">
+          <Section title="Main">
+            {can.dashboard && (
+              <NavLink to="/" icon={faHouse} label="Dashboard" onClick={closeOnMobile} />
+            )}
+            {can.orders && <NavLink to="/orders" icon={faReceipt} label="Orders" onClick={closeOnMobile} />}
+            {can.products && <NavLink to="/list-products" icon={faStore} label="Products" onClick={closeOnMobile} />}
+            {can.users && <NavLink to="/users" icon={faUsers} label="Customers" onClick={closeOnMobile} />}
+            {can.payments && <NavLink to="/payments" icon={faBriefcase} label="Payments" onClick={closeOnMobile} />}
+              {can.reports && <NavLink to="/" icon={faChartSimple} label="Reports" onClick={closeOnMobile} />}
+          </Section>
+
+          <Section title="Reports">
+            <NavLink to="/sales-reports" icon={faChartLine} label="Sales Reports" onClick={closeOnMobile} />
+            <NavLink to="/customer-reports" icon={faUsers} label="Customer Reports" onClick={closeOnMobile} />
+            <NavLink to="/inventory-reports" icon={faBox} label="Inventory Reports" onClick={closeOnMobile} />
+            <NavLink to="/career-reports" icon={faBriefcase} label="Career Reports" onClick={closeOnMobile} />
+            <NavLink to="/ayo-ai" icon={faRobot} label="Ayo AI Analytics" badge="New" onClick={closeOnMobile} />
+          </Section>
+
+          <Section title="Inventory & Operations">
+            {can.suppliers && <NavLink to="/suppliers" icon={faBriefcase} label="Suppliers" onClick={closeOnMobile} />}
+            {can.creditFacility && <NavLink to="/facility/requests" icon={faLandmark} label="Credit Facility" onClick={closeOnMobile} />}
+            {can.supply && <NavLink to="/supply-chain/drivers" icon={faTruckFast} label="Supply Chain" onClick={closeOnMobile} />}
+          </Section>
+
+          {can.careers && (
+            <Section title="Career">
+              <NavLink to="/careers" icon={faBriefcase} label="Careers Overview" badge="New" end onClick={closeOnMobile} />
+              <NavLink to="/careers/jobs" icon={faListCheck} label="Job Openings" onClick={closeOnMobile} />
+              <NavLink to="/careers/applications" icon={faUsers} label="Applications" onClick={closeOnMobile} />
+              <NavLink to="/careers/create" icon={faPlus} label="Create Job" onClick={closeOnMobile} />
+            </Section>
           )}
 
-          {/* ALL PAGE Section */}
-          <p className="text-[#ADADAD] font-roboto text-[13px] font-extrabold leading-normal p-4">
-            ALL PAGE
-          </p>
+          <Section title="Content">
+            {can.blog && <NavLink to="/blogs" icon={faNewspaper} label="Blog" onClick={closeOnMobile} />}
+          </Section>
 
-          <div className="flex flex-col gap-2">
-            {/* Ecommerce Section */}
-            {canViewEcommerce && (
-              <div>
-                <div
-                  className="flex justify-between items-center px-4 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                  onClick={() => toggleSubmenu("ecommerce")}
-                >
-                  <div className="flex">
-                    <img src={assets.ecommerce_icon} alt="" />
-                    <span className="px-3 text-sm font-medium">Ecommerce</span>
-                  </div>
-                  <img
-                    src={assets.dropdown_icon}
-                    alt="Dropdown Icon"
-                    className={`transition-transform ${
-                      openSubmenu === "ecommerce" ? "rotate-180" : ""
-                    }`}
-                  />
-                </div>
-
-                {openSubmenu === "ecommerce" && (
-                  <div className="pl-8">
-                    {canAddProducts && (
-                      <Link
-                        to="/add-products"
-                        className="flex items-center px-4 py-2 text-sm text-black hover:bg-gray-400 hover:bg-opacity-25"
-                        onClick={() => handleLinkClick("products")}
-                      >
-                        Add Products
-                      </Link>
-                    )}
-                    {canViewProducts && (
-                      <Link
-                        to="/list-products"
-                        className="flex items-center px-4 py-2 text-sm text-black hover:bg-gray-400 hover:bg-opacity-25"
-                        onClick={() => handleLinkClick("listProducts")}
-                      >
-                        List Products
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Category Section */}
-            {canViewCategories && (
-              <div>
-                <div
-                  className="flex justify-between items-center px-4 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                  onClick={() => toggleSubmenu("category")}
-                >
-                  <div className="flex">
-                    <img src={assets.category_icon} alt="" />
-                    <span className="px-3 text-sm font-medium">Category</span>
-                  </div>
-                  <img
-                    src={assets.dropdown_icon}
-                    alt="Dropdown Icon"
-                    className={`transition-transform ${
-                      openSubmenu === "category" ? "rotate-180" : ""
-                    }`}
-                  />
-                </div>
-                {openSubmenu === "category" && (
-                  <div className="pl-8">
-                    {canAddCategories && (
-                      <Link
-                        to="/add-category"
-                        className="flex items-center px-4 py-2 text-sm text-black hover:bg-gray-400 hover:bg-opacity-25"
-                        onClick={() => handleLinkClick("addCategory")}
-                      >
-                        Add Category
-                      </Link>
-                    )}
-                    {canManageCategories && (
-                      <Link
-                        to="/manage-categories"
-                        className="flex items-center px-4 py-2 text-sm text-black hover:bg-gray-400 hover:bg-opacity-25"
-                        onClick={() => handleLinkClick("manageCategories")}
-                      >
-                        Manage Categories
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Credit Facility Section */}
-            {canViewCreditFacility && (
-              <div>
-                <div
-                  className="flex justify-between items-center px-4 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                  onClick={() => toggleSubmenu("creditFacility")}
-                >
-                  <div className="flex">
-                    <FontAwesomeIcon icon={faLandmark} />
-                    <span className="px-3 text-sm font-medium">
-                      Credit Facility
-                    </span>
-                  </div>
-                  <img
-                    src={assets.dropdown_icon}
-                    alt="Dropdown Icon"
-                    className={`transition-transform ${
-                      openSubmenu === "creditFacility" ? "rotate-180" : ""
-                    }`}
-                  />
-                </div>
-                {openSubmenu === "creditFacility" && (
-                  <div className="pl-8">
-                    {canViewCreditRequests && (
-                      <Link
-                        to="/facility/requests"
-                        className="flex items-center px-4 py-2 gap-2 text-sm text-black hover:bg-gray-400 hover:bg-opacity-25"
-                        onClick={() =>
-                          handleLinkClick("creditFacilityRequests")
-                        }
-                      >
-                        <FontAwesomeIcon icon={faBook} />
-                        Requests
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Orders */}
-            {canViewOrders && (
-              <Link
-                to="/orders"
-                className="flex justify-between items-center px-4 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                onClick={() => handleLinkClick("orders")}
-              >
-                <div className="flex">
-                  <img src={assets.order_icon} alt="" />
-                  <span className="px-3 text-sm font-medium">Orders</span>
-                </div>
-              </Link>
-            )}
-
-            {/* Carts */}
-            {canViewCarts && (
-              <Link
-                to="/carts"
-                className="flex justify-between items-center px-4 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                onClick={() => handleLinkClick("carts")}
-              >
-                <div className="flex">
-                  <img src={assets.ecommerce_icon} alt="" />
-                  <span className="px-3 text-sm font-medium">Carts</span>
-                </div>
-              </Link>
-            )}
-
-            {/* Payments */}
-            {canViewPayments && (
-              <Link
-                to="/payments"
-                className="flex justify-between items-center px-4 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                onClick={() => handleLinkClick("payments")}
-              >
-                <div className="flex">
-                  <FontAwesomeIcon icon={faMoneyCheck} />
-                  <span className="px-3 text-sm font-medium">Payments</span>
-                </div>
-              </Link>
-            )}
-
-            {/* Admin Section */}
-            {canViewAdmins && (
-              <div>
-                <div
-                  className="flex justify-between items-center px-3 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                  onClick={() => toggleSubmenu("admin")}
-                >
-                  <div className="flex">
-                    <img src={assets.user_icon} alt="" />
-                    <span className="px-3 text-sm font-medium">Admin</span>
-                  </div>
-                  <img
-                    src={assets.dropdown_icon}
-                    alt="Dropdown Icon"
-                    className={`transition-transform ${
-                      openSubmenu === "admin" ? "rotate-180" : ""
-                    }`}
-                  />
-                </div>
-                {openSubmenu === "admin" && (
-                  <div className="pl-8">
-                    {canListAdmins && (
-                      <Link
-                        to="/admins"
-                        className="flex items-center px-4 py-2 text-sm text-black hover:bg-gray-400 hover:bg-opacity-25"
-                        onClick={() => handleLinkClick("ListAdmins")}
-                      >
-                        List Admins
-                      </Link>
-                    )}
-                    {canInviteAdmins && (
-                      <Link
-                        to="/admins/add"
-                        className="flex items-center px-4 py-2 text-sm text-black hover:bg-gray-400 hover:bg-opacity-25"
-                        onClick={() => handleLinkClick("InviteAdmin")}
-                      >
-                        Invite Admin
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Users */}
-            {canViewUsers && (
-              <Link
-                to="/users"
-                className="flex justify-between items-center px-3 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                onClick={() => handleLinkClick("users")}
-              >
-                <div className="flex">
-                  <img src={assets.user_icon} alt="" />
-                  <span className="px-3 text-sm font-medium">User</span>
-                </div>
-              </Link>
-            )}
-
-            {/* Roles Section */}
-            {canViewRoles && (
-              <div>
-                <div
-                  className="flex justify-between items-center px-3 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                  onClick={() => toggleSubmenu("role")}
-                >
-                  <div className="flex">
-                    <img src={assets.roles_icon} alt="" />
-                    <span className="px-3 text-sm font-medium">Roles</span>
-                  </div>
-                  <img
-                    src={assets.dropdown_icon}
-                    alt="Dropdown Icon"
-                    className={`transition-transform ${
-                      openSubmenu === "role" ? "rotate-180" : ""
-                    }`}
-                  />
-                </div>
-                {openSubmenu === "role" && (
-                  <div className="pl-8">
-                    {canListRoles && (
-                      <Link
-                        to="/roles"
-                        className="flex items-center px-4 py-2 text-sm text-black hover:bg-gray-400 hover:bg-opacity-25"
-                        onClick={() => handleLinkClick("ListRoles")}
-                      >
-                        List Roles
-                      </Link>
-                    )}
-                    {canAddRoles && (
-                      <Link
-                        to="/roles/add"
-                        className="flex items-center px-4 py-2 text-sm text-black hover:bg-gray-400 hover:bg-opacity-25"
-                        onClick={() => handleLinkClick("AddRoles")}
-                      >
-                        Add Roles
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Blog Section */}
-            {canViewBlog && (
-              <div>
-                <div
-                  className="flex justify-between items-center px-3 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                  onClick={() => toggleSubmenu("blog")}
-                >
-                  <div className="flex">
-                    <FontAwesomeIcon icon={faBook} />
-                    <span className="px-3 text-sm font-medium">Blog</span>
-                  </div>
-                  <img
-                    src={assets.dropdown_icon}
-                    alt="Dropdown Icon"
-                    className={`transition-transform ${
-                      openSubmenu === "blog" ? "rotate-180" : ""
-                    }`}
-                  />
-                </div>
-                {openSubmenu === "blog" && (
-                  <div className="pl-8">
-                    {canListPosts && (
-                      <Link
-                        to="/blogs"
-                        className="flex items-center px-4 py-2 text-sm text-black hover:bg-gray-400 hover:bg-opacity-25"
-                        onClick={() => handleLinkClick("ListPosts")}
-                      >
-                        List Posts
-                      </Link>
-                    )}
-                    {canCreatePosts && (
-                      <Link
-                        to="/blogs/add"
-                        className="flex items-center px-4 py-2 text-sm text-black hover:bg-gray-400 hover:bg-opacity-25"
-                        onClick={() => handleLinkClick("CreatePosts")}
-                      >
-                        Create Posts
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Supply Chain Section */}
-            {canViewSupplyChain && (
-              <div>
-                <div
-                  className="flex justify-between items-center px-3 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                  onClick={() => toggleSubmenu("supplyChain")}
-                >
-                  <div className="flex">
-                    <img src={assets.user_icon} alt="" />
-                    <span className="px-3 text-sm font-medium">
-                      Supply Chain
-                    </span>
-                  </div>
-                  <img
-                    src={assets.dropdown_icon}
-                    alt="Dropdown Icon"
-                    className={`transition-transform ${
-                      openSubmenu === "supplyChain" ? "rotate-180" : ""
-                    }`}
-                  />
-                </div>
-                {openSubmenu === "supplyChain" && (
-                  <div className="pl-8">
-                    {canViewDrivers && (
-                      <Link
-                        to="/supply-chain/drivers"
-                        className="flex items-center px-4 py-2 text-sm text-black hover:bg-gray-400 hover:bg-opacity-25"
-                        onClick={() => handleLinkClick("ListDrivers")}
-                      >
-                        Drivers
-                      </Link>
-                    )}
-                    {canViewShipments && (
-                      <Link
-                        to="/supply-chain/shipments"
-                        className="flex items-center px-4 py-2 text-sm text-black hover:bg-gray-400 hover:bg-opacity-25"
-                        onClick={() => handleLinkClick("ListShipments")}
-                      >
-                        Shipments
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Reports */}
-            {canViewReports && (
-              <Link
-                to="/reports"
-                className="flex justify-between items-center px-3 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-              >
-                <div className="flex">
-                  <FontAwesomeIcon icon={faChartSimple} />
-                  <span className="px-3 text-sm font-medium">Reports</span>
-                </div>
-                <img src={assets.dropdown_icon} alt="" />
-              </Link>
-            )}
-          </div>
-
-          {/* SETTINGS Section */}
-          {(canViewLocation || canViewSettings) && (
-            <>
-              <p className="text-[#ADADAD] font-roboto text-[13px] font-extrabold leading-normal p-4">
-                SETTINGS
-              </p>
-
-              <div className="flex flex-col flex-1 gap-2">
-                {/* Location Section */}
-                {canViewLocation && (
-                  <div>
-                    <div
-                      className="flex justify-between items-center px-3 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                      onClick={() => toggleSubmenu("location")}
-                    >
-                      <div className="flex">
-                        <img src={assets.location_icon} alt="" />
-                        <span className="px-3 text-sm font-medium">
-                          Location
-                        </span>
-                      </div>
-                      <img
-                        src={assets.dropdown_icon}
-                        alt="Dropdown Icon"
-                        className={`transition-transform ${
-                          openSubmenu === "location" ? "rotate-180" : ""
-                        }`}
-                      />
-                    </div>
-                    {openSubmenu === "location" && (
-                      <div className="pl-8">
-                        {canViewCountries && (
-                          <Link
-                            to="/countries"
-                            className="flex items-center px-4 py-2 text-sm text-black hover:bg-gray-400 hover:bg-opacity-25"
-                            onClick={() => handleLinkClick("country")}
-                          >
-                            Country
-                          </Link>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Settings */}
-                {canViewSettings && (
-                  <Link
-                    to="/settings"
-                    className="flex justify-start items-center px-3 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                  >
-                    <div className="flex">
-                      <img src={assets.settings_icon} alt="" />
-                      <span className="px-3 text-sm font-medium">Settings</span>
-                    </div>
-                  </Link>
-                )}
-
-                {/* Public/Always Visible Links */}
-                <a
-                  href="#"
-                  className="flex justify-start items-center px-3 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                >
-                  <div className="flex">
-                    <img src={assets.help_center_icon} alt="" />
-                    <span className="px-3 text-sm font-medium">
-                      Help Center
-                    </span>
-                  </div>
-                </a>
-                <a
-                  href="#"
-                  className="flex justify-start items-center px-3 py-3 text-black hover:bg-gray-400 hover:bg-opacity-25"
-                >
-                  <div className="flex">
-                    <img src={assets.faq_icon} alt="" />
-                    <span className="px-3 text-sm font-medium">FAQ</span>
-                  </div>
-                </a>
-              </div>
-            </>
-          )}
+          <Section title="Settings">
+            {can.roles && <NavLink to="/roles" icon={faUsers} label="Users & Roles" onClick={closeOnMobile} />}
+            <NavLink to="/settings" icon={faGear} label="Settings" onClick={closeOnMobile} />
+            <NavLink to="/" icon={faCircleQuestion} label="Help Center" onClick={closeOnMobile} />
+          </Section>
         </nav>
-      </div>
-    </div>
+
+        <Link
+          to="/"
+          onClick={closeOnMobile}
+          className="mt-4 flex items-center justify-center gap-2 rounded-md border border-white/25 bg-white/5 px-3 py-2.5 text-xs font-medium text-white"
+        >
+          <FontAwesomeIcon icon={faCircleQuestion} />
+          Need Help?
+        </Link>
+      </aside>
+    </>
   );
 };
 

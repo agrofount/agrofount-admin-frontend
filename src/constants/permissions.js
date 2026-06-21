@@ -41,6 +41,7 @@ export const RESOURCES = {
   FAQS: "faqs",
   TESTIMONIALS: "testimonials",
   BANNERS: "banners",
+  CAREERS: "careers",
 
   // Communication
   NOTIFICATIONS: "notifications",
@@ -326,6 +327,17 @@ export const PERMISSION_SETS = {
     {
       resource: RESOURCES.BANNERS,
       actions: [ACTIONS.CREATE, ACTIONS.READ, ACTIONS.UPDATE, ACTIONS.DELETE],
+    },
+    {
+      resource: RESOURCES.CAREERS,
+      actions: [
+        ACTIONS.CREATE,
+        ACTIONS.READ,
+        ACTIONS.UPDATE,
+        ACTIONS.DELETE,
+        ACTIONS.PUBLISH,
+        ACTIONS.ARCHIVE,
+      ],
     },
   ],
 

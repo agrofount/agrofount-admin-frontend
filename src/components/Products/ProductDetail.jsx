@@ -1,7 +1,6 @@
 import { useCallback, useContext, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ShopContext } from "../../context/ShopContext";
-import axios from "axios";
 import { toast } from "react-toastify";
 import { assets } from "../../assets/assets";
 import ProductDetailSkeleton from "../skeleton/ProductDetailSkeleton";
@@ -12,85 +11,82 @@ import {
   faEyeSlash,
   faLocationDot,
 } from "@fortawesome/free-solid-svg-icons";
-import DOMPurify from "dompurify";
+import { apiClient } from "../../lib/apiClient";
+import { sanitizeHtml } from "../../lib/sanitizeHtml";
+import { usePermission } from "../Hooks/usePermission";
+import { ACTIONS, RESOURCES } from "../../constants/permissions";
 
 const ProductDetail = () => {
   const { slug } = useParams();
-  const { currency, backend_url, token } = useContext(ShopContext);
+  const { currency } = useContext(ShopContext);
+  const { hasPermission, isAdmin } = usePermission();
   const [productData, setProductData] = useState(false);
   const [image, setImage] = useState("");
   const [isLoading, setIsLoading] = useState(true); // Add loading state
   const [publishing, setPublishing] = useState(false);
 
+  const canUpdateProduct =
+    isAdmin || hasPermission(RESOURCES.PRODUCTS, ACTIONS.UPDATE);
+
   const fetchProductData = useCallback(async () => {
     try {
-      const response = await axios.get(
-        `${backend_url}/product-location/${slug}`
-      );
+      const response = await apiClient.get(`/product-location/${slug}`);
       if (response.data) {
         setProductData(response.data);
         setImage(response.data.product.images[0]);
       } else {
-        console.log("error", response);
         toast.error(response.data.message);
       }
     } catch (error) {
-      console.log("error", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setIsLoading(false); // Set loading to false after fetching
     }
-  }, [backend_url, slug]);
+  }, [slug]);
 
   const handleOutOfStock = async () => {
+    if (!canUpdateProduct) {
+      toast.error("You do not have permission to update products.");
+      return;
+    }
+
     try {
       setPublishing(true);
-      const response = await axios.patch(
-        `${backend_url}/product-location/${slug}/out-of-stock`,
-        null,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const response = await apiClient.patch(
+        `/product-location/${slug}/out-of-stock`
       );
       if (response.status === 200 && response.data) {
         setProductData(response.data);
         toast.success("Product published successfully!");
       } else {
-        console.log("error", response);
         toast.error(response.data?.message || "An unexpected error occurred.");
       }
     } catch (error) {
-      console.log("error", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setPublishing(false); // Set loading to false after fetching
     }
   };
 
   const handlePublish = async () => {
+    if (!canUpdateProduct) {
+      toast.error("You do not have permission to update products.");
+      return;
+    }
+
     try {
       setPublishing(true);
-      const response = await axios.patch(
-        `${backend_url}/product-location/${slug}/publish`,
-        null,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const response = await apiClient.patch(
+        `/product-location/${slug}/publish`
       );
       if (response.status === 200 && response.data) {
         setProductData(response.data);
         toast.success("Product published successfully!");
       } else {
-        console.log("error", response);
         toast.error(response.data?.message || "An unexpected error occurred.");
       }
     } catch (error) {
-      console.log("error", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setPublishing(false); // Set loading to false after fetching
     }
@@ -131,64 +127,74 @@ const ProductDetail = () => {
                       {productData.product.name}
                     </p>
                     <div className="flex flex-row gap-2">
-                      <button
-                        className={`flex flex-row justify-center gap-2 ${
-                          productData.isDraft
-                            ? "bg-[#F96767] hover:bg-[#ae7979]"
-                            : "bg-[#61BF75] hover:bg-[#79ac85]"
-                        } text-white rounded-lg py-1.5 px-3`}
-                        onClick={handlePublish}
-                      >
-                        {publishing ? (
-                          <div className="flex items-center space-x-2">
-                            <div
-                              className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent align-[-0.125em] text-surface motion-reduce:animate-[spin_1.5s_linear_infinite] dark:text-white"
-                              role="status"
-                            >
-                              <span className="sr-only">Processing...</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="">
-                            <FontAwesomeIcon
-                              icon={!productData.isDraft ? faEye : faEyeSlash}
-                            />
-                          </p>
-                        )}
+                      {canUpdateProduct && (
+                        <>
+                          <button
+                            type="button"
+                            className={`flex flex-row justify-center gap-2 ${
+                              productData.isDraft
+                                ? "bg-[#F96767] hover:bg-[#ae7979]"
+                                : "bg-[#61BF75] hover:bg-[#79ac85]"
+                            } text-white rounded-lg py-1.5 px-3`}
+                            onClick={handlePublish}
+                            disabled={publishing}
+                          >
+                            {publishing ? (
+                              <div className="flex items-center space-x-2">
+                                <div
+                                  className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent align-[-0.125em] text-surface motion-reduce:animate-[spin_1.5s_linear_infinite] dark:text-white"
+                                  role="status"
+                                >
+                                  <span className="sr-only">Processing...</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <p>
+                                <FontAwesomeIcon
+                                  icon={
+                                    !productData.isDraft ? faEye : faEyeSlash
+                                  }
+                                />
+                              </p>
+                            )}
 
-                        {productData.isDraft ? "Publish" : "UnPublish"}
-                      </button>
-                      <button
-                        className={`flex flex-row justify-center gap-2 ${
-                          !productData.isAvailable
-                            ? "bg-[#F96767] hover:bg-[#ae7979]"
-                            : "bg-[#61BF75] hover:bg-[#79ac85]"
-                        } text-white rounded-lg py-1.5 px-3`}
-                        onClick={handleOutOfStock}
-                      >
-                        {publishing ? (
-                          <div className="flex items-center space-x-2">
-                            <div
-                              className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent align-[-0.125em] text-surface motion-reduce:animate-[spin_1.5s_linear_infinite] dark:text-white"
-                              role="status"
-                            >
-                              <span className="sr-only">Processing...</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="">
-                            <FontAwesomeIcon
-                              icon={
-                                productData.isAvailable ? faEye : faEyeSlash
-                              }
-                            />
-                          </p>
-                        )}
+                            {productData.isDraft ? "Publish" : "UnPublish"}
+                          </button>
+                          <button
+                            type="button"
+                            className={`flex flex-row justify-center gap-2 ${
+                              !productData.isAvailable
+                                ? "bg-[#F96767] hover:bg-[#ae7979]"
+                                : "bg-[#61BF75] hover:bg-[#79ac85]"
+                            } text-white rounded-lg py-1.5 px-3`}
+                            onClick={handleOutOfStock}
+                            disabled={publishing}
+                          >
+                            {publishing ? (
+                              <div className="flex items-center space-x-2">
+                                <div
+                                  className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent align-[-0.125em] text-surface motion-reduce:animate-[spin_1.5s_linear_infinite] dark:text-white"
+                                  role="status"
+                                >
+                                  <span className="sr-only">Processing...</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <p>
+                                <FontAwesomeIcon
+                                  icon={
+                                    productData.isAvailable ? faEye : faEyeSlash
+                                  }
+                                />
+                              </p>
+                            )}
 
-                        {productData.isAvailable
-                          ? "Out of Stock"
-                          : "Make Available"}
-                      </button>
+                            {productData.isAvailable
+                              ? "Out of Stock"
+                              : "Make Available"}
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -223,7 +229,7 @@ const ProductDetail = () => {
                   <div
                     className="mt-5 text-gray-500 md:w-4/5"
                     dangerouslySetInnerHTML={{
-                      __html: DOMPurify.sanitize(
+                      __html: sanitizeHtml(
                         productData.product.description.slice(0, 500) +
                           "...see more"
                       ),

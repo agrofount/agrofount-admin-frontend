@@ -1,6 +1,11 @@
 // hooks/usePermission.js
 import { useContext, useMemo } from "react";
 import { ShopContext } from "../../context/ShopContext";
+import {
+  getUserPermissions,
+  hasPermissionFor,
+  isSuperUser,
+} from "../../lib/permissions";
 
 // Define your permission constants based on resources and actions
 export const PERMISSIONS = {
@@ -64,31 +69,12 @@ export const usePermission = () => {
 
   // Flatten all permissions from all roles
   const userPermissions = useMemo(() => {
-    if (!user || !user.role || !Array.isArray(user.role)) {
-      return [];
-    }
-
-    // Extract all permissions from all roles
-    const permissions = user.role.flatMap(
-      (role) =>
-        role.permissions?.map((perm) => ({
-          resource: perm.resource,
-          actions: perm.actions || [],
-        })) || [],
-    );
-
-    return permissions;
+    return getUserPermissions(user);
   }, [user]);
 
   // Check if user has a specific permission
   const hasPermission = (resource, action) => {
-    // If no user, no permissions
-    if (!user) return false;
-
-    // Check if user has any role with the required permission
-    return userPermissions.some(
-      (perm) => perm.resource === resource && perm.actions.includes(action),
-    );
+    return hasPermissionFor(user, resource, action);
   };
 
   // Check if user has any of the given permissions
@@ -125,10 +111,7 @@ export const usePermission = () => {
 
   // Check if user is admin (has admin role)
   const isAdmin = useMemo(() => {
-    return (
-      user?.role?.some((r) => r.name === "Admin" || r.name === "Super Admin") ||
-      false
-    );
+    return isSuperUser(user);
   }, [user]);
 
   return {

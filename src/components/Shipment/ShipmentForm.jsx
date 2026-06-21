@@ -5,16 +5,14 @@ import {
   DialogPanel,
   DialogTitle,
 } from "@headlessui/react";
-import axios from "axios";
 import { toast } from "react-toastify";
-import { useContext, useEffect, useState } from "react";
-import { ShopContext } from "../../context/ShopContext";
+import { useEffect, useState } from "react";
+import { apiClient } from "../../lib/apiClient";
 
-const ShipmentForm = ({ orderData }) => {
+const ShipmentForm = ({ orderData, buttonClassName }) => {
   const [shipmentModalOpen, setShipmentModalOpen] = useState(false);
   const [shipmentProcessing, setShipmentProcessing] = useState(false);
   const [drivers, setDrivers] = useState([]);
-  const { backend_url, token } = useContext(ShopContext);
   const {
     register,
     handleSubmit,
@@ -42,8 +40,7 @@ const ShipmentForm = ({ orderData }) => {
   useEffect(() => {
     const fetchDrivers = async () => {
       try {
-        const res = await axios.get(`${backend_url}/supply-chain/drivers`, {
-          headers: { Authorization: `Bearer ${token}` },
+        const res = await apiClient.get("/supply-chain/drivers", {
           params: { filter: { available: true }, limit: 1000, page: 1 },
         });
 
@@ -54,7 +51,7 @@ const ShipmentForm = ({ orderData }) => {
       }
     };
     fetchDrivers();
-  }, [backend_url, token]);
+  }, []);
 
   const onSubmit = async (data) => {
     try {
@@ -68,16 +65,12 @@ const ShipmentForm = ({ orderData }) => {
         cost: Number(data.cost),
         deliveredAt: data.deliveredAt || undefined,
       };
-      await axios.post(`${backend_url}/supply-chain/shipments`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await apiClient.post("/supply-chain/shipments", payload);
       toast.success("Order shipped");
       setShipmentModalOpen(false);
       reset();
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     } finally {
       setShipmentProcessing(false);
     }
@@ -86,7 +79,10 @@ const ShipmentForm = ({ orderData }) => {
   return (
     <>
       <button
-        className="w-full border border-[#6c757d] rounded-lg py-3 my-5 hover:bg-gray-200 hover:border-none"
+        className={
+          buttonClassName ||
+          "w-full border border-[#6c757d] rounded-lg py-3 my-5 hover:bg-gray-200 hover:border-none"
+        }
         onClick={() => setShipmentModalOpen(true)}
         disabled={shipmentProcessing || orderData?.status == "shipped"}
       >

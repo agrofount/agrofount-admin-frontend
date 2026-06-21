@@ -87,6 +87,10 @@ const SideBar = () => {
         hasPermission(RESOURCES.SUPPLY_CHAIN, ACTIONS.READ) ||
         hasPermission(RESOURCES.DRIVERS, ACTIONS.READ),
       careers: isAdmin || hasPermission(RESOURCES.CAREERS, ACTIONS.READ),
+      aiAnalytics:
+        isAdmin ||
+        hasPermission(RESOURCES.ANALYTICS, ACTIONS.READ) ||
+        hasPermission(RESOURCES.AI_CHAT, ACTIONS.READ),
       blog: isAdmin || hasPermission(RESOURCES.BLOG_POSTS, ACTIONS.READ),
       roles:
         isAdmin ||
@@ -145,7 +149,7 @@ const SideBar = () => {
             <NavLink to="/customer-reports" icon={faUsers} label="Customer Reports" onClick={closeOnMobile} />
             <NavLink to="/inventory-reports" icon={faBox} label="Inventory Reports" onClick={closeOnMobile} />
             <NavLink to="/career-reports" icon={faBriefcase} label="Career Reports" onClick={closeOnMobile} />
-            <NavLink to="/ayo-ai" icon={faRobot} label="Ayo AI Analytics" badge="New" onClick={closeOnMobile} />
+            {can.aiAnalytics && <NavLink to="/ayo-ai" icon={faRobot} label="Ayo AI Analytics" badge="New" onClick={closeOnMobile} />}
           </Section>
 
           <Section title="Inventory & Operations">

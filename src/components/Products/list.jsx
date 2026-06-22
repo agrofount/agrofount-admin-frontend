@@ -168,7 +168,7 @@ const SortHint = () => (
 const ProductRow = ({ productLocation, currency, onDelete }) => {
   const slug = productLocation.productSlug || productLocation.slug || productLocation.id;
   const quantity = Number(productLocation.moq ?? productLocation.quantity ?? productLocation.stock ?? 0);
-  const available = productLocation.isAvailable !== false && quantity > 0;
+  const available = productLocation.isAvailable !== false;
 
   return (
     <tr className="border-b border-[#eef2f6] text-[12px] last:border-0 hover:bg-[#fbfcfd]">
@@ -189,6 +189,11 @@ const ProductRow = ({ productLocation, currency, onDelete }) => {
       <td className="px-3 py-3">
         <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium ${available ? "bg-[#dcf8e6] text-[#008f45]" : "bg-[#ffe4e4] text-[#ef3340]"}`}>
           {available ? "Available" : "Out of Stock"}
+        </span>
+      </td>
+      <td className="px-3 py-3">
+        <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium ${productLocation.isDraft ? "bg-[#f3f0ff] text-[#7c3fd3]" : "bg-[#f0fdf4] text-[#16a34a]"}`}>
+          {productLocation.isDraft ? "Draft" : "Published"}
         </span>
       </td>
       <td className="truncate px-3 py-3">{getProductCategory(productLocation)}</td>
@@ -225,6 +230,7 @@ const ListProducts = () => {
   const [processingNotification, setProcessingNotification] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [draftFilter, setDraftFilter] = useState(null);
 
   const { token, navigate, currency } = useContext(ShopContext);
   const searchTimeout = useRef();
@@ -232,9 +238,9 @@ const ListProducts = () => {
   const fetchProducts = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.get("/product-location", {
-        params: { page: productPage, limit: pageLimit, search: searchValue },
-      });
+      const params = { page: productPage, limit: pageLimit, search: searchValue };
+      if (draftFilter !== null) params["filter.isDraft"] = draftFilter;
+      const response = await apiClient.get("/product-location", { params });
 
       if (response.status === 200) setProducts(response.data);
     } catch (error) {
@@ -243,7 +249,7 @@ const ListProducts = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [productPage, pageLimit, searchValue]);
+  }, [productPage, pageLimit, searchValue, draftFilter]);
 
   useEffect(() => {
     fetchProducts();
@@ -263,7 +269,7 @@ const ListProducts = () => {
   const stats = useMemo(() => {
     const rows = products.data?.length ? products.data : fallbackProducts;
     const active = rows.filter((product) => product.isAvailable !== false).length;
-    const outOfStock = rows.filter((product) => product.isAvailable === false || Number(product.moq ?? product.quantity ?? 0) === 0).length;
+    const outOfStock = rows.filter((product) => product.isAvailable === false).length;
     const totalValue = rows.reduce((sum, product) => sum + Number(product.price || 0) * Math.max(Number(product.moq ?? product.quantity ?? 1), 1), 0);
 
     return [
@@ -413,6 +419,23 @@ const ListProducts = () => {
             />
             <FontAwesomeIcon icon={faSearch} className="text-[#667085]" />
           </div>
+
+          <div className="flex items-center rounded-md border border-[#d0d5dd] bg-white text-sm shadow-sm overflow-hidden">
+            {[
+              { label: "All", value: null },
+              { label: "Published", value: false },
+              { label: "Draft", value: true },
+            ].map(({ label, value }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => { setDraftFilter(value); setProductPage(1); }}
+                className={`h-10 px-4 font-medium transition-colors ${draftFilter === value ? "bg-[#008f45] text-white" : "text-[#344054] hover:bg-gray-50"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -444,16 +467,17 @@ const ListProducts = () => {
 
       <section className="overflow-hidden rounded-lg border border-[#e5e7eb] bg-white shadow-[0_8px_24px_rgba(16,24,40,0.04)]">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] table-fixed text-left">
+          <table className="w-full min-w-[1080px] table-fixed text-left">
             <colgroup>
               <col className="w-11" />
-              <col className="w-[31%]" />
-              <col className="w-[11%]" />
-              <col className="w-[8%]" />
-              <col className="w-[11%]" />
+              <col className="w-[25%]" />
               <col className="w-[10%]" />
-              <col className="w-[11%]" />
-              <col className="w-[11%]" />
+              <col className="w-[10%]" />
+              <col className="w-[10%]" />
+              <col className="w-[8%]" />
+              <col className="w-[9%]" />
+              <col className="w-[9%]" />
+              <col className="w-[9%]" />
               <col className="w-[10%]" />
             </colgroup>
             <thead className="bg-[#f8fafc] text-[11px] uppercase text-[#667085]">
@@ -461,7 +485,7 @@ const ListProducts = () => {
                 <th className="px-3 py-3">
                   <input type="checkbox" aria-label="Select all products" className="h-3.5 w-3.5 rounded border-[#cbd5e1]" />
                 </th>
-                {["Product", "Price", "Quantity", "Status", "Category", "Start Date", "Updated", "Actions"].map((heading) => (
+                {["Product", "Price", "Quantity", "Status", "Draft", "Category", "Start Date", "Updated", "Actions"].map((heading) => (
                   <th key={heading} className={`px-3 py-3 font-semibold ${heading === "Actions" ? "text-right" : ""}`}>
                     {heading}
                     {heading !== "Actions" && <SortHint />}
@@ -471,7 +495,7 @@ const ListProducts = () => {
             </thead>
             <tbody>
               {isLoading ? (
-                <TableRowsSkeleton rows={7} columns={9} />
+                <TableRowsSkeleton rows={7} columns={10} />
               ) : productRows.length ? (
                 productRows.map((productLocation) => (
                   <ProductRow
@@ -483,7 +507,7 @@ const ListProducts = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="9" className="px-4 py-16 text-center">
+                  <td colSpan="10" className="px-4 py-16 text-center">
                     <img src={assets.empty_table} alt="" className="mx-auto h-24 w-24 object-contain opacity-70" />
                     <p className="mt-4 text-sm text-[#667085]">No products found.</p>
                   </td>

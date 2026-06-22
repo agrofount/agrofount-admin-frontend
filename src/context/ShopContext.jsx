@@ -207,11 +207,16 @@ const ShopContextProvider = (props) => {
       transports: ["websocket"],
     });
 
+    const toastShown = { current: false };
     const handleConnectError = () => {
-      toast.error("Realtime connection failed.");
+      if (!toastShown.current) {
+        toastShown.current = true;
+        toast.error("Realtime connection failed.");
+      }
     };
 
     nextSocket.on("connect_error", handleConnectError);
+    nextSocket.on("connect", () => { toastShown.current = false; });
     setSocket(nextSocket);
 
     return () => {

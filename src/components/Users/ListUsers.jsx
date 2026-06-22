@@ -7,17 +7,31 @@ import {
   faLocationDot,
   faMagnifyingGlass,
   faMars,
+  faPenToSquare,
   faPhone,
   faPlus,
   faRotateLeft,
   faShieldHalved,
+  faTrashCan,
   faUser,
+  faUserCheck,
   faUserPlus,
   faUsers,
   faVenus,
   faDownload,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogPanel,
+  DialogTitle,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuItems,
+} from "@headlessui/react";
+import { ExclamationTriangleIcon } from "@heroicons/react/16/solid";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -103,6 +117,9 @@ const ListUsers = () => {
   const [genderFilter, setGenderFilter] = useState("All Gender");
   const [dateRange, setDateRange] = useState(dateRangeOptions[0]);
   const [userPage, setUserPage] = useState(1);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
 
   const searchTimeout = useRef();
 
@@ -185,6 +202,34 @@ const ListUsers = () => {
     setGenderFilter("All Gender");
     setDateRange(dateRangeOptions[0]);
     setUserPage(1);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      setDeleting(true);
+      await apiClient.delete(`/user/${deleteTarget.id}`);
+      toast.success("Customer deleted successfully.");
+      setDeleteTarget(null);
+      fetchUsers();
+    } catch (error) {
+      toast.error(error.message || "Unable to delete customer.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleToggleVerification = async (user) => {
+    try {
+      setActionLoadingId(user.id);
+      await apiClient.patch(`/user/${user.id}/activate?activate=${!user.isVerified}`);
+      toast.success(`Customer ${user.isVerified ? "unverified" : "verified"} successfully.`);
+      fetchUsers();
+    } catch (error) {
+      toast.error(error.message || "Unable to update verification.");
+    } finally {
+      setActionLoadingId(null);
+    }
   };
 
   const exportCustomers = () => {
@@ -414,9 +459,42 @@ const ListUsers = () => {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <button type="button" className="grid h-8 w-8 place-items-center rounded-md border border-[#e5e7eb] text-[#667085] hover:bg-[#f8fafc]">
-                            <FontAwesomeIcon icon={faEllipsisVertical} />
-                          </button>
+                          <Menu as="div" className="relative inline-block">
+                            <MenuButton className="grid h-8 w-8 place-items-center rounded-md border border-[#e5e7eb] text-[#667085] hover:bg-[#f8fafc] disabled:opacity-50" disabled={actionLoadingId === user.id}>
+                              <FontAwesomeIcon icon={faEllipsisVertical} />
+                            </MenuButton>
+                            <MenuItems className="absolute right-0 z-20 mt-1 w-44 rounded-md border border-[#e5e7eb] bg-white py-1 shadow-lg focus:outline-none">
+                              <MenuItem>
+                                <Link
+                                  to={`/users/${user.id}/edit`}
+                                  className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
+                                >
+                                  <FontAwesomeIcon icon={faPenToSquare} className="text-[#008f45]" />
+                                  Edit Customer
+                                </Link>
+                              </MenuItem>
+                              <MenuItem>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleVerification(user)}
+                                  className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
+                                >
+                                  <FontAwesomeIcon icon={faUserCheck} className={user.isVerified ? "text-[#f59e0b]" : "text-[#008f45]"} />
+                                  {user.isVerified ? "Unverify" : "Verify"} Customer
+                                </button>
+                              </MenuItem>
+                              <MenuItem>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteTarget(user)}
+                                  className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#ef3340] hover:bg-[#fff5f5]"
+                                >
+                                  <FontAwesomeIcon icon={faTrashCan} />
+                                  Delete Customer
+                                </button>
+                              </MenuItem>
+                            </MenuItems>
+                          </Menu>
                         </td>
                       </tr>
                     );
@@ -457,6 +535,33 @@ const ListUsers = () => {
           </div>
         </div>
       </section>
+
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} className="relative z-50">
+        <DialogBackdrop className="fixed inset-0 bg-black/30" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <DialogPanel className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+            <div className="flex items-start gap-4">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#fee2e2]">
+                <ExclamationTriangleIcon className="h-5 w-5 text-[#ef3340]" />
+              </div>
+              <div>
+                <DialogTitle className="text-sm font-semibold text-[#101828]">Delete Customer</DialogTitle>
+                <p className="mt-1 text-xs text-[#667085]">
+                  Are you sure you want to delete <span className="font-semibold text-[#101828]">{getDisplayName(deleteTarget ?? {})}</span>? This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-3">
+              <button type="button" onClick={() => setDeleteTarget(null)} className="h-9 rounded-md border border-[#d0d5dd] px-4 text-xs font-semibold text-[#344054]">
+                Cancel
+              </button>
+              <button type="button" onClick={handleDelete} disabled={deleting} className="h-9 rounded-md bg-[#ef3340] px-4 text-xs font-semibold text-white disabled:opacity-60">
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </DialogPanel>
+        </div>
+      </Dialog>
     </div>
   );
 };

@@ -12,7 +12,7 @@ export const getUserPermissions = (user) =>
       role.permissions?.map((permission) => ({
         resource: permission.resource,
         actions: permission.actions || [],
-      })) || []
+      })) || [],
   );
 
 export const isSystemAdmin = (user) =>
@@ -27,7 +27,7 @@ const normalizeRoleName = (role) =>
 export const isSuperUser = (user) =>
   isSystemAdmin(user) ||
   normalizeRoles(user).some((role) =>
-    ["admin", "superadmin"].includes(normalizeRoleName(role))
+    ["admin", "superadmin"].includes(normalizeRoleName(role)),
   );
 
 export const hasPermissionFor = (user, resource, action) => {
@@ -38,13 +38,13 @@ export const hasPermissionFor = (user, resource, action) => {
     (permission) =>
       permission.resource === resource &&
       (permission.actions.includes(action) ||
-        permission.actions.includes(ACTIONS.MANAGE))
+        permission.actions.includes(ACTIONS.MANAGE)),
   );
 };
 
 export const hasAnyPermissionFor = (user, permissions = []) =>
   permissions.some(({ resource, action }) =>
-    hasPermissionFor(user, resource, action)
+    hasPermissionFor(user, resource, action),
   );
 
 export const requirePermission = (user, resource, action) => {

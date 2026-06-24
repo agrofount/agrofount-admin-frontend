@@ -229,9 +229,12 @@ const ProductUpdate = () => {
   const handleUpdateProductLocation = async () => {
     try {
       setProcessing(true);
+      const cleanUom = (uomSections || productLocationData.uom).map((uom) =>
+        Object.fromEntries(Object.entries(uom).filter(([k]) => k !== "id")),
+      );
       const payload = {
         price: Number(price) || Number(productLocationData?.price),
-        uom: uomSections || productLocationData.uom,
+        uom: cleanUom,
         moq: Number(moq),
         availableDates,
         countryId: country_id,

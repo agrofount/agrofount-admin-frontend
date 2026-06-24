@@ -8,6 +8,7 @@ import {
   faHouse,
   faLandmark,
   faListCheck,
+  faBell,
   faNewspaper,
   faPlus,
   faReceipt,
@@ -169,6 +170,7 @@ const SideBar = () => {
 
           <Section title="Content">
             {can.blog && <NavLink to="/blogs" icon={faNewspaper} label="Blog" onClick={closeOnMobile} />}
+            <NavLink to="/notifications" icon={faBell} label="Notifications" onClick={closeOnMobile} />
           </Section>
 
           <Section title="Settings">

@@ -62,13 +62,6 @@ const TABS = [
 
 const PREVIEW_TABS = ["Push Preview", "In-app Preview", "WhatsApp Preview", "Email Preview"];
 
-const CHANNEL_DELIVERY = [
-  { label: "Push", icon: faMobileScreen, count: "9,230", pct: 73.6, color: "#1f7ae0", bg: "#eaf4ff" },
-  { label: "In-app", icon: faDesktop, count: "12,540", pct: 100, color: "#008f45", bg: "#dcf8e4" },
-  { label: "WhatsApp", icon: faCommentDots, count: "8,120", pct: 64.8, color: "#059669", bg: "#d1fae5" },
-  { label: "Email", icon: faEnvelope, count: "2,410", pct: 19.2, color: "#f59e0b", bg: "#fef3c7" },
-  { label: "Chat", icon: faComment, count: "1,920", pct: 15.3, color: "#7c3fd3", bg: "#f1e8ff" },
-];
 
 const CATEGORY_ICON_MAP = {
   announcement: { icon: faPaperPlane, bg: "#006638", color: "#fff" },
@@ -1495,13 +1488,19 @@ const Notifications = () => {
   const [previewTab, setPreviewTab] = useState(0);
   const [notificationType, setNotificationType] = useState("Promotion");
   const [selectedChannels, setSelectedChannels] = useState(new Set(["push", "in-app"]));
-  const [title, setTitle] = useState("Broiler Feed Discount Available");
-  const [message, setMessage] = useState(
-    "Get quality broiler starter feed at the best market price today. Limited stock available.",
-  );
-  const [ctaText, setCtaText] = useState("Shop Feed");
-  const [ctaLink, setCtaLink] = useState("https://agrofount.com/shop");
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [ctaText, setCtaText] = useState("");
+  const [ctaLink, setCtaLink] = useState("");
   const [schedule, setSchedule] = useState("now");
+  const [campaignStats, setCampaignStats] = useState(null);
+
+  useEffect(() => {
+    apiClient
+      .get("/message/campaign/stats")
+      .then((res) => setCampaignStats(res.data))
+      .catch(() => {});
+  }, []);
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
   const [frequency, setFrequency] = useState("weekly");
@@ -1618,11 +1617,11 @@ const Notifications = () => {
       {/* Stats — only on the Create tab */}
       {activeTab === 0 && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <StatCard icon={faPaperPlane} label="Total Sent" value="12,450" note="+12% this month" iconBg="bg-[#dcf8e4]" iconColor="text-[#008f45]" noteColor="text-[#008f45]" />
-          <StatCard icon={faCircleCheck} label="Delivered" value="10,980" note="88.2% delivery rate" iconBg="bg-[#dcf8e4]" iconColor="text-[#008f45]" noteColor="text-[#008f45]" />
-          <StatCard icon={faEye} label="Open Rate" value="42%" note="+5% this month" iconBg="bg-[#f1e8ff]" iconColor="text-[#7c3fd3]" noteColor="text-[#008f45]" />
-          <StatCard icon={faClock} label="Scheduled" value="8" note="Upcoming campaigns" iconBg="bg-[#fef3c7]" iconColor="text-[#f59e0b]" noteColor="text-[#667085]" />
-          <StatCard icon={faCircleXmark} label="Failed" value="120" note="1.0% failure rate" iconBg="bg-[#fee2e2]" iconColor="text-[#ef3340]" noteColor="text-[#ef3340]" />
+          <StatCard icon={faPaperPlane} label="Total Sent" value={campaignStats ? (campaignStats.totalSent ?? 0).toLocaleString() : "…"} note={null} iconBg="bg-[#dcf8e4]" iconColor="text-[#008f45]" noteColor="text-[#008f45]" />
+          <StatCard icon={faCircleCheck} label="Delivered" value={campaignStats ? (campaignStats.totalDelivered ?? 0).toLocaleString() : "…"} note={campaignStats && campaignStats.totalSent > 0 ? `${Math.round((campaignStats.totalDelivered / campaignStats.totalSent) * 100)}% delivery rate` : null} iconBg="bg-[#dcf8e4]" iconColor="text-[#008f45]" noteColor="text-[#008f45]" />
+          <StatCard icon={faEye} label="Delivery Rate" value={campaignStats ? `${campaignStats.openRate ?? 0}%` : "…"} note={null} iconBg="bg-[#f1e8ff]" iconColor="text-[#7c3fd3]" noteColor="text-[#008f45]" />
+          <StatCard icon={faClock} label="Scheduled" value={campaignStats ? (campaignStats.scheduled ?? 0).toString() : "…"} note="Upcoming campaigns" iconBg="bg-[#fef3c7]" iconColor="text-[#f59e0b]" noteColor="text-[#667085]" />
+          <StatCard icon={faCircleXmark} label="Failed" value={campaignStats ? (campaignStats.failed ?? 0).toString() : "…"} note={campaignStats && campaignStats.campaigns > 0 ? `${((campaignStats.failed / campaignStats.campaigns) * 100).toFixed(1)}% failure rate` : null} iconBg="bg-[#fee2e2]" iconColor="text-[#ef3340]" noteColor="text-[#ef3340]" />
         </div>
       )}
 
@@ -1942,13 +1941,21 @@ const Notifications = () => {
                 </button>
               </div>
               <div className="space-y-2.5">
-                {[
-                  { icon: faTag, label: "Target", value: "Poultry farmers in Lagos, Ogun, Oyo" },
-                  { icon: faUsers, label: "Users", value: "12,540 users" },
-                  { icon: faShieldHalved, label: "User Roles", value: "Farmers" },
-                  { icon: faCalendarDays, label: "Age Range", value: "18 - 65+" },
-                  { icon: faChartBar, label: "Interest", value: "Poultry, Animal Feed" },
-                ].map(({ icon, label, value }) => (
+                {(() => {
+                  const btLabels = { farmer: "Farmers", frozen_food: "Frozen Food", others: "Others" };
+                  const rolesLabel = audience.businessTypes?.length
+                    ? audience.businessTypes.map((t) => btLabels[t] ?? t).join(", ")
+                    : "All";
+                  const interestLabel = audience.productInterest?.length
+                    ? audience.productInterest.map((p) => p.replace(/([A-Z])/g, " $1").trim()).join(", ")
+                    : "All";
+                  return [
+                    { icon: faTag, label: "Target", value: audienceLabel },
+                    { icon: faUsers, label: "Users", value: `${audienceEstimate.toLocaleString()} users` },
+                    { icon: faShieldHalved, label: "User Roles", value: rolesLabel },
+                    { icon: faChartBar, label: "Interest", value: interestLabel },
+                  ];
+                })().map(({ icon, label, value }) => (
                   <div key={label} className="flex items-center gap-3">
                     <div className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#f0fbf5]">
                       <FontAwesomeIcon icon={icon} className="text-[11px] text-[#008f45]" />
@@ -2001,33 +2008,25 @@ const Notifications = () => {
               <p className="mb-1 text-[11px] text-[#667085]">
                 Your notification will be sent to approximately:
               </p>
-              <p className="mb-4 text-xl font-bold text-[#008f45]">12,540 users</p>
-              <div className="space-y-2.5">
-                {CHANNEL_DELIVERY.map((ch) => (
-                  <div key={ch.label} className="flex items-center gap-2">
-                    <div
-                      className="grid h-6 w-6 shrink-0 place-items-center rounded-md"
-                      style={{ background: ch.bg }}
-                    >
-                      <FontAwesomeIcon
-                        icon={ch.icon}
-                        className="text-[10px]"
-                        style={{ color: ch.color }}
-                      />
-                    </div>
-                    <span className="w-14 text-xs font-medium text-[#344054]">{ch.label}</span>
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#f0f2f5]">
-                      <div
-                        className="h-1.5 rounded-full"
-                        style={{ width: `${ch.pct}%`, background: ch.color }}
-                      />
-                    </div>
-                    <span className="w-24 text-right text-[11px] text-[#667085]">
-                      {ch.count} ({ch.pct}%)
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <p className="mb-4 text-xl font-bold text-[#008f45]">
+                {audienceEstimate > 0 ? audienceEstimate.toLocaleString() : "—"} users
+              </p>
+              {selectedChannels.size > 0 && (
+                <div className="space-y-2">
+                  {[...selectedChannels].map((ch) => {
+                    const cfg = CHANNEL_DISPLAY[ch === "in-app" ? "in_app" : ch];
+                    if (!cfg) return null;
+                    return (
+                      <div key={ch} className="flex items-center gap-2">
+                        <div className="grid h-6 w-6 shrink-0 place-items-center rounded-md" style={{ background: cfg.bg }}>
+                          <FontAwesomeIcon icon={cfg.icon} className="text-[10px]" style={{ color: cfg.color }} />
+                        </div>
+                        <span className="text-xs font-medium text-[#344054]">{cfg.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Important */}

@@ -25,12 +25,17 @@ import {
   faFileLines,
   faFloppyDisk,
   faImage,
+  faLeaf,
+  faLightbulb,
   faLink,
+  faListCheck,
   faMagnifyingGlass,
   faMobileScreen,
   faPaperPlane,
   faPencil,
+  faSeedling,
   faShieldHalved,
+  faSyringe,
   faTag,
   faTriangleExclamation,
   faUserPlus,
@@ -77,6 +82,128 @@ const CHANNEL_DISPLAY = {
   email: { icon: faEnvelope, color: "#f59e0b", bg: "#fef3c7", label: "Email" },
   sms: { icon: faComment, color: "#7c3fd3", bg: "#ede9fe", label: "SMS" },
   whatsapp: { icon: faCommentDots, color: "#059669", bg: "#d1fae5", label: "WhatsApp" },
+};
+
+const EMAIL_FEATURE_ICONS = [
+  { key: "seedling", icon: faSeedling, label: "Seedling" },
+  { key: "leaf", icon: faLeaf, label: "Leaf" },
+  { key: "syringe", icon: faSyringe, label: "Syringe" },
+  { key: "shield", icon: faShieldHalved, label: "Shield" },
+  { key: "calendar", icon: faCalendarDays, label: "Calendar" },
+  { key: "check", icon: faCheck, label: "Checkmark" },
+  { key: "chart", icon: faChartBar, label: "Chart" },
+  { key: "lightbulb", icon: faLightbulb, label: "Lightbulb" },
+  { key: "bolt", icon: faBolt, label: "Quick Tip" },
+  { key: "users", icon: faUsers, label: "Users" },
+  { key: "tag", icon: faTag, label: "Tag" },
+  { key: "list", icon: faListCheck, label: "Checklist" },
+];
+
+const EMAIL_ICON_FA_MAP = Object.fromEntries(EMAIL_FEATURE_ICONS.map(({ key, icon }) => [key, icon]));
+
+const ICON_SYMBOL_MAP = {
+  seedling: "&#127807;", leaf: "&#127807;", syringe: "&#128137;",
+  shield: "&#128737;", calendar: "&#128197;", check: "&#10003;",
+  chart: "&#128202;", lightbulb: "&#128161;", bolt: "&#9889;",
+  users: "&#128101;", tag: "&#127991;", list: "&#128203;",
+};
+
+const generateEmailHtml = ({ title, message, ctaText, ctaLink, categoryLabel, heroImageUrl, features, showAyo }) => {
+  const cleanFeatures = (features || []).filter((f) => f.title && f.description);
+
+  const bannerRow = heroImageUrl
+    ? `<tr><td style="padding:0 0 16px;"><img src="${heroImageUrl}" alt="" style="width:100%;border-radius:8px;display:block;" /></td></tr>`
+    : "";
+
+  const categoryRow = categoryLabel
+    ? `<tr><td style="padding:0 0 14px;"><span style="display:inline-block;background:#dcf8e4;color:#006638;font-size:11px;font-weight:700;letter-spacing:1.5px;padding:4px 14px;border-radius:20px;text-transform:uppercase;">${categoryLabel}</span></td></tr>`
+    : "";
+
+  const ctaRow =
+    ctaText && ctaLink
+      ? `<tr><td style="padding:20px 0 4px;"><a href="${ctaLink}" style="display:inline-block;background:#008f45;color:#ffffff;font-size:14px;font-weight:600;padding:12px 28px;border-radius:8px;text-decoration:none;">${ctaText}</a></td></tr>`
+      : "";
+
+  const featuresRows = cleanFeatures.length
+    ? `<tr><td style="padding:24px 0 0;">
+        <p style="font-size:14px;font-weight:700;color:#101828;margin:0 0 14px;">In This Guide, You&rsquo;ll Learn:</p>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          ${cleanFeatures
+            .map(
+              (f) => `
+          <tr>
+            <td style="width:40px;vertical-align:top;padding:0 12px 14px 0;">
+              <div style="width:36px;height:36px;background:#dcf8e4;border-radius:50%;text-align:center;line-height:36px;font-size:18px;">${ICON_SYMBOL_MAP[f.icon] ?? "&#10003;"}</div>
+            </td>
+            <td style="vertical-align:top;padding-bottom:14px;">
+              <p style="font-size:13px;font-weight:700;color:#101828;margin:0 0 3px;">${f.title}</p>
+              <p style="font-size:12px;color:#667085;margin:0;line-height:1.5;">${f.description}</p>
+            </td>
+          </tr>`,
+            )
+            .join("")}
+        </table>
+      </td></tr>`
+    : "";
+
+  const ayoRow = showAyo
+    ? `<tr><td style="padding:24px 0 0;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fbf5;border-radius:10px;">
+          <tr><td style="padding:20px;">
+            <p style="font-size:14px;font-weight:700;color:#101828;margin:0 0 6px;">Have Questions? Ask Ayo &#129302;</p>
+            <p style="font-size:12px;color:#475467;margin:0 0 14px;line-height:1.5;">Ayo is your AI farming assistant. Get personalised advice on crops, livestock, and market prices &mdash; 24/7.</p>
+            <a href="https://agrofount.com/ayo" style="display:inline-block;background:#008f45;color:#ffffff;font-size:13px;font-weight:600;padding:10px 22px;border-radius:8px;text-decoration:none;">Chat with Ayo</a>
+          </td></tr>
+        </table>
+      </td></tr>`
+    : "";
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head>
+<body style="margin:0;padding:0;background:#f0f2f5;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td align="center" style="padding:0;">
+      <!-- Header -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#006638;">
+        <tr>
+          <td align="center" style="padding:20px 24px 18px;">
+            <p style="margin:0;font-size:20px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">Agrofount</p>
+            <p style="margin:4px 0 0;font-size:11px;color:#a7f3c0;letter-spacing:0.5px;">Empowering Nigerian Farmers</p>
+          </td>
+        </tr>
+      </table>
+      <!-- Body -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;">
+        <tr><td style="padding:28px 32px 8px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            ${categoryRow}
+            ${bannerRow}
+            <tr><td style="padding:0 0 12px;"><h1 style="font-size:22px;font-weight:700;color:#101828;margin:0;line-height:1.3;">${title}</h1></td></tr>
+            <tr><td style="padding:0 0 4px;"><p style="font-size:14px;color:#475467;line-height:1.6;margin:0;">${message}</p></td></tr>
+            ${ctaRow}
+            ${featuresRows}
+            ${ayoRow}
+          </table>
+        </td></tr>
+        <tr><td style="padding:20px 32px;border-top:1px solid #f0f2f5;">
+          <p style="font-size:11px;color:#98a2b3;margin:0;">You are receiving this because you have a registered Agrofount account. &nbsp;<a href="#" style="color:#667085;text-decoration:none;">Unsubscribe</a> &middot; <a href="#" style="color:#667085;text-decoration:none;">Manage Preferences</a></p>
+        </td></tr>
+      </table>
+      <!-- Footer -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#1a2e22;">
+        <tr>
+          <td align="center" style="padding:18px 24px;">
+            <p style="font-size:11px;color:#98a2b3;margin:0;">support@agrofount.com &nbsp;&middot;&nbsp; 08000-AGROFOUNT</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>`;
 };
 
 const getCampaignIcon = (campaign) =>
@@ -987,32 +1114,178 @@ const PushPreview = ({ title, message, bannerPreview }) => (
   </div>
 );
 
-const EmailPreview = ({ title, message, ctaText }) => (
-  <div className="rounded-lg border border-[#e5e7eb] bg-[#f9fafb] p-3">
-    <div className="mx-auto max-w-[264px] rounded-lg bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center gap-2 border-b border-[#f0f2f5] pb-2.5">
-        <div className="grid h-6 w-6 place-items-center rounded-full bg-[#008f45]">
-          <FontAwesomeIcon icon={faBullhorn} className="text-[9px] text-white" />
+const EmailPreview = ({ title, message, ctaText, categoryLabel, heroImageUrl, features, showAyo }) => {
+  const hasRich = !!(categoryLabel || heroImageUrl || features?.some((f) => f.title));
+  if (!hasRich) {
+    return (
+      <div className="rounded-lg border border-[#e5e7eb] bg-[#f9fafb] p-3">
+        <div className="mx-auto max-w-[264px] rounded-lg bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center gap-2 border-b border-[#f0f2f5] pb-2.5">
+            <div className="grid h-6 w-6 place-items-center rounded-full bg-[#008f45]">
+              <FontAwesomeIcon icon={faBullhorn} className="text-[9px] text-white" />
+            </div>
+            <span className="text-xs font-bold text-[#008f45]">Agrofount</span>
+          </div>
+          <p className="text-xs font-bold text-[#101828]">{title || "Notification Title"}</p>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-[#475467]">
+            {message || "Your message will appear here."}
+          </p>
+          {ctaText && (
+            <div className="mt-3">
+              <span className="inline-block rounded-md bg-[#008f45] px-3 py-1 text-[11px] font-semibold text-white">
+                {ctaText}
+              </span>
+            </div>
+          )}
+          <p className="mt-4 border-t border-[#f0f2f5] pt-2.5 text-[10px] text-[#98a2b3]">
+            You are receiving this because you are a registered Agrofount user.
+          </p>
         </div>
-        <span className="text-xs font-bold text-[#008f45]">Agrofount</span>
       </div>
-      <p className="text-xs font-bold text-[#101828]">{title || "Notification Title"}</p>
-      <p className="mt-1.5 text-[11px] leading-relaxed text-[#475467]">
-        {message || "Your message will appear here."}
-      </p>
-      {ctaText && (
-        <div className="mt-3">
-          <span className="inline-block rounded-md bg-[#008f45] px-3 py-1 text-[11px] font-semibold text-white">
-            {ctaText}
+    );
+  }
+
+  const cleanFeatures = (features || []).filter((f) => f.title);
+  return (
+    <div className="overflow-hidden rounded-lg border border-[#e5e7eb]">
+      {/* Header */}
+      <div className="bg-[#006638] px-4 py-3 text-center">
+        <p className="text-sm font-extrabold text-white">Agrofount</p>
+        <p className="mt-0.5 text-[9px] tracking-wide text-[#a7f3c0]">Empowering Nigerian Farmers</p>
+      </div>
+      {/* Body */}
+      <div className="max-h-[320px] overflow-y-auto bg-white px-4 py-4">
+        {categoryLabel && (
+          <span className="mb-3 inline-block rounded-full bg-[#dcf8e4] px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#006638]">
+            {categoryLabel}
           </span>
+        )}
+        {heroImageUrl && (
+          <img
+            src={heroImageUrl}
+            alt=""
+            className="mb-3 h-20 w-full rounded-md object-cover"
+            onError={(e) => { e.target.style.display = "none"; }}
+          />
+        )}
+        <p className="text-xs font-bold text-[#101828]">{title || "Email Headline"}</p>
+        <p className="mt-1.5 text-[10px] leading-relaxed text-[#475467]">
+          {message || "Your message will appear here."}
+        </p>
+        {ctaText && (
+          <div className="mt-3">
+            <span className="inline-block rounded-md bg-[#008f45] px-3 py-1.5 text-[10px] font-semibold text-white">
+              {ctaText}
+            </span>
+          </div>
+        )}
+        {cleanFeatures.length > 0 && (
+          <div className="mt-4">
+            <p className="mb-2 text-[10px] font-bold text-[#101828]">In This Guide, You&apos;ll Learn:</p>
+            <div className="space-y-2">
+              {cleanFeatures.map((f, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <div className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#dcf8e4]">
+                    <FontAwesomeIcon
+                      icon={EMAIL_ICON_FA_MAP[f.icon] ?? faCheck}
+                      className="text-[8px] text-[#008f45]"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-[#101828]">{f.title}</p>
+                    {f.description && <p className="text-[9px] text-[#667085]">{f.description}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {showAyo && (
+          <div className="mt-4 rounded-lg bg-[#f0fbf5] p-3">
+            <p className="text-[10px] font-bold text-[#101828]">Have Questions? Ask Ayo</p>
+            <p className="mt-1 text-[9px] leading-relaxed text-[#475467]">
+              Get personalised AI farming advice 24/7.
+            </p>
+            <span className="mt-2 inline-block rounded-md bg-[#008f45] px-2.5 py-1 text-[9px] font-semibold text-white">
+              Chat with Ayo
+            </span>
+          </div>
+        )}
+      </div>
+      {/* Footer */}
+      <div className="bg-[#1a2e22] px-4 py-2.5 text-center">
+        <p className="text-[9px] text-[#98a2b3]">support@agrofount.com &middot; Unsubscribe</p>
+      </div>
+    </div>
+  );
+};
+
+const EmailFeatureItem = ({ index, feature, onUpdate }) => {
+  const [expanded, setExpanded] = useState(!!feature.title);
+  return (
+    <div className="rounded-lg border border-[#e5e7eb] bg-[#fafafa]">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center justify-between px-3 py-2.5"
+      >
+        <span className="flex items-center gap-2">
+          <div className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#dcf8e4]">
+            <FontAwesomeIcon
+              icon={EMAIL_ICON_FA_MAP[feature.icon] ?? faCheck}
+              className="text-[8px] text-[#008f45]"
+            />
+          </div>
+          <span className="text-xs font-medium text-[#344054]">
+            {feature.title || `Highlight ${index + 1}`}
+          </span>
+        </span>
+        <FontAwesomeIcon
+          icon={faChevronRight}
+          className={`text-[10px] text-[#98a2b3] transition-transform ${expanded ? "rotate-90" : "rotate-0"}`}
+        />
+      </button>
+      {expanded && (
+        <div className="space-y-2 border-t border-[#f0f2f5] px-3 pb-3 pt-2.5">
+          <div>
+            <p className="mb-1.5 text-[11px] font-medium text-[#667085]">Icon</p>
+            <div className="flex flex-wrap gap-1.5">
+              {EMAIL_FEATURE_ICONS.map(({ key, icon, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  title={label}
+                  onClick={() => onUpdate({ ...feature, icon: key })}
+                  className={`grid h-7 w-7 place-items-center rounded-md border transition-colors ${
+                    feature.icon === key
+                      ? "border-[#008f45] bg-[#dcf8e4] text-[#008f45]"
+                      : "border-[#e5e7eb] bg-white text-[#667085] hover:border-[#b1efcd]"
+                  }`}
+                >
+                  <FontAwesomeIcon icon={icon} className="text-[11px]" />
+                </button>
+              ))}
+            </div>
+          </div>
+          <input
+            type="text"
+            value={feature.title}
+            onChange={(e) => onUpdate({ ...feature, title: e.target.value })}
+            placeholder={`Title for highlight ${index + 1}`}
+            className="h-8 w-full rounded-md border border-[#d0d5dd] px-3 text-xs text-[#101828] outline-none focus:border-[#008f45] focus:ring-2 focus:ring-[#dff4e5]"
+          />
+          <textarea
+            value={feature.description}
+            onChange={(e) => onUpdate({ ...feature, description: e.target.value })}
+            placeholder="Brief description..."
+            rows={2}
+            className="w-full resize-none rounded-md border border-[#d0d5dd] px-3 py-2 text-xs text-[#101828] outline-none focus:border-[#008f45] focus:ring-2 focus:ring-[#dff4e5]"
+          />
         </div>
       )}
-      <p className="mt-4 border-t border-[#f0f2f5] pt-2.5 text-[10px] text-[#98a2b3]">
-        You are receiving this because you are a registered Agrofount user.
-      </p>
     </div>
-  </div>
-);
+  );
+};
 
 const WhatsAppPreview = ({ title, message, ctaText, ctaLink }) => (
   <div className="rounded-lg bg-[#e5ddd5] p-3">
@@ -1507,6 +1780,19 @@ const Notifications = () => {
   const [bannerPreview, setBannerPreview] = useState(null);
   const [sending, setSending] = useState(false);
   const [audience, setAudience] = useState({ all: true });
+
+  // Email design fields
+  const [emailCategoryLabel, setEmailCategoryLabel] = useState("");
+  const [emailHeroImageUrl, setEmailHeroImageUrl] = useState("");
+  const [emailFeatures, setEmailFeatures] = useState([
+    { icon: "seedling", title: "", description: "" },
+    { icon: "calendar", title: "", description: "" },
+    { icon: "shield", title: "", description: "" },
+  ]);
+  const [emailShowAyo, setEmailShowAyo] = useState(false);
+
+  const updateEmailFeature = (index, updated) =>
+    setEmailFeatures((prev) => prev.map((f, i) => (i === index ? updated : f)));
   const [audienceEstimate, setAudienceEstimate] = useState(0);
   const [audienceModalOpen, setAudienceModalOpen] = useState(false);
 
@@ -1568,6 +1854,19 @@ const Notifications = () => {
       scheduledAt = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
     }
 
+    const emailContent = selectedChannels.has("email")
+      ? generateEmailHtml({
+          title: title.trim(),
+          message: message.trim(),
+          ctaText,
+          ctaLink,
+          categoryLabel: emailCategoryLabel,
+          heroImageUrl: emailHeroImageUrl,
+          features: emailFeatures,
+          showAyo: emailShowAyo,
+        })
+      : undefined;
+
     const payload = {
       title: title.trim(),
       message: message.trim(),
@@ -1578,6 +1877,7 @@ const Notifications = () => {
       ...(ctaLink && { ctaLink }),
       ...(scheduledAt && { scheduledAt }),
       ...(schedule === "recurring" && { frequency: frequency.toLowerCase() }),
+      ...(emailContent && { emailContent }),
     };
 
     try {
@@ -1836,6 +2136,115 @@ const Notifications = () => {
                   </div>
                 </Step>
 
+                {/* Email Design – only when email channel is selected */}
+                {selectedChannels.has("email") && (
+                  <>
+                    <div className="border-t border-[#f0f2f5]" />
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#f59e0b]">
+                          <FontAwesomeIcon icon={faEnvelope} className="text-[10px] text-white" />
+                        </span>
+                        <p className="text-sm font-semibold text-[#101828]">Email Design</p>
+                        <span className="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[10px] font-medium text-[#b45309]">
+                          Email only
+                        </span>
+                      </div>
+
+                      <div className="space-y-4">
+                        {/* Category Badge */}
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-[#344054]">
+                            Category Badge{" "}
+                            <span className="font-normal text-[#98a2b3]">(Optional)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={emailCategoryLabel}
+                            onChange={(e) => setEmailCategoryLabel(e.target.value.toUpperCase())}
+                            placeholder="e.g. POULTRY HEALTH GUIDE"
+                            className="h-9 w-full rounded-md border border-[#d0d5dd] px-3 text-sm uppercase tracking-wide text-[#101828] outline-none focus:border-[#008f45] focus:ring-2 focus:ring-[#dff4e5]"
+                          />
+                        </div>
+
+                        {/* Hero Image URL */}
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-[#344054]">
+                            Hero Image URL{" "}
+                            <span className="font-normal text-[#98a2b3]">(Optional)</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="url"
+                              value={emailHeroImageUrl}
+                              onChange={(e) => setEmailHeroImageUrl(e.target.value)}
+                              placeholder="https://..."
+                              className="h-9 w-full rounded-md border border-[#d0d5dd] px-3 pr-8 text-sm text-[#101828] outline-none focus:border-[#008f45] focus:ring-2 focus:ring-[#dff4e5]"
+                            />
+                            <FontAwesomeIcon
+                              icon={faImage}
+                              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-[#98a2b3]"
+                            />
+                          </div>
+                          {emailHeroImageUrl && (
+                            <img
+                              src={emailHeroImageUrl}
+                              alt=""
+                              className="mt-2 h-24 w-full rounded-md object-cover"
+                              onError={(e) => { e.target.style.display = "none"; }}
+                            />
+                          )}
+                        </div>
+
+                        {/* Content Highlights */}
+                        <div>
+                          <div className="mb-2 flex items-center justify-between">
+                            <label className="text-xs font-medium text-[#344054]">
+                              Content Highlights{" "}
+                              <span className="font-normal text-[#98a2b3]">(Optional)</span>
+                            </label>
+                            <span className="text-[11px] text-[#98a2b3]">Up to 3 items</span>
+                          </div>
+                          <div className="space-y-2">
+                            {emailFeatures.map((feature, index) => (
+                              <EmailFeatureItem
+                                key={index}
+                                index={index}
+                                feature={feature}
+                                onUpdate={(updated) => updateEmailFeature(index, updated)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Ayo Section Toggle */}
+                        <div className="flex items-center gap-3 rounded-lg border border-[#e5e7eb] p-3">
+                          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#dcf8e4] text-base">
+                            🤖
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-xs font-semibold text-[#101828]">
+                              Include &ldquo;Ask Ayo&rdquo; Section
+                            </p>
+                            <p className="text-[11px] text-[#667085]">
+                              AI assistant prompt at the end of the email
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEmailShowAyo((v) => !v)}
+                            className={`relative h-5 w-9 rounded-full transition-colors ${emailShowAyo ? "bg-[#008f45]" : "bg-[#d0d5dd]"}`}
+                          >
+                            <span
+                              className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${emailShowAyo ? "translate-x-4" : "translate-x-0.5"}`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 <div className="border-t border-[#f0f2f5]" />
 
                 {/* Step 5 – Schedule */}
@@ -1995,7 +2404,15 @@ const Notifications = () => {
                 <WhatsAppPreview title={title} message={message} ctaText={ctaText} ctaLink={ctaLink} />
               )}
               {previewTab === 3 && (
-                <EmailPreview title={title} message={message} ctaText={ctaText} />
+                <EmailPreview
+                  title={title}
+                  message={message}
+                  ctaText={ctaText}
+                  categoryLabel={emailCategoryLabel}
+                  heroImageUrl={emailHeroImageUrl}
+                  features={emailFeatures}
+                  showAyo={emailShowAyo}
+                />
               )}
             </div>
 

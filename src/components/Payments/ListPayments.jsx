@@ -580,11 +580,11 @@ const ListPayments = () => {
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={() => setSelectedPayment(null)}
+            onClick={() => handleConfirmPayment("cancelled")}
             disabled={Boolean(processingAction)}
-            className="h-10 flex-1 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            className="h-10 flex-1 rounded-lg border border-red-300 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
           >
-            Cancel
+            {processingAction === "cancelled" ? "Cancelling..." : "Cancel Payment"}
           </button>
           <button
             type="button"

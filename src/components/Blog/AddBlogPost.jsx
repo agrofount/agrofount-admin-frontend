@@ -38,7 +38,7 @@ const AddBlogPost = ({ post }) => {
       // Create a FormData object
       const formData = new FormData();
       formData.append("files", file);
-      formData.append("clientId", socket?.id || "");
+      formData.append("purpose", "other");
 
       try {
         const response = await apiClient.post("/upload", formData, {
@@ -52,7 +52,7 @@ const AddBlogPost = ({ post }) => {
             preview: URL.createObjectURL(file),
           }),
         ]);
-        setImages(response.data.images[0]);
+        setImages(response.data.uploads[0]?.id);
       } catch (error) {
         toast.error(error.message);
         setUploadProgress({});
@@ -60,7 +60,7 @@ const AddBlogPost = ({ post }) => {
         setUploading(false);
       }
     },
-    [socket?.id]
+    []
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

@@ -70,90 +70,12 @@ const CHANNEL_DELIVERY = [
   { label: "Chat", icon: faComment, count: "1,920", pct: 15.3, color: "#7c3fd3", bg: "#f1e8ff" },
 ];
 
-const MOCK_SCHEDULED_CAMPAIGNS = [
-  {
-    id: "mock-1",
-    title: "Feed Price Update",
-    message: "Update on new feed prices and availability.",
-    category: "announcement",
-    channels: ["push", "in_app"],
-    audience: { name: "Poultry Farmers", location: "Lagos, Ogun, Oyo", states: ["Lagos", "Ogun", "Oyo"] },
-    scheduledAt: "2026-06-24T09:00:00.000Z",
-    frequency: null,
-    status: "scheduled",
-    totalRecipients: 12540,
-    createdBy: "akinbamidayo",
-    createdAt: "2026-06-23T00:00:00.000Z",
-  },
-  {
-    id: "mock-2",
-    title: "Welcome New Users",
-    message: "Welcome message for newly registered users.",
-    category: "reminder",
-    channels: ["push"],
-    audience: { name: "New Customers", location: "All Locations", all: true },
-    scheduledAt: "2026-06-24T08:00:00.000Z",
-    frequency: "daily",
-    status: "scheduled",
-    totalRecipients: 3200,
-    createdBy: "akinbamidayo",
-    createdAt: "2026-06-10T00:00:00.000Z",
-  },
-  {
-    id: "mock-3",
-    title: "Cart Reminder",
-    message: "Reminder for users with abandoned carts.",
-    category: "reminder",
-    channels: ["push", "whatsapp"],
-    audience: { name: "Abandoned Cart Users", location: "All Locations", all: true },
-    scheduledAt: "2026-06-24T16:00:00.000Z",
-    frequency: null,
-    status: "scheduled",
-    totalRecipients: 1820,
-    createdBy: "akinbamidayo",
-    createdAt: "2026-06-23T00:00:00.000Z",
-  },
-  {
-    id: "mock-4",
-    title: "Credit Eligibility",
-    message: "Notify eligible users about credit offer.",
-    category: "promotional",
-    channels: ["push", "sms"],
-    audience: { name: "Eligible Farmers", location: "All Locations", businessTypes: ["farmer"] },
-    scheduledAt: "2026-06-25T08:00:00.000Z",
-    frequency: null,
-    status: "scheduled",
-    totalRecipients: 540,
-    createdBy: "akinbamidayo",
-    createdAt: "2026-06-23T00:00:00.000Z",
-  },
-  {
-    id: "mock-5",
-    title: "Monthly Market Report",
-    message: "Monthly market update and insights.",
-    category: "educational",
-    channels: ["email"],
-    audience: { name: "All Users", location: "All Locations", all: true },
-    scheduledAt: "2026-07-01T07:00:00.000Z",
-    frequency: null,
-    status: "scheduled",
-    totalRecipients: 18000,
-    createdBy: "akinbamidayo",
-    createdAt: "2026-06-22T00:00:00.000Z",
-  },
-];
-
 const CATEGORY_ICON_MAP = {
   announcement: { icon: faPaperPlane, bg: "#006638", color: "#fff" },
   promotional: { icon: faCreditCard, bg: "#fef3c7", color: "#d97706" },
   educational: { icon: faChartBar, bg: "#dbeafe", color: "#3b82f6" },
   reminder: { icon: faCartShopping, bg: "#ede9fe", color: "#7c3fd3" },
   transactional: { icon: faCreditCard, bg: "#fef3c7", color: "#d97706" },
-};
-
-const CAMPAIGN_ICON_OVERRIDES = {
-  "mock-2": { icon: faUserPlus, bg: "#fef3c7", color: "#d97706" },
-  "mock-5": { icon: faChartBar, bg: "#dbeafe", color: "#3b82f6" },
 };
 
 const CHANNEL_DISPLAY = {
@@ -165,7 +87,6 @@ const CHANNEL_DISPLAY = {
 };
 
 const getCampaignIcon = (campaign) =>
-  CAMPAIGN_ICON_OVERRIDES[campaign.id] ??
   CATEGORY_ICON_MAP[campaign.category] ?? { icon: faBullhorn, bg: "#006638", color: "#fff" };
 
 const getAudienceLabel = (audience) => {
@@ -566,168 +487,6 @@ const ScheduledTab = ({ onScheduleNew }) => {
   );
 };
 
-const MOCK_SENT_CAMPAIGNS = [
-  {
-    id: "sent-1",
-    title: "Feed Price Update",
-    message: "Update on new feed prices and availability.",
-    category: "announcement",
-    channels: ["push", "in_app"],
-    audience: { name: "Poultry Farmers", location: "Lagos, Ogun, Oyo" },
-    sentAt: "2026-06-20T09:00:00",
-    totalRecipients: 12540,
-    delivered: 12320, deliveredPct: 98.2,
-    opened: 8900, openedPct: 72.2,
-    clicked: 2310, clickedPct: 18.4,
-    ctr: 18.4, failed: 220, failedPct: 1.8,
-    status: "sent",
-    chartData: [
-      { date: "Jun 20", opened: 5200, clicked: 1100 },
-      { date: "Jun 21", opened: 6800, clicked: 1800 },
-      { date: "Jun 22", opened: 7200, clicked: 2100 },
-      { date: "Jun 23", opened: 7800, clicked: 2500 },
-      { date: "Jun 24", opened: 8200, clicked: 3200 },
-      { date: "Jun 25", opened: 8600, clicked: 3800 },
-      { date: "Jun 26", opened: 8900, clicked: 4200 },
-    ],
-    topLocations: [
-      { name: "Lagos", count: 3420, pct: 27.8 },
-      { name: "Ogun", count: 2180, pct: 17.7 },
-      { name: "Oyo", count: 1950, pct: 15.9 },
-      { name: "Kano", count: 1120, pct: 9.1 },
-      { name: "Kaduna", count: 980, pct: 7.9 },
-    ],
-    topCta: [{ label: "View Feed Prices", count: 2310, pct: 100 }],
-  },
-  {
-    id: "sent-2",
-    title: "Cart Reminder",
-    message: "Reminder for users with abandoned carts.",
-    category: "reminder",
-    channels: ["push", "whatsapp"],
-    audience: { name: "Abandoned Cart Users", location: "All Locations" },
-    sentAt: "2026-06-18T16:00:00",
-    totalRecipients: 1820,
-    delivered: 1799, deliveredPct: 98.8,
-    opened: 1120, openedPct: 62.3,
-    clicked: 432, clickedPct: 23.7,
-    ctr: 23.7, failed: 21, failedPct: 1.2,
-    status: "sent",
-    chartData: [
-      { date: "Jun 18", opened: 480, clicked: 120 },
-      { date: "Jun 19", opened: 750, clicked: 185 },
-      { date: "Jun 20", opened: 890, clicked: 230 },
-      { date: "Jun 21", opened: 980, clicked: 290 },
-      { date: "Jun 22", opened: 1050, clicked: 350 },
-      { date: "Jun 23", opened: 1100, clicked: 400 },
-      { date: "Jun 24", opened: 1120, clicked: 432 },
-    ],
-    topLocations: [
-      { name: "Lagos", count: 620, pct: 34.1 },
-      { name: "Abuja", count: 380, pct: 20.9 },
-      { name: "Kano", count: 290, pct: 15.9 },
-      { name: "Ogun", count: 210, pct: 11.5 },
-      { name: "Rivers", count: 180, pct: 9.9 },
-    ],
-    topCta: [{ label: "Complete Purchase", count: 432, pct: 100 }],
-  },
-  {
-    id: "sent-3",
-    title: "Credit Offer",
-    message: "Special credit offer for eligible farmers.",
-    category: "promotional",
-    channels: ["push", "sms"],
-    audience: { name: "Eligible Farmers", location: "All Locations" },
-    sentAt: "2026-06-15T08:00:00",
-    totalRecipients: 540,
-    delivered: 535, deliveredPct: 99.1,
-    opened: 412, openedPct: 76.9,
-    clicked: 173, clickedPct: 32.0,
-    ctr: 32.0, failed: 5, failedPct: 0.9,
-    status: "sent",
-    chartData: [
-      { date: "Jun 15", opened: 210, clicked: 68 },
-      { date: "Jun 16", opened: 290, clicked: 92 },
-      { date: "Jun 17", opened: 340, clicked: 115 },
-      { date: "Jun 18", opened: 375, clicked: 138 },
-      { date: "Jun 19", opened: 395, clicked: 155 },
-      { date: "Jun 20", opened: 408, clicked: 166 },
-      { date: "Jun 21", opened: 412, clicked: 173 },
-    ],
-    topLocations: [
-      { name: "Oyo", count: 142, pct: 26.3 },
-      { name: "Kano", count: 118, pct: 21.9 },
-      { name: "Lagos", count: 98, pct: 18.1 },
-      { name: "Benue", count: 78, pct: 14.4 },
-      { name: "Plateau", count: 52, pct: 9.6 },
-    ],
-    topCta: [{ label: "Apply for Credit", count: 173, pct: 100 }],
-  },
-  {
-    id: "sent-4",
-    title: "Monthly Market Report",
-    message: "Monthly market updates and insights.",
-    category: "educational",
-    channels: ["email"],
-    audience: { name: "All Users", location: "All Locations" },
-    sentAt: "2026-06-10T07:00:00",
-    totalRecipients: 18000,
-    delivered: 17500, deliveredPct: 97.2,
-    opened: 11200, openedPct: 64.0,
-    clicked: 4100, clickedPct: 22.7,
-    ctr: 22.7, failed: 500, failedPct: 2.8,
-    status: "sent",
-    chartData: [
-      { date: "Jun 10", opened: 5800, clicked: 1600 },
-      { date: "Jun 11", opened: 7400, clicked: 2100 },
-      { date: "Jun 12", opened: 8600, clicked: 2800 },
-      { date: "Jun 13", opened: 9500, clicked: 3200 },
-      { date: "Jun 14", opened: 10200, clicked: 3600 },
-      { date: "Jun 15", opened: 10800, clicked: 3900 },
-      { date: "Jun 16", opened: 11200, clicked: 4100 },
-    ],
-    topLocations: [
-      { name: "Lagos", count: 4820, pct: 26.8 },
-      { name: "Abuja", count: 3240, pct: 18.0 },
-      { name: "Kano", count: 2680, pct: 14.9 },
-      { name: "Ogun", count: 1920, pct: 10.7 },
-      { name: "Rivers", count: 1540, pct: 8.6 },
-    ],
-    topCta: [{ label: "Read Report", count: 4100, pct: 100 }],
-  },
-  {
-    id: "sent-5",
-    title: "Farm Training Invite",
-    message: "Invitation to upcoming training session.",
-    category: "educational",
-    channels: ["push", "whatsapp"],
-    audience: { name: "Farmers", location: "Ibadan, Abeokuta" },
-    sentAt: "2026-06-05T18:00:00",
-    totalRecipients: 2450,
-    delivered: 2410, deliveredPct: 98.4,
-    opened: 1350, openedPct: 56.0,
-    clicked: 298, clickedPct: 12.4,
-    ctr: 12.4, failed: 40, failedPct: 1.6,
-    status: "sent",
-    chartData: [
-      { date: "Jun 5", opened: 620, clicked: 82 },
-      { date: "Jun 6", opened: 840, clicked: 118 },
-      { date: "Jun 7", opened: 1020, clicked: 152 },
-      { date: "Jun 8", opened: 1140, clicked: 198 },
-      { date: "Jun 9", opened: 1240, clicked: 238 },
-      { date: "Jun 10", opened: 1310, clicked: 275 },
-      { date: "Jun 11", opened: 1350, clicked: 298 },
-    ],
-    topLocations: [
-      { name: "Oyo", count: 780, pct: 31.8 },
-      { name: "Ogun", count: 540, pct: 22.0 },
-      { name: "Lagos", count: 380, pct: 15.5 },
-      { name: "Osun", count: 290, pct: 11.8 },
-      { name: "Ondo", count: 220, pct: 9.0 },
-    ],
-    topCta: [{ label: "Register for Training", count: 298, pct: 100 }],
-  },
-];
 
 const EngagementChart = ({ data }) => {
   if (!data?.length) return null;
@@ -1749,7 +1508,7 @@ const Notifications = () => {
   const [bannerPreview, setBannerPreview] = useState(null);
   const [sending, setSending] = useState(false);
   const [audience, setAudience] = useState({ all: true });
-  const [audienceEstimate, setAudienceEstimate] = useState(12540);
+  const [audienceEstimate, setAudienceEstimate] = useState(0);
   const [audienceModalOpen, setAudienceModalOpen] = useState(false);
 
   const audienceLabel = (() => {

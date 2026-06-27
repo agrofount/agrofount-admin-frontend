@@ -3,6 +3,8 @@ import {
   faChevronLeft,
   faChevronRight,
   faEllipsisVertical,
+  faEnvelope,
+  faEye,
   faFilter,
   faLocationDot,
   faMagnifyingGlass,
@@ -12,6 +14,7 @@ import {
   faPlus,
   faRotateLeft,
   faShieldHalved,
+  faTimes,
   faTrashCan,
   faUser,
   faUserCheck,
@@ -106,6 +109,115 @@ const MetricCard = ({ label, value, note, icon, tone = "green", down = false }) 
   );
 };
 
+const CustomerDetailDrawer = ({ user, onClose }) => {
+  if (!user) return null;
+
+  const name = getDisplayName(user);
+  const initials = getInitials(name);
+  const location = getLocation(user);
+  const [joinedDate, joinedTime] = formatJoinedDate(user.createdAt);
+  const gender = user.gender || "N/A";
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
+      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-sm flex-col bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[#e5e7eb] px-5 py-4">
+          <h2 className="text-sm font-semibold text-[#101828]">Customer Details</h2>
+          <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-md text-[#667085] hover:bg-[#f3f4f6]">
+            <FontAwesomeIcon icon={faTimes} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] p-5 text-center">
+            <span className="grid h-16 w-16 place-items-center rounded-full bg-[#dcf8e4] text-xl font-bold text-[#008f45]">
+              {initials}
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-[#101828]">{name}</p>
+              <p className="mt-0.5 text-[11px] text-[#667085]">{getCustomerCode(user, 0)}</p>
+            </div>
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold ${user.isVerified ? "bg-[#dcf8e4] text-[#008f45]" : "bg-[#ffe4e6] text-[#ef3340]"}`}>
+              <FontAwesomeIcon icon={faShieldHalved} className="text-[10px]" />
+              {user.isVerified ? "Verified" : "Not Verified"}
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">Contact</p>
+            <div className="flex items-center gap-3 rounded-lg border border-[#e5e7eb] px-4 py-3">
+              <FontAwesomeIcon icon={faEnvelope} className="w-4 shrink-0 text-[#008f45]" />
+              <div>
+                <p className="text-[10px] text-[#667085]">Email</p>
+                <p className="text-xs font-medium text-[#101828] break-all">{user.email || "N/A"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg border border-[#e5e7eb] px-4 py-3">
+              <FontAwesomeIcon icon={faPhone} className="w-4 shrink-0 text-[#008f45]" />
+              <div>
+                <p className="text-[10px] text-[#667085]">Phone</p>
+                <p className="text-xs font-medium text-[#101828]">{user.phone || "N/A"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg border border-[#e5e7eb] px-4 py-3">
+              <FontAwesomeIcon icon={faLocationDot} className="w-4 shrink-0 text-[#008f45]" />
+              <div>
+                <p className="text-[10px] text-[#667085]">Location</p>
+                <p className="text-xs font-medium text-[#101828]">{location}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">Profile</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
+                <p className="text-[10px] text-[#667085]">Gender</p>
+                <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-[#101828]">
+                  <FontAwesomeIcon
+                    icon={String(gender).toLowerCase() === "female" ? faVenus : faMars}
+                    className={String(gender).toLowerCase() === "female" ? "text-[#ef3f7a]" : "text-[#1f7ae0]"}
+                  />
+                  {gender}
+                </p>
+              </div>
+              <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
+                <p className="text-[10px] text-[#667085]">Joined</p>
+                <p className="mt-1 text-xs font-medium text-[#101828]">{joinedDate}</p>
+                <p className="text-[10px] text-[#667085]">{joinedTime}</p>
+              </div>
+            </div>
+            {user.businessType && (
+              <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
+                <p className="text-[10px] text-[#667085]">Business Type</p>
+                <p className="mt-1 text-xs font-medium text-[#101828]">{user.businessType}</p>
+              </div>
+            )}
+          </div>
+
+          {user.id && (
+            <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
+              <p className="text-[10px] text-[#667085]">Customer ID</p>
+              <p className="mt-1 font-mono text-[10px] text-[#475467] break-all">{user.id}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-[#e5e7eb] px-5 py-4">
+          <Link
+            to={`/users/${user.id}/edit`}
+            className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-[#008f45] text-xs font-semibold text-white"
+          >
+            <FontAwesomeIcon icon={faPenToSquare} />
+            Edit Customer
+          </Link>
+        </div>
+      </div>
+    </>
+  );
+};
+
 const ListUsers = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [users, setUsers] = useState({ data: [], meta: {} });
@@ -120,6 +232,7 @@ const ListUsers = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [detailUser, setDetailUser] = useState(null);
 
   const searchTimeout = useRef();
 
@@ -465,6 +578,16 @@ const ListUsers = () => {
                             </MenuButton>
                             <MenuItems className="absolute right-0 z-20 mt-1 w-44 rounded-md border border-[#e5e7eb] bg-white py-1 shadow-lg focus:outline-none">
                               <MenuItem>
+                                <button
+                                  type="button"
+                                  onClick={() => setDetailUser(user)}
+                                  className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
+                                >
+                                  <FontAwesomeIcon icon={faEye} className="text-[#1f7ae0]" />
+                                  View Details
+                                </button>
+                              </MenuItem>
+                              <MenuItem>
                                 <Link
                                   to={`/users/${user.id}/edit`}
                                   className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
@@ -535,6 +658,8 @@ const ListUsers = () => {
           </div>
         </div>
       </section>
+
+      <CustomerDetailDrawer user={detailUser} onClose={() => setDetailUser(null)} />
 
       <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} className="relative z-50">
         <DialogBackdrop className="fixed inset-0 bg-black/30" />

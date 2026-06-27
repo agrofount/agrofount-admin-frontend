@@ -47,12 +47,11 @@ const AddBlogPost = ({ post }) => {
           },
         });
 
-        setFiles([
-          Object.assign(file, {
-            preview: URL.createObjectURL(file),
-          }),
-        ]);
-        setImages(response.data.uploads[0]?.id);
+        const uploaded = response.data.uploads[0];
+        if (uploaded?.publicUrl) {
+          setImages(uploaded.publicUrl);
+          setFiles([Object.assign(file, { preview: uploaded.publicUrl })]);
+        }
       } catch (error) {
         toast.error(error.message);
         setUploadProgress({});

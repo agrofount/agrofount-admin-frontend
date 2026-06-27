@@ -2,6 +2,7 @@ import {
   faArrowPointer,
   faArrowRight,
   faArrowsRotate,
+  faGears,
   faBolt,
   faBullhorn,
   faCheck,
@@ -55,7 +56,7 @@ const CHANNELS = [
   { id: "in-app", label: "In-app", icon: faDesktop },
   { id: "email", label: "Email", icon: faEnvelope },
   { id: "sms", label: "SMS", icon: faComment },
-  { id: "whatsapp", label: "WhatsApp", icon: faCommentDots },
+  { id: "whatsapp", label: "WhatsApp", icon: faCommentDots, disabled: true },
 ];
 
 const TABS = [
@@ -63,6 +64,7 @@ const TABS = [
   { label: "Scheduled", icon: faClock },
   { label: "Sent History", icon: faClockRotateLeft },
   { label: "Templates", icon: faFileLines },
+  { label: "Automation", icon: faGears },
 ];
 
 const PREVIEW_TABS = ["Push Preview", "In-app Preview", "WhatsApp Preview", "Email Preview"];
@@ -82,6 +84,41 @@ const CHANNEL_DISPLAY = {
   email: { icon: faEnvelope, color: "#f59e0b", bg: "#fef3c7", label: "Email" },
   sms: { icon: faComment, color: "#7c3fd3", bg: "#ede9fe", label: "SMS" },
   whatsapp: { icon: faCommentDots, color: "#059669", bg: "#d1fae5", label: "WhatsApp" },
+};
+
+const JOB_META = {
+  order_feedback_requests: {
+    label: "Order Feedback Requests",
+    description: "Asks users to rate and review their recent orders",
+    scheduleLabel: "Daily at 10:00 AM",
+    icon: faCartShopping,
+    iconBg: "#ede9fe",
+    iconColor: "#7c3fd3",
+  },
+  login_inactivity_reminders: {
+    label: "Login Inactivity Reminders",
+    description: "Re-engages users who have not logged in recently",
+    scheduleLabel: "Every Monday at 9:00 AM",
+    icon: faUsers,
+    iconBg: "#dbeafe",
+    iconColor: "#3b82f6",
+  },
+  unverified_account_reminders: {
+    label: "Unverified Account Reminders",
+    description: "Nudges users to verify their email or phone number",
+    scheduleLabel: "Daily at 8:00 AM",
+    icon: faUserPlus,
+    iconBg: "#fef3c7",
+    iconColor: "#d97706",
+  },
+  educational_content: {
+    label: "Educational Content",
+    description: "Sends farming tips, guides, and seasonal advice to users",
+    scheduleLabel: "Every Wednesday at 10:00 AM",
+    icon: faChartBar,
+    iconBg: "#dcf8e4",
+    iconColor: "#008f45",
+  },
 };
 
 const EMAIL_FEATURE_ICONS = [
@@ -257,7 +294,188 @@ const StatusPill = ({ status }) => {
   );
 };
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 10;
+
+const CampaignDetailDrawer = ({ campaign, onClose }) => {
+  if (!campaign) return null;
+  const ic = getCampaignIcon(campaign);
+  const audience = getAudienceLabel(campaign.audience);
+  const scheduled = formatScheduled(campaign.scheduledAt, campaign.frequency);
+  const deliveryRate =
+    campaign.totalSent > 0
+      ? Math.round((campaign.totalDelivered / campaign.totalSent) * 100)
+      : null;
+
+  const Section = ({ title, children }) => (
+    <div>
+      <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-[#98a2b3]">{title}</p>
+      {children}
+    </div>
+  );
+
+  const Row = ({ label, value }) => (
+    <div className="flex items-start justify-between gap-4 py-2.5 border-b border-[#f0f2f5] last:border-0">
+      <span className="shrink-0 text-xs text-[#667085]">{label}</span>
+      <span className="text-right text-xs font-medium text-[#101828]">{value}</span>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
+
+      {/* Drawer */}
+      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[460px] flex-col bg-white shadow-2xl">
+        {/* Header */}
+        <div className="flex items-start gap-3 border-b border-[#f0f2f5] px-5 py-4">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg" style={{ background: ic.bg }}>
+            <FontAwesomeIcon icon={ic.icon} className="text-sm" style={{ color: ic.color }} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-bold text-[#101828]">{campaign.title}</p>
+            <div className="mt-1 flex items-center gap-2">
+              <StatusPill status={campaign.status} />
+              <span className="text-[11px] text-[#667085]">
+                {campaign.category?.charAt(0).toUpperCase() + campaign.category?.slice(1)}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[#667085] hover:bg-[#f0f2f5]"
+          >
+            <FontAwesomeIcon icon={faXmark} className="text-sm" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+
+          {/* Delivery stats */}
+          {campaign.totalRecipients > 0 && (
+            <div className="grid grid-cols-3 gap-3 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] p-4">
+              {[
+                { label: "Recipients", value: campaign.totalRecipients?.toLocaleString() ?? "0", color: "#101828" },
+                { label: "Delivered",  value: campaign.totalDelivered?.toLocaleString() ?? "0",  color: "#008f45" },
+                { label: "Failed",     value: campaign.totalFailed?.toLocaleString() ?? "0",     color: campaign.totalFailed > 0 ? "#dc2626" : "#101828" },
+              ].map((s) => (
+                <div key={s.label} className="text-center">
+                  <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
+                  <p className="text-[10px] text-[#667085]">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Delivery rate bar */}
+          {deliveryRate !== null && (
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-xs text-[#667085]">Delivery rate</span>
+                <span className="text-xs font-semibold text-[#101828]">{deliveryRate}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-[#f0f2f5]">
+                <div
+                  className="h-2 rounded-full bg-[#008f45] transition-all"
+                  style={{ width: `${deliveryRate}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Message */}
+          <Section title="Message">
+            <div className="rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3">
+              <p className="text-sm leading-relaxed text-[#344054]">{campaign.message}</p>
+              {campaign.ctaText && (
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="inline-block rounded-md bg-[#008f45] px-3 py-1.5 text-xs font-semibold text-white">
+                    {campaign.ctaText}
+                  </span>
+                  {campaign.ctaLink && (
+                    <span className="truncate text-[11px] text-[#667085]">{campaign.ctaLink}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </Section>
+
+          {/* Channels */}
+          <Section title="Channels">
+            <div className="flex flex-wrap gap-2">
+              {(campaign.channels ?? []).map((ch) => {
+                const cfg = CHANNEL_DISPLAY[ch];
+                if (!cfg) return null;
+                return (
+                  <div key={ch} className="flex items-center gap-2 rounded-lg border border-[#e5e7eb] px-3 py-2">
+                    <div className="grid h-6 w-6 place-items-center rounded-md" style={{ background: cfg.bg }}>
+                      <FontAwesomeIcon icon={cfg.icon} className="text-[9px]" style={{ color: cfg.color }} />
+                    </div>
+                    <span className="text-xs font-medium text-[#344054]">{cfg.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+
+          {/* Details */}
+          <Section title="Details">
+            <div className="rounded-lg border border-[#e5e7eb] px-3">
+              <Row label="Audience" value={audience.name} />
+              <Row label="Location" value={audience.location} />
+              <Row
+                label="Scheduled for"
+                value={
+                  scheduled.type === "none"
+                    ? "Not scheduled"
+                    : scheduled.label + (scheduled.time ? ` · ${scheduled.time}` : "")
+                }
+              />
+              <Row label="Frequency" value={campaign.frequency ?? "Once"} />
+              <Row label="Created" value={formatCreatedDate(campaign.createdAt)} />
+              {campaign.createdBy && (
+                <Row
+                  label="Created by"
+                  value={
+                    campaign.createdBy.length > 24
+                      ? campaign.createdBy.slice(0, 8) + "…" + campaign.createdBy.slice(-4)
+                      : campaign.createdBy
+                  }
+                />
+              )}
+            </div>
+          </Section>
+
+          {/* Banner image */}
+          {campaign.bannerImageUrl && (
+            <Section title="Banner Image">
+              <img
+                src={campaign.bannerImageUrl}
+                alt=""
+                className="w-full rounded-lg object-cover"
+                onError={(e) => { e.target.style.display = "none"; }}
+              />
+            </Section>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t border-[#f0f2f5] px-5 py-3.5">
+          <span className="text-[11px] text-[#98a2b3]">Campaign ID: {campaign.id?.slice(0, 8)}…</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-[#d0d5dd] px-4 py-2 text-sm font-medium text-[#344054] hover:bg-[#f9fafb]"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
 
 const ScheduledTab = ({ onScheduleNew }) => {
   const [campaigns, setCampaigns] = useState([]);
@@ -265,26 +483,24 @@ const ScheduledTab = ({ onScheduleNew }) => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [channelFilter, setChannelFilter] = useState("all");
+  const [audienceFilter, setAudienceFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [openActionId, setOpenActionId] = useState(null);
+  const [detailCampaign, setDetailCampaign] = useState(null);
   const [page, setPage] = useState(1);
 
   useEffect(() => {
     setLoading(true);
     apiClient
       .get("/message/campaign")
-      .then((res) => {
-        if (Array.isArray(res.data)) setCampaigns(res.data);
-      })
+      .then((res) => { if (Array.isArray(res.data)) setCampaigns(res.data); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
 
   const stats = {
     scheduled: campaigns.filter((c) => ["scheduled", "sending"].includes(c.status)).length,
@@ -298,60 +514,78 @@ const ScheduledTab = ({ onScheduleNew }) => {
   };
 
   const filtered = campaigns.filter((c) => {
-    if (search && !c.title.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !c.title.toLowerCase().includes(search.toLowerCase()) && !c.message?.toLowerCase().includes(search.toLowerCase())) return false;
     if (statusFilter !== "all" && c.status !== statusFilter) return false;
-    if (channelFilter !== "all" && !c.channels.includes(channelFilter)) return false;
+    if (channelFilter !== "all" && !c.channels?.includes(channelFilter)) return false;
+    if (audienceFilter === "all_users" && !c.audience?.all) return false;
+    if (audienceFilter === "farmers" && !c.audience?.businessTypes?.includes("farmer")) return false;
     if (dateFrom && c.scheduledAt && new Date(c.scheduledAt) < new Date(dateFrom)) return false;
     if (dateTo && c.scheduledAt && new Date(c.scheduledAt) > new Date(dateTo + "T23:59:59")) return false;
     return true;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const from = filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const to = Math.min(page * PAGE_SIZE, filtered.length);
+  const safePageIndex = Math.min(page, totalPages);
+  const paged = filtered.slice((safePageIndex - 1) * PAGE_SIZE, safePageIndex * PAGE_SIZE);
+  const from = filtered.length === 0 ? 0 : (safePageIndex - 1) * PAGE_SIZE + 1;
+  const to = Math.min(safePageIndex * PAGE_SIZE, filtered.length);
+
+  const pageNumbers = (() => {
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (safePageIndex <= 3) return [1, 2, 3, 4, 5];
+    if (safePageIndex >= totalPages - 2) return [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    return [safePageIndex - 2, safePageIndex - 1, safePageIndex, safePageIndex + 1, safePageIndex + 2];
+  })();
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {openActionId && <div className="fixed inset-0 z-[9]" onClick={() => setOpenActionId(null)} />}
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+
+      <CampaignDetailDrawer campaign={detailCampaign} onClose={() => setDetailCampaign(null)} />
+
+      {/* ── Stats ── */}
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {[
-          { icon: faCalendarDays, bg: "bg-[#dcf8e4]", color: "text-[#008f45]", value: stats.scheduled, label: "Scheduled Campaigns", note: "Upcoming notifications", noteColor: "text-[#008f45]" },
-          { icon: faClock, bg: "bg-[#fef3c7]", color: "text-[#f59e0b]", value: stats.sendingToday, label: "Sending Today", note: "Due to be sent today", noteColor: "text-[#f59e0b]" },
-          { icon: faArrowsRotate, bg: "bg-[#ede9fe]", color: "text-[#7c3fd3]", value: stats.recurring, label: "Recurring Campaigns", note: "Active recurring", noteColor: "text-[#7c3fd3]" },
-          { icon: faFileLines, bg: "bg-[#dbeafe]", color: "text-[#3b82f6]", value: stats.draft, label: "Draft Campaigns", note: "Not yet scheduled", noteColor: "text-[#3b82f6]" },
+          { icon: faCalendarDays, bg: "#dcf8e4", color: "#008f45", value: stats.scheduled, label: "Scheduled Campaigns", note: "Upcoming notifications" },
+          { icon: faClock,        bg: "#fef3c7", color: "#f59e0b", value: stats.sendingToday, label: "Sending Today",       note: "Due to be sent today" },
+          { icon: faArrowsRotate, bg: "#ede9fe", color: "#7c3fd3", value: stats.recurring,   label: "Recurring Campaigns", note: "Active recurring" },
+          { icon: faFileLines,    bg: "#dbeafe", color: "#3b82f6", value: stats.draft,        label: "Draft Campaigns",     note: "Not yet scheduled" },
         ].map((s) => (
-          <div key={s.label} className="flex items-center gap-3 rounded-lg border border-[#e5e7eb] bg-white px-4 py-3 shadow-[0_2px_8px_rgba(16,24,40,0.04)]">
-            <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${s.bg}`}>
-              <FontAwesomeIcon icon={s.icon} className={`text-base ${s.color}`} />
+          <div key={s.label} className="flex items-center gap-3.5 rounded-xl border border-[#e5e7eb] bg-white px-5 py-4 shadow-[0_2px_8px_rgba(16,24,40,0.04)]">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full" style={{ background: s.bg }}>
+              <FontAwesomeIcon icon={s.icon} className="text-base" style={{ color: s.color }} />
             </div>
             <div>
               <p className="text-[11px] font-medium text-[#667085]">{s.label}</p>
-              <p className="text-xl font-bold text-[#101828]">{s.value}</p>
-              <p className={`text-[11px] font-medium ${s.noteColor}`}>{s.note}</p>
+              <p className="text-2xl font-bold text-[#101828] leading-tight">{s.value}</p>
+              <p className="text-[11px] font-medium" style={{ color: s.color }}>{s.note}</p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Filter bar */}
-      <div className="rounded-lg border border-[#e5e7eb] bg-white shadow-[0_2px_8px_rgba(16,24,40,0.04)]">
-        <div className="flex flex-wrap items-center gap-3 p-4">
-          <div className="relative min-w-[200px] flex-1">
-            <FontAwesomeIcon icon={faMagnifyingGlass} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#98a2b3]" />
+      {/* ── Table card ── */}
+      <div className="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-[0_2px_8px_rgba(16,24,40,0.04)]">
+
+        {/* Filter bar */}
+        <div className="flex flex-wrap items-center gap-2.5 border-b border-[#f0f2f5] px-4 py-3.5">
+          {/* Search */}
+          <div className="relative min-w-[180px] flex-1">
+            <FontAwesomeIcon icon={faMagnifyingGlass} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-[#98a2b3]" />
             <input
               type="text"
               placeholder="Search campaigns..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white pl-8 pr-3 text-sm text-[#101828] outline-none focus:border-[#008f45] focus:ring-2 focus:ring-[#dff4e5]"
+              className="h-9 w-full rounded-lg border border-[#d0d5dd] pl-8 pr-3 text-sm text-[#101828] outline-none focus:border-[#008f45] focus:ring-2 focus:ring-[#dff4e5]"
             />
           </div>
+          {/* Status */}
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="h-9 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm text-[#344054] outline-none focus:border-[#008f45]"
+            className="h-9 rounded-lg border border-[#d0d5dd] bg-white px-3 pr-7 text-sm text-[#344054] outline-none focus:border-[#008f45] appearance-none"
+            style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2398a2b3'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", backgroundSize: "16px" }}
           >
             <option value="all">All Status</option>
             <option value="scheduled">Scheduled</option>
@@ -360,73 +594,90 @@ const ScheduledTab = ({ onScheduleNew }) => {
             <option value="draft">Draft</option>
             <option value="failed">Failed</option>
           </select>
+          {/* Channel */}
           <select
             value={channelFilter}
             onChange={(e) => { setChannelFilter(e.target.value); setPage(1); }}
-            className="h-9 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm text-[#344054] outline-none focus:border-[#008f45]"
+            className="h-9 rounded-lg border border-[#d0d5dd] bg-white px-3 pr-7 text-sm text-[#344054] outline-none focus:border-[#008f45] appearance-none"
+            style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2398a2b3'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", backgroundSize: "16px" }}
           >
             <option value="all">All Channels</option>
             <option value="push">Push</option>
             <option value="in_app">In-app</option>
             <option value="email">Email</option>
             <option value="sms">SMS</option>
-            <option value="whatsapp">WhatsApp</option>
           </select>
-          <select className="h-9 rounded-md border border-[#d0d5dd] bg-white px-3 text-sm text-[#344054] outline-none focus:border-[#008f45]">
-            <option>All Audience</option>
-            <option>All Users</option>
-            <option>Farmers</option>
-            <option>New Customers</option>
+          {/* Audience */}
+          <select
+            value={audienceFilter}
+            onChange={(e) => { setAudienceFilter(e.target.value); setPage(1); }}
+            className="h-9 rounded-lg border border-[#d0d5dd] bg-white px-3 pr-7 text-sm text-[#344054] outline-none focus:border-[#008f45] appearance-none"
+            style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2398a2b3'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", backgroundSize: "16px" }}
+          >
+            <option value="all">All Audience</option>
+            <option value="all_users">All Users</option>
+            <option value="farmers">Farmers</option>
           </select>
+          {/* Date range */}
           <div className="flex items-center gap-1.5">
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
-              className="h-9 rounded-md border border-[#d0d5dd] bg-white px-2 text-sm text-[#344054] outline-none focus:border-[#008f45]"
+              className="h-9 rounded-lg border border-[#d0d5dd] bg-white px-2.5 text-sm text-[#344054] outline-none focus:border-[#008f45]"
             />
-            <span className="text-xs text-[#98a2b3]">–</span>
+            <span className="text-xs text-[#d0d5dd]">—</span>
             <input
               type="date"
               value={dateTo}
               onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
-              className="h-9 rounded-md border border-[#d0d5dd] bg-white px-2 text-sm text-[#344054] outline-none focus:border-[#008f45]"
+              className="h-9 rounded-lg border border-[#d0d5dd] bg-white px-2.5 text-sm text-[#344054] outline-none focus:border-[#008f45]"
             />
           </div>
+          {/* CTA */}
           <button
             type="button"
             onClick={onScheduleNew}
-            className="ml-auto flex h-9 items-center gap-2 rounded-md bg-[#006638] px-4 text-sm font-semibold text-white hover:bg-[#005530]"
+            className="ml-auto flex h-9 shrink-0 items-center gap-2 rounded-lg bg-[#006638] px-4 text-sm font-semibold text-white hover:bg-[#005530]"
           >
-            <span className="text-base leading-none">+</span>
+            <FontAwesomeIcon icon={faArrowPointer} className="text-[11px]" />
             Schedule New Notification
           </button>
         </div>
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="min-w-[900px] w-full border-collapse text-left">
+          <table className="w-full min-w-[1000px] border-collapse text-left">
             <thead>
-              <tr className="border-y border-[#e5e7eb] bg-[#f9fafb]">
-                {["Campaign", "Audience", "Channels", "Scheduled For", "Status", "Recipients", "Created By", "Actions"].map((h) => (
-                  <th key={h} className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-[#667085]">
-                    {h}
-                  </th>
-                ))}
+              <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
+                <th className="w-[30%] px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-[#667085]">Campaign</th>
+                <th className="w-[12%] px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-[#667085]">Audience</th>
+                <th className="w-[10%] px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-[#667085]">Channels</th>
+                <th className="w-[12%] px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-[#667085]">Scheduled For</th>
+                <th className="w-[9%]  px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-[#667085]">Status</th>
+                <th className="w-[9%]  px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-[#667085]">Recipients</th>
+                <th className="w-[13%] px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-[#667085]">Created By</th>
+                <th className="w-[5%]  px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-[#667085]">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-[#667085]">
-                    Loading campaigns...
+            <tbody className="divide-y divide-[#f0f2f5]">
+              {loading && Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i}>
+                  <td colSpan={8} className="px-4 py-3.5">
+                    <div className="h-9 animate-pulse rounded-lg bg-[#f0f2f5]" />
                   </td>
                 </tr>
-              )}
+              ))}
               {!loading && paged.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-[#667085]">
-                    No campaigns found.
+                  <td colSpan={8} className="px-4 py-16 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="grid h-10 w-10 place-items-center rounded-full bg-[#f0f2f5]">
+                        <FontAwesomeIcon icon={faBullhorn} className="text-base text-[#98a2b3]" />
+                      </div>
+                      <p className="text-sm font-medium text-[#344054]">No campaigns found</p>
+                      <p className="text-xs text-[#98a2b3]">Try adjusting your filters or create a new notification.</p>
+                    </div>
                   </td>
                 </tr>
               )}
@@ -434,27 +685,29 @@ const ScheduledTab = ({ onScheduleNew }) => {
                 const ic = getCampaignIcon(campaign);
                 const audience = getAudienceLabel(campaign.audience);
                 const scheduled = formatScheduled(campaign.scheduledAt, campaign.frequency);
+                const shortId = campaign.createdBy
+                  ? campaign.createdBy.length > 20
+                    ? campaign.createdBy.slice(0, 8) + "…" + campaign.createdBy.slice(-4)
+                    : campaign.createdBy
+                  : "Admin";
                 return (
-                  <tr key={campaign.id} className="border-b border-[#f0f2f5] hover:bg-[#fafafa]">
+                  <tr key={campaign.id} className="group transition-colors hover:bg-[#f9fafb]">
                     {/* Campaign */}
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div
-                          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg"
-                          style={{ background: ic.bg }}
-                        >
+                        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg" style={{ background: ic.bg }}>
                           <FontAwesomeIcon icon={ic.icon} className="text-sm" style={{ color: ic.color }} />
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-[#101828]">{campaign.title}</p>
-                          <p className="truncate text-[11px] text-[#667085]">{campaign.message}</p>
+                          <p className="max-w-[260px] truncate text-sm font-semibold text-[#101828]">{campaign.title}</p>
+                          <p className="max-w-[260px] truncate text-[11px] text-[#667085]">{campaign.message}</p>
                         </div>
                       </div>
                     </td>
                     {/* Audience */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-start gap-2">
-                        <FontAwesomeIcon icon={faUsers} className="mt-0.5 shrink-0 text-[11px] text-[#98a2b3]" />
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-start gap-1.5">
+                        <FontAwesomeIcon icon={faUsers} className="mt-px shrink-0 text-[10px] text-[#98a2b3]" />
                         <div>
                           <p className="text-xs font-semibold text-[#101828]">{audience.name}</p>
                           <p className="text-[11px] text-[#667085]">{audience.location}</p>
@@ -462,93 +715,95 @@ const ScheduledTab = ({ onScheduleNew }) => {
                       </div>
                     </td>
                     {/* Channels */}
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        {campaign.channels.map((ch) => {
+                    <td className="px-4 py-3.5">
+                      <div className="flex flex-wrap gap-1">
+                        {(campaign.channels ?? []).map((ch) => {
                           const cfg = CHANNEL_DISPLAY[ch];
                           if (!cfg) return null;
                           return (
-                            <div key={ch} className="grid h-6 w-6 place-items-center rounded-md" style={{ background: cfg.bg }}>
-                              <FontAwesomeIcon icon={cfg.icon} className="text-[9px]" style={{ color: cfg.color }} />
+                            <div key={ch} title={cfg.label} className="grid h-5 w-5 place-items-center rounded" style={{ background: cfg.bg }}>
+                              <FontAwesomeIcon icon={cfg.icon} className="text-[8px]" style={{ color: cfg.color }} />
                             </div>
                           );
                         })}
                       </div>
-                      <p className="mt-1 text-[11px] text-[#667085]">
-                        {campaign.channels.map((ch) => CHANNEL_DISPLAY[ch]?.label).filter(Boolean).join(" • ")}
+                      <p className="mt-1 text-[10px] text-[#667085]">
+                        {(campaign.channels ?? []).map((ch) => CHANNEL_DISPLAY[ch]?.label).filter(Boolean).join(" • ")}
                       </p>
                     </td>
                     {/* Scheduled For */}
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3.5">
                       <div className="flex items-center gap-1.5">
                         <FontAwesomeIcon
                           icon={scheduled.type === "recurring" ? faArrowsRotate : faCalendarDays}
-                          className="shrink-0 text-[11px] text-[#667085]"
+                          className="shrink-0 text-[10px] text-[#667085]"
                         />
                         <p className="text-xs font-semibold text-[#101828]">{scheduled.label}</p>
                       </div>
-                      <p className="mt-0.5 text-[11px] text-[#667085]">{scheduled.time}</p>
+                      {scheduled.time && <p className="mt-0.5 pl-4 text-[10px] text-[#667085]">{scheduled.time}</p>}
                     </td>
                     {/* Status */}
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3.5">
                       <StatusPill status={campaign.status} />
                     </td>
                     {/* Recipients */}
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3.5">
                       <div className="flex items-center gap-1.5">
-                        <FontAwesomeIcon icon={faUsers} className="text-[11px] text-[#98a2b3]" />
+                        <FontAwesomeIcon icon={faUsers} className="text-[10px] text-[#98a2b3]" />
                         <span className="text-xs font-semibold text-[#101828]">
                           {(campaign.totalRecipients ?? 0).toLocaleString()} users
                         </span>
                       </div>
                     </td>
                     {/* Created By */}
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
                         <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#006638] text-[11px] font-bold text-white">
                           {(campaign.createdBy ?? "A")[0].toUpperCase()}
                         </div>
-                        <div>
-                          <p className="text-xs font-semibold text-[#101828]">{campaign.createdBy ?? "Admin"}</p>
-                          <p className="text-[11px] text-[#667085]">{formatCreatedDate(campaign.createdAt)}</p>
+                        <div className="min-w-0">
+                          <p className="max-w-[110px] truncate text-xs font-medium text-[#101828]" title={campaign.createdBy ?? ""}>
+                            {shortId}
+                          </p>
+                          <p className="text-[10px] text-[#667085]">{formatCreatedDate(campaign.createdAt)}</p>
                         </div>
                       </div>
                     </td>
                     {/* Actions */}
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3.5">
                       <div className="relative">
                         <button
                           type="button"
                           onClick={() => setOpenActionId(openActionId === campaign.id ? null : campaign.id)}
-                          className="grid h-7 w-7 place-items-center rounded-md text-[#667085] hover:bg-[#f0f2f5]"
+                          className="grid h-7 w-7 place-items-center rounded-md text-[#667085] opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[#f0f2f5]"
                         >
                           <FontAwesomeIcon icon={faEllipsisVertical} className="text-sm" />
                         </button>
                         {openActionId === campaign.id && (
-                          <div className="absolute right-0 top-full z-10 mt-1 w-44 rounded-lg border border-[#e5e7eb] bg-white py-1 shadow-lg">
+                          <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-xl border border-[#e5e7eb] bg-white py-1 shadow-xl">
                             <button
                               type="button"
-                              onClick={() => setOpenActionId(null)}
-                              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-[#344054] hover:bg-[#f9fafb]"
+                              onClick={() => { setDetailCampaign(campaign); setOpenActionId(null); }}
+                              className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#344054] hover:bg-[#f9fafb]"
                             >
-                              <FontAwesomeIcon icon={faEye} className="text-xs text-[#667085]" />
+                              <FontAwesomeIcon icon={faEye} className="w-3.5 text-[#667085]" />
                               View Details
                             </button>
                             <button
                               type="button"
                               onClick={() => { onScheduleNew(); setOpenActionId(null); }}
-                              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-[#344054] hover:bg-[#f9fafb]"
+                              className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#344054] hover:bg-[#f9fafb]"
                             >
-                              <FontAwesomeIcon icon={faPencil} className="text-xs text-[#667085]" />
+                              <FontAwesomeIcon icon={faPencil} className="w-3.5 text-[#667085]" />
                               Edit Campaign
                             </button>
-                            <div className="mx-3 my-1 border-t border-[#f0f2f5]" />
+                            <div className="mx-3.5 my-1 border-t border-[#f0f2f5]" />
                             <button
                               type="button"
                               onClick={() => setOpenActionId(null)}
-                              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-[#ef3340] hover:bg-[#fff5f5]"
+                              className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#ef3340] hover:bg-[#fff5f5]"
                             >
-                              <FontAwesomeIcon icon={faCircleXmark} className="text-xs" />
+                              <FontAwesomeIcon icon={faCircleXmark} className="w-3.5" />
                               Cancel Campaign
                             </button>
                           </div>
@@ -564,27 +819,27 @@ const ScheduledTab = ({ onScheduleNew }) => {
 
         {/* Pagination */}
         <div className="flex items-center justify-between border-t border-[#e5e7eb] px-4 py-3">
-          <p className="text-[12px] text-[#667085]">
+          <p className="text-xs text-[#667085]">
             {filtered.length === 0
               ? "No entries"
-              : `Showing ${from} to ${to} of ${filtered.length} entries`}
+              : `Showing ${from} to ${to} of ${filtered.length} ${filtered.length === 1 ? "entry" : "entries"}`}
           </p>
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="grid h-8 w-8 place-items-center rounded-md border border-[#d0d5dd] text-[#667085] disabled:opacity-40 hover:bg-[#f0f2f5]"
+              disabled={safePageIndex === 1}
+              className="grid h-8 w-8 place-items-center rounded-md border border-[#d0d5dd] text-[#667085] transition-colors disabled:opacity-40 hover:bg-[#f0f2f5]"
             >
               <FontAwesomeIcon icon={faChevronLeft} className="text-[10px]" />
             </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            {pageNumbers.map((p) => (
               <button
                 key={p}
                 type="button"
                 onClick={() => setPage(p)}
                 className={`grid h-8 w-8 place-items-center rounded-md border text-xs font-semibold transition-colors ${
-                  page === p
+                  safePageIndex === p
                     ? "border-[#006638] bg-[#006638] text-white"
                     : "border-[#d0d5dd] text-[#667085] hover:bg-[#f0f2f5]"
                 }`}
@@ -595,8 +850,8 @@ const ScheduledTab = ({ onScheduleNew }) => {
             <button
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="grid h-8 w-8 place-items-center rounded-md border border-[#d0d5dd] text-[#667085] disabled:opacity-40 hover:bg-[#f0f2f5]"
+              disabled={safePageIndex === totalPages}
+              className="grid h-8 w-8 place-items-center rounded-md border border-[#d0d5dd] text-[#667085] transition-colors disabled:opacity-40 hover:bg-[#f0f2f5]"
             >
               <FontAwesomeIcon icon={faChevronRight} className="text-[10px]" />
             </button>
@@ -1756,6 +2011,323 @@ const EditAudienceModal = ({ isOpen, initial, onApply, onClose }) => {
   );
 };
 
+const formatDuration = (ms) => {
+  if (ms == null) return "—";
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${Math.round(ms / 60000)}m`;
+};
+
+const timeAgo = (date) => {
+  if (!date) return "Never";
+  const diff = Date.now() - new Date(date).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+};
+
+const CronJobsTab = () => {
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState({});
+  const [expandedJob, setExpandedJob] = useState(null);
+  const [runs, setRuns] = useState({});
+  const [runsLoading, setRunsLoading] = useState({});
+
+  useEffect(() => {
+    apiClient
+      .get("/message/cron-jobs")
+      .then((res) => setJobs(res.data))
+      .catch(() => toast.error("Failed to load automation jobs."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleToggle = async (jobName, currentlyEnabled) => {
+    const next = !currentlyEnabled;
+    setToggling((prev) => ({ ...prev, [jobName]: true }));
+    try {
+      const res = await apiClient.patch(`/message/cron-jobs/${jobName}`, { enabled: next });
+      setJobs((prev) => prev.map((j) => (j.jobName === jobName ? res.data : j)));
+      toast.success(
+        `${JOB_META[jobName]?.label ?? jobName} ${next ? "enabled" : "disabled"}.`,
+      );
+    } catch (err) {
+      toast.error(parseApiError(err).message || "Failed to update job.");
+    } finally {
+      setToggling((prev) => ({ ...prev, [jobName]: false }));
+    }
+  };
+
+  const toggleExpand = async (jobName) => {
+    if (expandedJob === jobName) {
+      setExpandedJob(null);
+      return;
+    }
+    setExpandedJob(jobName);
+    if (runs[jobName]) return;
+    setRunsLoading((prev) => ({ ...prev, [jobName]: true }));
+    try {
+      const res = await apiClient.get(`/message/cron-jobs/${jobName}/runs?limit=10`);
+      setRuns((prev) => ({ ...prev, [jobName]: res.data }));
+    } catch {
+      setRuns((prev) => ({ ...prev, [jobName]: [] }));
+    } finally {
+      setRunsLoading((prev) => ({ ...prev, [jobName]: false }));
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-28 animate-pulse rounded-xl border border-[#e5e7eb] bg-white" />
+        ))}
+      </div>
+    );
+  }
+
+  const enabledCount = jobs.filter((j) => j.enabled).length;
+
+  return (
+    <div className="space-y-4">
+      {/* Summary bar */}
+      <div className="flex items-center justify-between rounded-xl border border-[#e5e7eb] bg-white px-5 py-3.5 shadow-[0_2px_8px_rgba(16,24,40,0.04)]">
+        <div>
+          <p className="text-sm font-semibold text-[#101828]">Automated Jobs</p>
+          <p className="mt-0.5 text-xs text-[#667085]">
+            {enabledCount} of {jobs.length} jobs currently active
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-center">
+            <p className="text-xl font-bold text-[#008f45]">{enabledCount}</p>
+            <p className="text-[11px] text-[#667085]">Active</p>
+          </div>
+          <div className="h-8 w-px bg-[#f0f2f5]" />
+          <div className="text-center">
+            <p className="text-xl font-bold text-[#101828]">{jobs.length - enabledCount}</p>
+            <p className="text-[11px] text-[#667085]">Paused</p>
+          </div>
+          <div className="h-8 w-px bg-[#f0f2f5]" />
+          <div className="text-center">
+            <p className="text-xl font-bold text-[#101828]">
+              {jobs.reduce((sum, j) => sum + (j.totalRuns ?? 0), 0).toLocaleString()}
+            </p>
+            <p className="text-[11px] text-[#667085]">Total Runs</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Job cards */}
+      <div className="space-y-3">
+        {jobs.map((job) => {
+          const meta = JOB_META[job.jobName] ?? {
+            label: job.jobName,
+            description: "",
+            scheduleLabel: "—",
+            icon: faGears,
+            iconBg: "#f0f2f5",
+            iconColor: "#667085",
+          };
+          const isExpanded = expandedJob === job.jobName;
+          const successRate =
+            job.totalRuns > 0
+              ? Math.round((job.totalSuccesses / job.totalRuns) * 100)
+              : null;
+
+          return (
+            <div
+              key={job.jobName}
+              className="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-[0_2px_8px_rgba(16,24,40,0.04)]"
+            >
+              <div className="px-5 py-4">
+                <div className="flex items-start gap-4">
+                  {/* Icon */}
+                  <div
+                    className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl"
+                    style={{ background: meta.iconBg }}
+                  >
+                    <FontAwesomeIcon icon={meta.icon} className="text-sm" style={{ color: meta.iconColor }} />
+                  </div>
+
+                  {/* Info */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-[#101828]">{meta.label}</p>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          job.enabled
+                            ? "bg-[#dcf8e4] text-[#006638]"
+                            : "bg-[#f0f2f5] text-[#667085]"
+                        }`}
+                      >
+                        {job.enabled ? "Active" : "Paused"}
+                      </span>
+                      {job.lastRunStatus === "failed" && (
+                        <span className="rounded-full bg-[#fee2e2] px-2 py-0.5 text-[10px] font-semibold text-[#dc2626]">
+                          Last run failed
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs text-[#667085]">{meta.description}</p>
+
+                    {/* Schedule + last run */}
+                    <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <FontAwesomeIcon icon={faClock} className="text-[10px] text-[#98a2b3]" />
+                        <span className="text-[11px] text-[#667085]">{meta.scheduleLabel}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <FontAwesomeIcon icon={faArrowsRotate} className="text-[10px] text-[#98a2b3]" />
+                        <span className="text-[11px] text-[#667085]">
+                          Last run: {timeAgo(job.lastRunAt)}
+                          {job.lastRunDurationMs != null && (
+                            <span className="ml-1 text-[#98a2b3]">
+                              ({formatDuration(job.lastRunDurationMs)})
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      {successRate != null && (
+                        <div className="flex items-center gap-1.5">
+                          <FontAwesomeIcon icon={faCircleCheck} className="text-[10px] text-[#98a2b3]" />
+                          <span className="text-[11px] text-[#667085]">
+                            {successRate}% success ({job.totalRuns} runs)
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex shrink-0 items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => toggleExpand(job.jobName)}
+                      className="flex items-center gap-1.5 rounded-md border border-[#d0d5dd] bg-white px-3 py-1.5 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
+                    >
+                      <FontAwesomeIcon icon={faEye} className="text-[10px]" />
+                      {isExpanded ? "Hide" : "History"}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={toggling[job.jobName]}
+                      onClick={() => handleToggle(job.jobName, job.enabled)}
+                      className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60 ${
+                        job.enabled
+                          ? "bg-[#fee2e2] text-[#dc2626] hover:bg-[#fecaca]"
+                          : "bg-[#dcf8e4] text-[#006638] hover:bg-[#bbf0cc]"
+                      }`}
+                    >
+                      {toggling[job.jobName] ? (
+                        <FontAwesomeIcon icon={faArrowsRotate} className="animate-spin text-[10px]" />
+                      ) : (
+                        <FontAwesomeIcon
+                          icon={job.enabled ? faCircleXmark : faCircleCheck}
+                          className="text-[10px]"
+                        />
+                      )}
+                      {job.enabled ? "Disable" : "Enable"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Stats row */}
+                {job.totalRuns > 0 && (
+                  <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-[#f9fafb] p-3">
+                    <div className="text-center">
+                      <p className="text-base font-bold text-[#101828]">{job.totalRuns}</p>
+                      <p className="text-[10px] text-[#667085]">Total Runs</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-base font-bold text-[#008f45]">{job.totalSuccesses}</p>
+                      <p className="text-[10px] text-[#667085]">Succeeded</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-base font-bold text-[#dc2626]">{job.totalFailures}</p>
+                      <p className="text-[10px] text-[#667085]">Failed</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Run history panel */}
+              {isExpanded && (
+                <div className="border-t border-[#f0f2f5] bg-[#fafafa] px-5 py-4">
+                  <p className="mb-3 text-xs font-semibold text-[#344054]">Recent Run History</p>
+                  {runsLoading[job.jobName] ? (
+                    <div className="space-y-2">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-9 animate-pulse rounded-lg bg-[#f0f2f5]" />
+                      ))}
+                    </div>
+                  ) : !runs[job.jobName]?.length ? (
+                    <p className="text-xs text-[#98a2b3]">No runs recorded yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {runs[job.jobName].map((run) => (
+                        <div
+                          key={run.id}
+                          className="flex items-center gap-3 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5"
+                        >
+                          <span
+                            className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[9px] font-bold ${
+                              run.status === "success"
+                                ? "bg-[#dcf8e4] text-[#006638]"
+                                : run.status === "failed"
+                                  ? "bg-[#fee2e2] text-[#dc2626]"
+                                  : "bg-[#fef3c7] text-[#d97706]"
+                            }`}
+                          >
+                            {run.status === "success" ? "✓" : run.status === "failed" ? "✕" : "…"}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-medium capitalize text-[#101828]">
+                                {run.status}
+                              </span>
+                              {run.sentCount != null && (
+                                <span className="text-[11px] text-[#667085]">
+                                  — {run.sentCount}/{run.totalCount ?? "?"} sent
+                                </span>
+                              )}
+                            </div>
+                            {run.errorMessage && (
+                              <p className="truncate text-[10px] text-[#dc2626]">{run.errorMessage}</p>
+                            )}
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-[11px] text-[#667085]">
+                              {new Date(run.startedAt).toLocaleDateString("en-NG", {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                            {run.durationMs != null && (
+                              <p className="text-[10px] text-[#98a2b3]">{formatDuration(run.durationMs)}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const Notifications = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [previewTab, setPreviewTab] = useState(0);
@@ -2010,15 +2582,24 @@ const Notifications = () => {
                         <button
                           key={ch.id}
                           type="button"
-                          onClick={() => toggleChannel(ch.id)}
+                          disabled={ch.disabled}
+                          onClick={() => !ch.disabled && toggleChannel(ch.id)}
+                          title={ch.disabled ? "Coming soon" : undefined}
                           className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium transition-all ${
-                            active
-                              ? "border-[#008f45] bg-[#f0fbf5] text-[#008f45]"
-                              : "border-[#d0d5dd] bg-white text-[#344054] hover:bg-[#f9fafb]"
+                            ch.disabled
+                              ? "cursor-not-allowed border-[#e5e7eb] bg-[#f9fafb] text-[#98a2b3]"
+                              : active
+                                ? "border-[#008f45] bg-[#f0fbf5] text-[#008f45]"
+                                : "border-[#d0d5dd] bg-white text-[#344054] hover:bg-[#f9fafb]"
                           }`}
                         >
                           <FontAwesomeIcon icon={ch.icon} />
                           {ch.label}
+                          {ch.disabled && (
+                            <span className="rounded-full bg-[#f0f2f5] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#98a2b3]">
+                              Soon
+                            </span>
+                          )}
                         </button>
                       );
                     })}
@@ -2485,15 +3066,17 @@ const Notifications = () => {
 
       {activeTab === 2 && <SentHistoryTab />}
 
-      {activeTab > 2 && (
+      {activeTab === 3 && (
         <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-[#e5e7eb] bg-white shadow-[0_2px_8px_rgba(16,24,40,0.04)]">
           <div className="grid h-12 w-12 place-items-center rounded-full bg-[#f0f2f5]">
-            <FontAwesomeIcon icon={TABS[activeTab].icon} className="text-lg text-[#98a2b3]" />
+            <FontAwesomeIcon icon={TABS[3].icon} className="text-lg text-[#98a2b3]" />
           </div>
-          <p className="mt-3 text-sm font-semibold text-[#344054]">{TABS[activeTab].label}</p>
+          <p className="mt-3 text-sm font-semibold text-[#344054]">{TABS[3].label}</p>
           <p className="mt-1 text-xs text-[#98a2b3]">This section is coming soon.</p>
         </div>
       )}
+
+      {activeTab === 4 && <CronJobsTab />}
     </div>
   );
 };

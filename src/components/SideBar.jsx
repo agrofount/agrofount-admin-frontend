@@ -15,6 +15,7 @@ import {
   faRobot,
   faStore,
   faTruckFast,
+  faUserPlus,
   faUsers,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
@@ -87,6 +88,7 @@ const SideBar = () => {
         isAdmin ||
         hasPermission(RESOURCES.SUPPLY_CHAIN, ACTIONS.READ) ||
         hasPermission(RESOURCES.DRIVERS, ACTIONS.READ),
+      leads: isAdmin || hasPermission(RESOURCES.LEADS, ACTIONS.READ),
       careers: isAdmin || hasPermission(RESOURCES.CAREERS, ACTIONS.READ),
       aiAnalytics:
         isAdmin ||
@@ -141,6 +143,7 @@ const SideBar = () => {
             {can.orders && <NavLink to="/orders" icon={faReceipt} label="Orders" onClick={closeOnMobile} />}
             {can.products && <NavLink to="/list-products" icon={faStore} label="Products" onClick={closeOnMobile} />}
             {can.users && <NavLink to="/users" icon={faUsers} label="Customers" onClick={closeOnMobile} />}
+            {can.leads && <NavLink to="/leads" icon={faUserPlus} label="Leads" onClick={closeOnMobile} />}
             {can.payments && <NavLink to="/payments" icon={faBriefcase} label="Payments" onClick={closeOnMobile} />}
               {can.reports && <NavLink to="/" icon={faChartSimple} label="Reports" onClick={closeOnMobile} />}
           </Section>

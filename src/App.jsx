@@ -72,6 +72,7 @@ const JobDetail = lazy(() => import("./components/Careers/JobDetail"));
 const Applications = lazy(() => import("./components/Careers/Applications"));
 const CreateJob = lazy(() => import("./components/Careers/CreateJob"));
 const Notifications = lazy(() => import("./components/Notifications/Notifications"));
+const ListLeads = lazy(() => import("./components/Leads/ListLeads"));
 
 const adminRoutes = [
   { path: "/", element: <Dashboard /> },
@@ -121,6 +122,7 @@ const adminRoutes = [
   { path: "/careers/jobs/:jobId/edit", element: <CreateJob /> },
   { path: "/careers/applications", element: <Applications /> },
   { path: "/careers/create", element: <CreateJob /> },
+  { path: "/leads", element: <ListLeads /> },
   { path: "/notifications", element: <Notifications /> },
   { path: "/ayo-ai", element: <AyoAIAnalytics /> },
   { path: "/settings", element: <Settings /> },

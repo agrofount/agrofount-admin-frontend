@@ -467,12 +467,12 @@ const ListLeads = () => {
             className="inline-flex h-9 items-center gap-2 rounded-md bg-[#008f45] px-4 text-xs font-semibold text-white shadow-[0_4px_12px_rgba(0,143,69,0.25)] disabled:opacity-60"
           >
             <FontAwesomeIcon icon={faCloudArrowUp} />
-            {uploading ? "Importing…" : "Import CSV"}
+            {uploading ? "Importing…" : "Import CSV / Excel"}
           </button>
           <input
             ref={fileInputRef}
             type="file"
-            accept=".csv"
+            accept=".csv,.xlsx,.xls"
             className="hidden"
             onChange={(e) => handleFileUpload(e.target.files?.[0])}
           />
@@ -552,7 +552,7 @@ const ListLeads = () => {
                           onClick={() => fileInputRef.current?.click()}
                           className="h-8 rounded-md bg-[#008f45] px-4 text-xs font-semibold text-white"
                         >
-                          Import CSV
+                          Import CSV / Excel
                         </button>
                       </div>
                     </td>

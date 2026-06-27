@@ -59,6 +59,9 @@ export const RESOURCES = {
   INCOME: "income",
   VISITORS: "visitors",
 
+  // Leads
+  LEADS: "leads",
+
   // Marketing
   CAMPAIGNS: "campaigns",
   DISCOUNTS: "discounts",

@@ -13,6 +13,7 @@ import {
   faPlus,
   faReceipt,
   faRobot,
+  faBookOpen,
   faStore,
   faTruckFast,
   faUserPlus,
@@ -153,7 +154,8 @@ const SideBar = () => {
             <NavLink to="/customer-reports" icon={faUsers} label="Customer Reports" onClick={closeOnMobile} />
             <NavLink to="/inventory-reports" icon={faBox} label="Inventory Reports" onClick={closeOnMobile} />
             <NavLink to="/career-reports" icon={faBriefcase} label="Career Reports" onClick={closeOnMobile} />
-            {can.aiAnalytics && <NavLink to="/ayo-ai" icon={faRobot} label="Ayo AI Analytics" badge="New" onClick={closeOnMobile} />}
+            {can.aiAnalytics && <NavLink to="/ayo-ai" icon={faRobot} label="Ayo AI Analytics" badge="New" end onClick={closeOnMobile} />}
+            {can.aiAnalytics && <NavLink to="/ayo-ai/knowledge" icon={faBookOpen} label="Ayo Knowledge Base" badge="New" onClick={closeOnMobile} />}
           </Section>
 
           <Section title="Inventory & Operations">

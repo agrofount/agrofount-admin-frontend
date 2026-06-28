@@ -79,4 +79,5 @@ export const routePermissions = {
   "/careers/applications": { resource: RESOURCES.CAREERS, action: ACTIONS.READ },
   "/careers/create": { resource: RESOURCES.CAREERS, action: ACTIONS.CREATE },
   "/ayo-ai": { resource: RESOURCES.ANALYTICS, action: ACTIONS.READ },
+  "/ayo-ai/knowledge": { resource: RESOURCES.ANALYTICS, action: ACTIONS.READ },
 };

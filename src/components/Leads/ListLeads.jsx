@@ -373,14 +373,23 @@ const ListLeads = () => {
     }, 400);
   };
 
-  const handleFileUpload = async (file) => {
-    if (!file) return;
+  const handleFileUpload = async (fileList) => {
+    if (!fileList?.length) return;
     const formData = new FormData();
-    formData.append("file", file);
+    Array.from(fileList).forEach((f) => formData.append("files", f));
     try {
       setUploading(true);
-      const res = await apiClient.post("/leads/upload", formData, { headers: { "Content-Type": "multipart/form-data" } });
-      toast.success(`Imported ${res.data.inserted} leads (${res.data.skipped} skipped as duplicates)`);
+      const res = await apiClient.post("/leads/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const { inserted, skipped, files: fileResults } = res.data;
+      if (fileResults?.length > 1) {
+        toast.success(
+          `Imported ${inserted} leads across ${fileResults.length} files (${skipped} skipped as duplicates)`
+        );
+      } else {
+        toast.success(`Imported ${inserted} leads (${skipped} skipped as duplicates)`);
+      }
       fetchLeads();
       fetchStats();
     } catch (err) {
@@ -473,8 +482,9 @@ const ListLeads = () => {
             ref={fileInputRef}
             type="file"
             accept=".csv,.xlsx,.xls"
+            multiple
             className="hidden"
-            onChange={(e) => handleFileUpload(e.target.files?.[0])}
+            onChange={(e) => handleFileUpload(e.target.files)}
           />
         </div>
       </div>

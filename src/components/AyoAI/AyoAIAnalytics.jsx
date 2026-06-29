@@ -27,6 +27,10 @@ import {
   faDollarSign,
   faServer,
   faCoins,
+  faRotateRight,
+  faMagnifyingGlass,
+  faUser,
+  faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -275,6 +279,15 @@ const AyoAIAnalytics = () => {
   const [togglingAyo, setTogglingAyo] = useState(false);
   const [pendingDeactivate, setPendingDeactivate] = useState(false);
   const [resources, setResources] = useState(emptyResources);
+  const [tokenUsage, setTokenUsage] = useState({ data: [], meta: {} });
+  const [tokenUsageLoading, setTokenUsageLoading] = useState(true);
+  const [tokenSearchInput, setTokenSearchInput] = useState("");
+  const [tokenSearch, setTokenSearch] = useState("");
+  const [tokenStatus, setTokenStatus] = useState("all");
+  const [tokenPage, setTokenPage] = useState(1);
+  const [resettingUserId, setResettingUserId] = useState(null);
+  const [confirmResetUser, setConfirmResetUser] = useState(null);
+  const [tokenRefreshKey, setTokenRefreshKey] = useState(0);
   const [analytics, setAnalytics] = useState({
     summary: emptySummary,
     chatsOverTime: [],
@@ -372,6 +385,51 @@ const AyoAIAnalytics = () => {
     loadData();
     return () => { isMounted = false; };
   }, [chartInterval, queryParams]);
+
+  /* Debounce token search input */
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTokenSearch(tokenSearchInput);
+      setTokenPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [tokenSearchInput]);
+
+  /* Load per-user token usage */
+  useEffect(() => {
+    let isMounted = true;
+    const loadTokenUsage = async () => {
+      setTokenUsageLoading(true);
+      try {
+        const params = { page: tokenPage, limit: 20 };
+        if (tokenSearch) params.search = tokenSearch;
+        if (tokenStatus !== "all") params.status = tokenStatus;
+        const res = await apiClient.get("/admin/ai-analytics/user-token-usage", { params });
+        if (isMounted) setTokenUsage(res.data ?? { data: [], meta: {} });
+      } catch {
+        if (isMounted) setTokenUsage({ data: [], meta: {} });
+      } finally {
+        if (isMounted) setTokenUsageLoading(false);
+      }
+    };
+    loadTokenUsage();
+    return () => { isMounted = false; };
+  }, [tokenPage, tokenSearch, tokenStatus, tokenRefreshKey]);
+
+  /* Reset a user's token quota */
+  const handleResetQuota = async (userId, name) => {
+    setResettingUserId(userId);
+    try {
+      const res = await apiClient.post(`/admin/ai-analytics/user-token-usage/${userId}/reset`);
+      toast.success(`Quota reset for ${name}. New limit: ${formatTokens(res.data?.newLimit)} tokens.`);
+      setTokenRefreshKey((k) => k + 1);
+    } catch (err) {
+      toast.error(err.message || "Failed to reset quota. Please try again.");
+    } finally {
+      setResettingUserId(null);
+      setConfirmResetUser(null);
+    }
+  };
 
   /* Toggle Ayo AI active state */
   const handleToggleAyo = () => {
@@ -995,6 +1053,194 @@ const AyoAIAnalytics = () => {
           </div>
         </div>
       </div>
+
+      {/* ── User Token Usage ────────────────────────────────────── */}
+      <div className="bg-white rounded-xl shadow-[0_0_10px_#EDEDED] p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+          <div>
+            <h2 className="font-semibold text-gray-800 text-sm">User Token Usage</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Per-user Ayo AI trial quota. Reset to extend access for individual farmers.</p>
+          </div>
+        </div>
+
+        {/* Search + status filter */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <div className="relative flex-1">
+            <FontAwesomeIcon icon={faMagnifyingGlass} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+            <input
+              type="text"
+              placeholder="Search by name, email or phone..."
+              value={tokenSearchInput}
+              onChange={(e) => setTokenSearchInput(e.target.value)}
+              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500"
+            />
+          </div>
+          <select
+            value={tokenStatus}
+            onChange={(e) => { setTokenStatus(e.target.value); setTokenPage(1); }}
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-green-500 bg-white"
+          >
+            <option value="all">All users</option>
+            <option value="active">Active (quota remaining)</option>
+            <option value="exhausted">Quota exhausted</option>
+          </select>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="text-left text-xs font-medium text-gray-400 pb-2 pr-4">Farmer</th>
+                <th className="text-left text-xs font-medium text-gray-400 pb-2 pr-4">Usage</th>
+                <th className="text-left text-xs font-medium text-gray-400 pb-2 pr-4">Status</th>
+                <th className="text-left text-xs font-medium text-gray-400 pb-2 pr-4">Last Active</th>
+                <th className="text-right text-xs font-medium text-gray-400 pb-2">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tokenUsageLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-b border-gray-50">
+                    <td className="py-3 pr-4"><div className="h-4 w-32 bg-gray-100 animate-pulse rounded" /></td>
+                    <td className="py-3 pr-4"><div className="h-4 w-48 bg-gray-100 animate-pulse rounded" /></td>
+                    <td className="py-3 pr-4"><div className="h-4 w-20 bg-gray-100 animate-pulse rounded" /></td>
+                    <td className="py-3 pr-4"><div className="h-4 w-24 bg-gray-100 animate-pulse rounded" /></td>
+                    <td className="py-3 text-right"><div className="h-4 w-20 bg-gray-100 animate-pulse rounded ml-auto" /></td>
+                  </tr>
+                ))
+              ) : tokenUsage.data.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-10 text-center text-sm text-gray-400">No token usage records found.</td>
+                </tr>
+              ) : (
+                tokenUsage.data.map((user) => (
+                  <tr key={user.userId} className="border-b border-gray-50 hover:bg-gray-50/50">
+                    <td className="py-3 pr-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                          <FontAwesomeIcon icon={faUser} className="text-green-600 text-xs" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800 text-sm leading-tight">{user.name}</p>
+                          <p className="text-xs text-gray-400">{user.email || user.phone || "—"}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <div className="min-w-[180px]">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-600">{formatTokens(user.tokensUsed)} used</span>
+                          <span className="text-gray-400">
+                            {formatTokens(user.tokenLimit)} limit
+                            {user.bonusTokens > 0 && (
+                              <span className="ml-1 text-green-600">+{formatTokens(user.bonusTokens)} bonus</span>
+                            )}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${user.usagePercent >= 100 ? "bg-red-500" : user.usagePercent >= 80 ? "bg-amber-400" : "bg-green-500"}`}
+                            style={{ width: `${Math.min(100, user.usagePercent)}%` }}
+                          />
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{user.usagePercent}% · {formatTokens(user.tokensRemaining)} remaining</p>
+                      </div>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium ${user.trialExhausted ? "bg-red-50 text-red-600" : "bg-green-50 text-green-700"}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${user.trialExhausted ? "bg-red-500" : "bg-green-500"}`} />
+                        {user.trialExhausted ? "Exhausted" : "Active"}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-4 text-xs text-gray-400">
+                      {user.lastActive
+                        ? new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", year: "numeric" }).format(new Date(user.lastActive))
+                        : "—"}
+                    </td>
+                    <td className="py-3 text-right">
+                      <button
+                        onClick={() => setConfirmResetUser({ userId: user.userId, name: user.name })}
+                        disabled={!!resettingUserId}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <FontAwesomeIcon icon={faRotateRight} className={resettingUserId === user.userId ? "animate-spin" : ""} />
+                        Reset Quota
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {(tokenUsage.meta?.totalPages ?? 0) > 1 && (
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+            <p className="text-xs text-gray-400">
+              {tokenUsage.meta.totalItems} users · Page {tokenUsage.meta.currentPage} of {tokenUsage.meta.totalPages}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTokenPage((p) => Math.max(1, p - 1))}
+                disabled={tokenPage <= 1}
+                className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setTokenPage((p) => Math.min(tokenUsage.meta.totalPages, p + 1))}
+                disabled={tokenPage >= (tokenUsage.meta?.totalPages ?? 1)}
+                className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Reset quota confirmation modal ───────────────────────── */}
+      {confirmResetUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <FontAwesomeIcon icon={faRotateRight} className="text-green-600" />
+              </div>
+              <button onClick={() => setConfirmResetUser(null)} className="text-gray-400 hover:text-gray-600">
+                <FontAwesomeIcon icon={faXmark} />
+              </button>
+            </div>
+            <h3 className="font-semibold text-gray-800 mb-1">Reset Token Quota</h3>
+            <p className="text-sm text-gray-500 mb-5">
+              This will add another full quota to{" "}
+              <span className="font-medium text-gray-700">{confirmResetUser.name}</span>
+              's account so they can continue chatting with Ayo. Are you sure?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmResetUser(null)}
+                className="flex-1 py-2.5 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleResetQuota(confirmResetUser.userId, confirmResetUser.name)}
+                disabled={!!resettingUserId}
+                className="flex-1 py-2.5 text-sm font-medium bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {resettingUserId ? (
+                  <><FontAwesomeIcon icon={faRotateRight} className="animate-spin" /> Resetting...</>
+                ) : (
+                  "Yes, Reset"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Footer ──────────────────────────────────────────────── */}
       <div className="flex items-start gap-2 pt-1">

@@ -46,6 +46,33 @@ const inputClass =
 const selectButtonClass =
   "relative block h-10 w-full rounded-md border border-[#d0d5dd] bg-white px-3 pr-8 text-left text-xs text-[#101828] outline-none focus:border-[#008f45]";
 
+const getUnitName = (unit) => {
+  if (!unit || typeof unit === "string") return unit || "";
+  return unit.name || unit.unit || "";
+};
+
+const normalizeUomForPayload = (uom) => ({
+  unit: getUnitName(uom.unit),
+  vendorPrice: Number(uom.vendorPrice),
+  platformPrice: Number(uom.platformPrice),
+  ...(uom.moq !== undefined && uom.moq !== ""
+    ? { moq: Number(uom.moq) }
+    : {}),
+  ...(uom.stockQuantity !== undefined && uom.stockQuantity !== ""
+    ? { stockQuantity: Number(uom.stockQuantity) }
+    : {}),
+  ...(Array.isArray(uom.vtp)
+    ? {
+        vtp: uom.vtp.map((tier) => ({
+          minVolume: Number(tier.minVolume),
+          maxVolume: Number(tier.maxVolume),
+          price: Number(tier.price),
+          discount: Number(tier.discount),
+        })),
+      }
+    : {}),
+});
+
 const ProductUpdate = () => {
   const { slug } = useParams();
   const { country_id } = useContext(ShopContext);
@@ -152,7 +179,7 @@ const ProductUpdate = () => {
   const handleUomChange = (index, selectedUom) => {
     setUomSections((prevSections) =>
       prevSections.map((section, i) =>
-        i === index ? { ...section, unit: selectedUom.name } : section
+        i === index ? { ...section, unit: getUnitName(selectedUom) } : section
       )
     );
   };
@@ -229,8 +256,8 @@ const ProductUpdate = () => {
   const handleUpdateProductLocation = async () => {
     try {
       setProcessing(true);
-      const cleanUom = (uomSections || productLocationData.uom).map((uom) =>
-        Object.fromEntries(Object.entries(uom).filter(([k]) => k !== "id")),
+      const cleanUom = (uomSections || productLocationData.uom).map(
+        normalizeUomForPayload
       );
       const payload = {
         price: Number(price) || Number(productLocationData?.price),
@@ -487,7 +514,7 @@ const ProductUpdate = () => {
                                 {uoms.map((uom) => (
                                   <ListboxOption
                                     key={uom.name}
-                                    value={uom}
+                                    value={uom.name}
                                     className="group flex cursor-default items-center gap-2 rounded-lg py-1.5 px-3 text-xs select-none data-[focus]:bg-[#f8fafc]"
                                   >
                                     <CheckIcon className="invisible size-4 fill-white group-data-[selected]:visible" />

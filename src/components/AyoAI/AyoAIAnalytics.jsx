@@ -31,10 +31,14 @@ import {
   faMagnifyingGlass,
   faUser,
   faXmark,
+  faWallet,
+  faPenToSquare,
 } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { apiClient } from "../../lib/apiClient";
+import ModalComponent from "../modals/ModalComponent";
+import EditAiProviderForm from "./EditAiProviderForm";
 
 /* ─── Formatters ─────────────────────────────────────────────── */
 const formatNumber = (value) => {
@@ -110,6 +114,7 @@ const emptySummary = {
 
 const emptyResources = {
   totalTokens: null,
+  totalCredits: null,
   inputTokens: null,
   outputTokens: null,
   totalCostUSD: null,
@@ -119,7 +124,7 @@ const emptyResources = {
   provider: null,
   model: null,
   dailyUsage: [],
-  change: { totalCostUSD: null, totalTokens: null },
+  change: { totalCostUSD: null, totalTokens: null, totalCredits: null },
 };
 
 const colors = ["#16a34a", "#3b82f6", "#8b5cf6", "#f59e0b", "#9ca3af"];
@@ -183,7 +188,7 @@ const getRadialOptions = () => ({
   colors: ["#16a34a"],
 });
 
-const getTokensBarOptions = (categories) => ({
+const getUsageBarOptions = (categories, unitLabel = "tokens") => ({
   chart: { type: "bar", toolbar: { show: false } },
   xaxis: {
     categories,
@@ -201,7 +206,7 @@ const getTokensBarOptions = (categories) => ({
   dataLabels: { enabled: false },
   grid: { borderColor: "#f3f4f6", strokeDashArray: 4 },
   plotOptions: { bar: { borderRadius: 4, columnWidth: "55%" } },
-  tooltip: { y: { formatter: (v) => `${formatTokens(v)} tokens` } },
+  tooltip: { y: { formatter: (v) => `${formatTokens(v)} ${unitLabel}` } },
 });
 
 /* ─── Nigeria map ────────────────────────────────────────────── */
@@ -278,6 +283,7 @@ const AyoAIAnalytics = () => {
   const [ayoActive, setAyoActive] = useState(null);
   const [togglingAyo, setTogglingAyo] = useState(false);
   const [pendingDeactivate, setPendingDeactivate] = useState(false);
+  const [editingProvider, setEditingProvider] = useState(false);
   const [resources, setResources] = useState(emptyResources);
   const [tokenUsage, setTokenUsage] = useState({ data: [], meta: {} });
   const [tokenUsageLoading, setTokenUsageLoading] = useState(true);
@@ -421,7 +427,7 @@ const AyoAIAnalytics = () => {
     setResettingUserId(userId);
     try {
       const res = await apiClient.post(`/admin/ai-analytics/user-token-usage/${userId}/reset`);
-      toast.success(`Quota reset for ${name}. New limit: ${formatTokens(res.data?.newLimit)} tokens.`);
+      toast.success(`Quota reset for ${name}. New limit: ${formatNumber(res.data?.newLimit)} credits.`);
       setTokenRefreshKey((k) => k + 1);
     } catch (err) {
       toast.error(err.message || "Failed to reset quota. Please try again.");
@@ -527,6 +533,14 @@ const AyoAIAnalytics = () => {
   /* Resource consumption data */
   const resourceMetrics = [
     {
+      icon: faWallet,
+      iconBg: "bg-emerald-100",
+      iconColor: "text-emerald-600",
+      label: "Total Ayo Credits",
+      value: formatNumber(resources.totalCredits),
+      sub: resources.change?.totalCredits != null ? formatChange(resources.change.totalCredits) : null,
+    },
+    {
       icon: faMicrochip,
       iconBg: "bg-violet-100",
       iconColor: "text-violet-600",
@@ -568,13 +582,13 @@ const AyoAIAnalytics = () => {
     },
   ];
 
-  const tokenBarCategories = (resources.dailyUsage || []).map((d) =>
+  const creditBarCategories = (resources.dailyUsage || []).map((d) =>
     formatDateLabel(d.date, "day")
   );
-  const tokenBarSeries = [
-    { name: "Tokens", data: (resources.dailyUsage || []).map((d) => Number(d.tokens) || 0) },
+  const creditBarSeries = [
+    { name: "Credits", data: (resources.dailyUsage || []).map((d) => Number(d.credits) || 0) },
   ];
-  const tokenBarOptions = getTokensBarOptions(tokenBarCategories);
+  const creditBarOptions = getUsageBarOptions(creditBarCategories, "credits");
   const budgetPct = Math.min(100, Math.round(resources.budgetUsedPercent || 0));
 
   const handleExport = () => {
@@ -693,13 +707,16 @@ const AyoAIAnalytics = () => {
             </div>
           ) : (
             <div className="flex items-center gap-3 shrink-0">
-              {resources.provider && (
-                <div className="hidden sm:flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
-                  <FontAwesomeIcon icon={faServer} className="text-gray-400 text-xs" />
-                  <span className="text-xs font-medium text-gray-600">{resources.provider}</span>
-                  {resources.model && <span className="text-xs text-gray-400">· {resources.model}</span>}
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={() => setEditingProvider(true)}
+                className="hidden sm:flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 hover:border-green-300 hover:bg-green-50"
+              >
+                <FontAwesomeIcon icon={faServer} className="text-gray-400 text-xs" />
+                <span className="text-xs font-medium text-gray-600">{resources.provider || "Set AI provider"}</span>
+                {resources.model && <span className="text-xs text-gray-400">· {resources.model}</span>}
+                <FontAwesomeIcon icon={faPenToSquare} className="text-gray-400 text-[10px]" />
+              </button>
               <span className="text-xs text-gray-500 font-medium">
                 {togglingAyo ? "Updating..." : ayoActive ? "Turn off" : "Turn on"}
               </span>
@@ -1013,9 +1030,10 @@ const AyoAIAnalytics = () => {
                     : `${formatUSD((resources.monthlyBudgetUSD || 0) - (resources.totalCostUSD || 0))} remaining`}
                 </p>
 
-                {/* Token breakdown */}
+                {/* Usage breakdown */}
                 <div className="mt-4 pt-3 border-t border-gray-200 space-y-2">
                   {[
+                    { label: "Ayo credits used", value: formatNumber(resources.totalCredits), dot: "bg-emerald-500" },
                     { label: "Input tokens", value: formatTokens(resources.inputTokens), dot: "bg-blue-400" },
                     { label: "Output tokens", value: formatTokens(resources.outputTokens), dot: "bg-violet-500" },
                     { label: "Requests", value: resources.totalRequests != null ? formatNumber(resources.totalRequests) : "—", dot: "bg-green-500" },
@@ -1038,28 +1056,28 @@ const AyoAIAnalytics = () => {
             )}
           </div>
 
-          {/* Daily token usage chart */}
+          {/* Daily credit usage chart */}
           <div className="lg:col-span-3">
-            <p className="text-xs font-semibold text-gray-600 mb-3">Daily Token Usage</p>
+            <p className="text-xs font-semibold text-gray-600 mb-3">Daily Credit Usage</p>
             {loading ? (
               <div className="h-[200px] animate-pulse rounded-lg bg-gray-100" />
-            ) : tokenBarSeries[0].data.length ? (
-              <Chart options={tokenBarOptions} series={tokenBarSeries} type="bar" height={200} />
+            ) : creditBarSeries[0].data.length ? (
+              <Chart options={creditBarOptions} series={creditBarSeries} type="bar" height={200} />
             ) : (
               <div className="grid h-[200px] place-items-center rounded-lg border border-dashed border-gray-200 text-sm text-gray-400">
-                No token usage data for this period.
+                No credit usage data for this period.
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── User Token Usage ────────────────────────────────────── */}
+      {/* ── User Credit Usage ────────────────────────────────────── */}
       <div className="bg-white rounded-xl shadow-[0_0_10px_#EDEDED] p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div>
-            <h2 className="font-semibold text-gray-800 text-sm">User Token Usage</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Per-user Ayo AI trial quota. Reset to extend access for individual farmers.</p>
+            <h2 className="font-semibold text-gray-800 text-sm">User Credit Usage</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Per-user Ayo AI trial quota, in Ayo credits. Reset to extend access for individual farmers.</p>
           </div>
         </div>
 
@@ -1092,7 +1110,7 @@ const AyoAIAnalytics = () => {
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="text-left text-xs font-medium text-gray-400 pb-2 pr-4">Farmer</th>
-                <th className="text-left text-xs font-medium text-gray-400 pb-2 pr-4">Usage</th>
+                <th className="text-left text-xs font-medium text-gray-400 pb-2 pr-4">Credit Usage</th>
                 <th className="text-left text-xs font-medium text-gray-400 pb-2 pr-4">Status</th>
                 <th className="text-left text-xs font-medium text-gray-400 pb-2 pr-4">Last Active</th>
                 <th className="text-right text-xs font-medium text-gray-400 pb-2">Action</th>
@@ -1111,7 +1129,7 @@ const AyoAIAnalytics = () => {
                 ))
               ) : tokenUsage.data.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-sm text-gray-400">No token usage records found.</td>
+                  <td colSpan={5} className="py-10 text-center text-sm text-gray-400">No credit usage records found.</td>
                 </tr>
               ) : (
                 tokenUsage.data.map((user) => (
@@ -1130,11 +1148,11 @@ const AyoAIAnalytics = () => {
                     <td className="py-3 pr-4">
                       <div className="min-w-[180px]">
                         <div className="flex justify-between text-xs mb-1">
-                          <span className="text-gray-600">{formatTokens(user.tokensUsed)} used</span>
+                          <span className="text-gray-600">{formatNumber(user.creditsUsed)} credits used</span>
                           <span className="text-gray-400">
-                            {formatTokens(user.tokenLimit)} limit
-                            {user.bonusTokens > 0 && (
-                              <span className="ml-1 text-green-600">+{formatTokens(user.bonusTokens)} bonus</span>
+                            {formatNumber(user.creditLimit)} limit
+                            {user.bonusCredits > 0 && (
+                              <span className="ml-1 text-green-600">+{formatNumber(user.bonusCredits)} bonus</span>
                             )}
                           </span>
                         </div>
@@ -1144,7 +1162,7 @@ const AyoAIAnalytics = () => {
                             style={{ width: `${Math.min(100, user.usagePercent)}%` }}
                           />
                         </div>
-                        <p className="text-[10px] text-gray-400 mt-0.5">{user.usagePercent}% · {formatTokens(user.tokensRemaining)} remaining</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{user.usagePercent}% · {formatNumber(user.creditsRemaining)} credits remaining</p>
                       </div>
                     </td>
                     <td className="py-3 pr-4">
@@ -1251,6 +1269,27 @@ const AyoAIAnalytics = () => {
           provider invoice.
         </p>
       </div>
+
+      {/* ── Edit AI provider/model modal ─────────────────────────── */}
+      <ModalComponent
+        isModalOpen={editingProvider}
+        onClose={() => setEditingProvider(false)}
+        title="AI Provider & Model"
+        hideHeader
+      >
+        <EditAiProviderForm
+          currentProvider={resources.provider}
+          currentModel={resources.model}
+          onClose={() => setEditingProvider(false)}
+          onSaved={(updated) =>
+            setResources((prev) => ({
+              ...prev,
+              provider: updated?.provider ?? prev.provider,
+              model: updated?.model ?? prev.model,
+            }))
+          }
+        />
+      </ModalComponent>
     </div>
   );
 };

@@ -23,7 +23,7 @@ const SOURCE_TYPES = [
   { value: "market", label: "Market & pricing" },
 ];
 
-const PDF_MAX_BYTES = 30 * 1024 * 1024;
+const PDF_MAX_BYTES = 50 * 1024 * 1024;
 
 const TABS = [
   { key: "document", label: "Add Document", icon: faFileLines },
@@ -228,7 +228,7 @@ function UploadPdfTab() {
       return;
     }
     if (selected.size > PDF_MAX_BYTES) {
-      toast.error("PDF must be 30 MB or smaller.");
+      toast.error("PDF must be 50 MB or smaller.");
       return;
     }
     setFile(selected);
@@ -322,7 +322,7 @@ function UploadPdfTab() {
               Drag & drop a PDF here, or click to browse
             </p>
             <p className="text-xs text-gray-400">
-              Real-text PDFs only, up to 30 MB. Scanned image PDFs are not
+              Real-text PDFs only, up to 50 MB. Scanned image PDFs are not
               supported.
             </p>
           </>

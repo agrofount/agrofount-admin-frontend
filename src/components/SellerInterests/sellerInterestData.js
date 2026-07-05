@@ -16,6 +16,21 @@ export const formatSellerInterestDate = (value) => {
   }).format(new Date(value));
 };
 
+export const formatSellerInterestDateTime = (value) => {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  const datePart = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }).format(date);
+  const timePart = new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+  return `${datePart} · ${timePart}`;
+};
+
 export const normalizeSellerInterest = (interest = {}) => ({
   ...interest,
   status: sellerInterestStatusLabels[interest.status] || interest.status || "New",
@@ -54,4 +69,9 @@ export const fetchSellerInterest = (id) =>
 export const updateSellerInterestStatus = (id, status) =>
   apiClient.patch(`/product-location/seller-interests/${id}/status`, {
     status,
+  });
+
+export const updateSellerInterestNotes = (id, notes) =>
+  apiClient.patch(`/product-location/seller-interests/${id}/notes`, {
+    notes,
   });

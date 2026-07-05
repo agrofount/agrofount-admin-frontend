@@ -5,6 +5,7 @@ import {
   faChartSimple,
   faCircleQuestion,
   faGear,
+  faHandshake,
   faHouse,
   faLandmark,
   faListCheck,
@@ -143,6 +144,7 @@ const SideBar = () => {
             )}
             {can.orders && <NavLink to="/orders" icon={faReceipt} label="Orders" onClick={closeOnMobile} />}
             {can.products && <NavLink to="/list-products" icon={faStore} label="Products" onClick={closeOnMobile} />}
+            {can.products && <NavLink to="/seller-interests" icon={faHandshake} label="Seller Interests" onClick={closeOnMobile} />}
             {can.users && <NavLink to="/users" icon={faUsers} label="Customers" onClick={closeOnMobile} />}
             {can.leads && <NavLink to="/leads" icon={faUserPlus} label="Leads" onClick={closeOnMobile} />}
             {can.payments && <NavLink to="/payments" icon={faBriefcase} label="Payments" onClick={closeOnMobile} />}

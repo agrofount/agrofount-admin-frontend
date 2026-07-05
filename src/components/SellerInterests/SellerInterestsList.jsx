@@ -7,7 +7,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
   buildSellerInterestParams,
@@ -45,6 +45,7 @@ const getPageNumbers = (currentPage, totalPages) => {
 };
 
 const SellerInterestsList = () => {
+  const navigate = useNavigate();
   const [interests, setInterests] = useState([]);
   const [meta, setMeta] = useState({});
   const [loading, setLoading] = useState(true);
@@ -182,10 +183,15 @@ const SellerInterestsList = () => {
                 interests.map((interest) => (
                   <tr
                     key={interest.id}
+                    onClick={() => navigate(`/seller-interests/${interest.id}`)}
                     className="cursor-pointer border-b border-[#eef2f6] last:border-0 hover:bg-[#fbfcfd]"
                   >
                     <td className="px-4 py-3 font-semibold">
-                      <Link to={`/seller-interests/${interest.id}`} className="hover:text-[#008f45]">
+                      <Link
+                        to={`/seller-interests/${interest.id}`}
+                        onClick={(event) => event.stopPropagation()}
+                        className="hover:text-[#008f45]"
+                      >
                         {interest.contactName}
                       </Link>
                     </td>

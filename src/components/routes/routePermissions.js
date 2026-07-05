@@ -12,6 +12,14 @@ export const routePermissions = {
     resource: RESOURCES.PRODUCTS,
     action: ACTIONS.UPDATE,
   },
+  "/seller-interests": {
+    resource: RESOURCES.PRODUCT_LOCATIONS,
+    action: ACTIONS.READ,
+  },
+  "/seller-interests/:interestId": {
+    resource: RESOURCES.PRODUCT_LOCATIONS,
+    action: ACTIONS.READ,
+  },
   "/orders": { resource: RESOURCES.ORDERS, action: ACTIONS.READ },
   "/orders/:orderId": { resource: RESOURCES.ORDERS, action: ACTIONS.READ },
   "/orders/:orderId/track": {

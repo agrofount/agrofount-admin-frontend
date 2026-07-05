@@ -76,6 +76,12 @@ const Applications = lazy(() => import("./components/Careers/Applications"));
 const CreateJob = lazy(() => import("./components/Careers/CreateJob"));
 const Notifications = lazy(() => import("./components/Notifications/Notifications"));
 const ListLeads = lazy(() => import("./components/Leads/ListLeads"));
+const SellerInterestsList = lazy(() =>
+  import("./components/SellerInterests/SellerInterestsList")
+);
+const SellerInterestDetail = lazy(() =>
+  import("./components/SellerInterests/SellerInterestDetail")
+);
 
 const adminRoutes = [
   { path: "/", element: <Dashboard /> },
@@ -89,6 +95,8 @@ const adminRoutes = [
   { path: "/list-products", element: <ListProducts /> },
   { path: "/list-products/:slug", element: <ProductDetail /> },
   { path: "/list-products/:slug/edit", element: <ProductUpdate /> },
+  { path: "/seller-interests", element: <SellerInterestsList /> },
+  { path: "/seller-interests/:interestId", element: <SellerInterestDetail /> },
   { path: "/cities", element: <ListCities /> },
   { path: "/cities/add", element: <AddCity /> },
   { path: "/cities/:cityId/edit", element: <EditCity /> },

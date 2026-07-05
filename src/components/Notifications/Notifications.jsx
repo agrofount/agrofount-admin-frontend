@@ -48,6 +48,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { apiClient, parseApiError } from "../../lib/apiClient";
+import RecipientsModal from "./RecipientsModal";
 
 const NOTIFICATION_TYPES = ["Promotion", "Announcement", "Reminder", "Order Update", "System Alert"];
 
@@ -906,6 +907,7 @@ const SentHistoryTab = () => {
   const [dateTo, setDateTo] = useState("");
   const [openActionId, setOpenActionId] = useState(null);
   const [page, setPage] = useState(1);
+  const [recipientsCampaign, setRecipientsCampaign] = useState(null);
   const PSIZE = 5;
 
   useEffect(() => {
@@ -1295,12 +1297,23 @@ const SentHistoryTab = () => {
 
           <div className="border-t border-[#f0f2f5]" />
 
-          <button type="button" className="flex h-9 w-full items-center justify-center rounded-md border border-[#d0d5dd] bg-white text-sm font-medium text-[#344054] hover:bg-[#f9fafb]">
+          <button
+            type="button"
+            onClick={() => setRecipientsCampaign(selected)}
+            className="flex h-9 w-full items-center justify-center rounded-md border border-[#d0d5dd] bg-white text-sm font-medium text-[#344054] hover:bg-[#f9fafb]"
+          >
             View Detailed Report
           </button>
         </div>
       )}
       </div>
+
+      <RecipientsModal
+        isOpen={!!recipientsCampaign}
+        onClose={() => setRecipientsCampaign(null)}
+        title={recipientsCampaign?.title}
+        campaignId={recipientsCampaign?.id}
+      />
     </>
   );
 };
@@ -2037,6 +2050,7 @@ const CronJobsTab = () => {
   const [expandedJob, setExpandedJob] = useState(null);
   const [runs, setRuns] = useState({});
   const [runsLoading, setRunsLoading] = useState({});
+  const [recipientsJob, setRecipientsJob] = useState(null);
 
   useEffect(() => {
     apiClient
@@ -2216,6 +2230,15 @@ const CronJobsTab = () => {
 
                     <button
                       type="button"
+                      onClick={() => setRecipientsJob(job)}
+                      className="flex items-center gap-1.5 rounded-md border border-[#d0d5dd] bg-white px-3 py-1.5 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
+                    >
+                      <FontAwesomeIcon icon={faUsers} className="text-[10px]" />
+                      Recipients
+                    </button>
+
+                    <button
+                      type="button"
                       disabled={toggling[job.jobName]}
                       onClick={() => handleToggle(job.jobName, job.enabled)}
                       className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60 ${
@@ -2324,6 +2347,13 @@ const CronJobsTab = () => {
           );
         })}
       </div>
+
+      <RecipientsModal
+        isOpen={!!recipientsJob}
+        onClose={() => setRecipientsJob(null)}
+        title={JOB_META[recipientsJob?.jobName]?.label ?? recipientsJob?.jobName}
+        jobName={recipientsJob?.jobName}
+      />
     </div>
   );
 };

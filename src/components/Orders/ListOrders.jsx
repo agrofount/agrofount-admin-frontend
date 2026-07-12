@@ -156,7 +156,8 @@ export const ListOrders = () => {
   const [searchInput, setSearchInput] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
-  const [locationFilter, setLocationFilter] = useState("All Locations");
+  const [stateInput, setStateInput] = useState("");
+  const [stateValue, setStateValue] = useState("");
   const [dateRange, setDateRange] = useState(dateRangeOptions[0]);
   const [meta, setMeta] = useState({});
   const [orderPage, setOrderPage] = useState(1);
@@ -165,6 +166,7 @@ export const ListOrders = () => {
 
   const { currency, navigate } = useContext(ShopContext);
   const searchTimeout = useRef();
+  const stateTimeout = useRef();
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -179,6 +181,7 @@ export const ListOrders = () => {
           ...(statusFilter !== "All Statuses"
             ? { "filter.status": `$eq:${statusFilter.toLowerCase()}` }
             : {}),
+          ...(stateValue ? { state: stateValue } : {}),
         },
         paramsSerializer: { indexes: null },
       });
@@ -192,7 +195,7 @@ export const ListOrders = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [orderPage, pageLimit, searchValue, sortBy, sortOrder, statusFilter]);
+  }, [orderPage, pageLimit, searchValue, sortBy, sortOrder, statusFilter, stateValue]);
 
   const handlePageChange = (page) => {
     if (page < 1 || page > Number(meta.totalPages || 1)) return;
@@ -219,24 +222,31 @@ export const ListOrders = () => {
     }, 400);
   };
 
+  const handleStateChange = (event) => {
+    const value = event.target.value;
+    setStateInput(value);
+    clearTimeout(stateTimeout.current);
+    stateTimeout.current = setTimeout(() => {
+      setOrderPage(1);
+      setStateValue(value);
+    }, 400);
+  };
+
   const sourceOrders = orders;
 
-  const locationOptions = useMemo(() => {
-    const locations = new Set(sourceOrders.map(getLocation).filter(Boolean));
-    return ["All Locations", ...locations];
-  }, [sourceOrders]);
-
+  // Status is already filtered server-side (filter.status), but kept here
+  // too as a defensive client-side pass. State is now searched server-side
+  // only (address.state is free text, not a fixed catalog) — no client-side
+  // re-filtering, since the fetched page already reflects the state search.
   const filteredOrders = useMemo(
     () =>
       sourceOrders.filter((order) => {
         const statusMatches =
           statusFilter === "All Statuses" ||
           order?.status?.toLowerCase?.() === statusFilter.toLowerCase();
-        const locationMatches =
-          locationFilter === "All Locations" || getLocation(order) === locationFilter;
-        return statusMatches && locationMatches;
+        return statusMatches;
       }),
-    [locationFilter, sourceOrders, statusFilter],
+    [sourceOrders, statusFilter],
   );
 
   const totalOrders = Number(meta.totalItems || filteredOrders.length || 0);
@@ -328,7 +338,8 @@ export const ListOrders = () => {
     setSearchInput("");
     setSearchValue("");
     setStatusFilter("All Statuses");
-    setLocationFilter("All Locations");
+    setStateInput("");
+    setStateValue("");
     setDateRange(dateRangeOptions[0]);
     setOrderPage(1);
   };
@@ -340,6 +351,7 @@ export const ListOrders = () => {
   useEffect(
     () => () => {
       clearTimeout(searchTimeout.current);
+      clearTimeout(stateTimeout.current);
     },
     [],
   );
@@ -447,16 +459,13 @@ export const ListOrders = () => {
           </label>
 
           <label>
-            <span className="mb-1 block text-[11px] font-semibold text-[#667085]">Location</span>
-            <select
-              value={locationFilter}
-              onChange={(event) => setLocationFilter(event.target.value)}
+            <span className="mb-1 block text-[11px] font-semibold text-[#667085]">State</span>
+            <input
+              value={stateInput}
+              onChange={handleStateChange}
+              placeholder="e.g. Lagos"
               className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-xs text-[#101828] outline-none focus:border-[#008f45] focus:ring-2 focus:ring-[#dff4e5]"
-            >
-              {locationOptions.map((location) => (
-                <option key={location}>{location}</option>
-              ))}
-            </select>
+            />
           </label>
 
           <label>

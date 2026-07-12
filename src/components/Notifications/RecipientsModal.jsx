@@ -33,6 +33,12 @@ const RecipientsModal = ({ isOpen, onClose, title, campaignId, jobName }) => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
+  // Cron jobs show live targets (who would be contacted right now); campaigns
+  // still show the historical sent/skipped/failed delivery log. Different
+  // shapes, so the table below renders different columns for each.
+  const isTargetsView = !!jobName && !campaignId;
+  const noun = isTargetsView ? "target" : "recipient";
+
   const baseUrl = campaignId
     ? `/message/campaign/${campaignId}/recipients`
     : `/message/cron-jobs/${jobName}/recipients`;
@@ -65,7 +71,7 @@ const RecipientsModal = ({ isOpen, onClose, title, campaignId, jobName }) => {
     <ModalComponent
       isModalOpen={isOpen}
       onClose={onClose}
-      title={title ? `Recipients — ${title}` : "Recipients"}
+      title={title ? `${isTargetsView ? "Targets" : "Recipients"} — ${title}` : isTargetsView ? "Targets" : "Recipients"}
       panelClassName="max-w-3xl w-full"
     >
       <div className="max-h-[70vh] overflow-y-auto">
@@ -81,7 +87,39 @@ const RecipientsModal = ({ isOpen, onClose, title, campaignId, jobName }) => {
             {error}
           </div>
         ) : rows.length === 0 ? (
-          <p className="py-8 text-center text-sm text-[#667085]">No recipients recorded yet.</p>
+          <p className="py-8 text-center text-sm text-[#667085]">
+            {isTargetsView
+              ? "No one currently matches this job's targeting criteria."
+              : "No recipients recorded yet."}
+          </p>
+        ) : isTargetsView ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
+                  {["Name", "Contact", "Reason"].map((h) => (
+                    <th
+                      key={h}
+                      className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-[#667085] whitespace-nowrap"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f0f2f5]">
+                {rows.map((r) => (
+                  <tr key={r.id}>
+                    <td className="px-3 py-2.5 text-xs text-[#101828]">{r.name || "-"}</td>
+                    <td className="px-3 py-2.5 text-xs text-[#344054]">
+                      {r.email || r.phone || "-"}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-[#667085]">{r.reason || "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] border-collapse text-left">
@@ -130,7 +168,7 @@ const RecipientsModal = ({ isOpen, onClose, title, campaignId, jobName }) => {
       {!loading && !error && totalItems > 0 && (
         <div className="mt-4 flex items-center justify-between border-t border-[#f0f2f5] pt-3">
           <p className="text-xs text-[#667085]">
-            {totalItems.toLocaleString()} {totalItems === 1 ? "recipient" : "recipients"}
+            {totalItems.toLocaleString()} {totalItems === 1 ? noun : `${noun}s`}
           </p>
           <div className="flex items-center gap-1">
             <button

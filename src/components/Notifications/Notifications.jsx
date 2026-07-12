@@ -752,7 +752,7 @@ const ScheduledTab = ({ onScheduleNew }) => {
                       <div className="flex items-center gap-1.5">
                         <FontAwesomeIcon icon={faUsers} className="text-[10px] text-[#98a2b3]" />
                         <span className="text-xs font-semibold text-[#101828]">
-                          {(campaign.totalRecipients ?? 0).toLocaleString()} users
+                          {(campaign.totalRecipients ?? 0).toLocaleString()} {campaign.audienceType === "leads" ? "leads" : "users"}
                         </span>
                       </div>
                     </td>
@@ -1578,6 +1578,30 @@ const NIGERIAN_STATES = [
   "Yobe","Zamfara",
 ];
 
+const LEAD_STATUS_OPTIONS = [
+  { key: "new", label: "New" },
+  { key: "contacted", label: "Contacted" },
+  { key: "qualified", label: "Qualified" },
+  { key: "converted", label: "Converted" },
+  { key: "rejected", label: "Rejected" },
+];
+
+const LEAD_SOURCE_OPTIONS = [
+  { key: "meta", label: "Meta Ads" },
+  { key: "manual", label: "Manual Entry" },
+  { key: "website", label: "Website" },
+  { key: "other", label: "Other" },
+];
+
+// Available when a campaign targets leads instead of users — substituted
+// per-lead from their custom fields on the backend.
+const LEAD_PERSONALIZATION_TOKENS = [
+  { token: "name", label: "Name" },
+  { token: "state", label: "State" },
+  { token: "statedInterest", label: "Stated Interest" },
+  { token: "isNewFarmer", label: "New Farmer?" },
+];
+
 const AI_AUDIENCES = [
   { id: "highValuePoultry", label: "High-value Poultry Farmers", userTypes: ["farmer"], businessTypes: ["poultry"] },
   { id: "creditEligible", label: "Credit Eligible Farmers", userTypes: ["farmer"], creditStatus: ["creditEligible"] },
@@ -1603,7 +1627,8 @@ const CheckPill = ({ label, checked, onToggle }) => (
   </button>
 );
 
-const EditAudienceModal = ({ isOpen, initial, onApply, onClose }) => {
+const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) => {
+  const [recipientKind, setRecipientKind] = useState("users");
   const [audienceType, setAudienceType] = useState("custom");
   const [userRoles, setUserRoles] = useState([]);
   const [farmTypes, setFarmTypes] = useState([]);
@@ -1616,17 +1641,21 @@ const EditAudienceModal = ({ isOpen, initial, onApply, onClose }) => {
   const [lastPurchase, setLastPurchase] = useState("");
   const [productInterest, setProductInterest] = useState([]);
   const [userActivity, setUserActivity] = useState([]);
+  const [leadStatuses, setLeadStatuses] = useState([]);
+  const [leadSources, setLeadSources] = useState([]);
   const [estimatedReach, setEstimatedReach] = useState(0);
   const [loadingEstimate, setLoadingEstimate] = useState(false);
 
-  // Reset from initial prop when modal opens
+  // Reset from initial props when modal opens
   useEffect(() => {
     if (!isOpen) return;
+    setRecipientKind(initialKind ?? "users");
     if (!initial || initial.all) {
       setAudienceType("all");
       setUserRoles([]); setFarmTypes([]); setStates([]);
       setCreditStatus([]); setProductInterest([]); setUserActivity([]);
       setMinOrders(""); setSpentAbove(""); setLastPurchase("");
+      setLeadStatuses([]); setLeadSources([]);
     } else {
       setAudienceType("custom");
       setUserRoles(initial.userTypes ?? []);
@@ -1638,11 +1667,39 @@ const EditAudienceModal = ({ isOpen, initial, onApply, onClose }) => {
       setMinOrders(String(initial.minOrders ?? ""));
       setSpentAbove(initial.spentAbove ? String(initial.spentAbove) : "");
       setLastPurchase(initial.lastPurchase ?? "");
+      setLeadStatuses(initial.leadStatuses ?? []);
+      setLeadSources(initial.leadSources ?? []);
     }
   }, [isOpen]);  // eslint-disable-line react-hooks/exhaustive-deps
 
+  const buildAudience = () => {
+    if (audienceType === "all") return { all: true };
+    if (recipientKind === "leads") {
+      const a = {};
+      if (states.length) a.states = states;
+      if (leadStatuses.length) a.leadStatuses = leadStatuses;
+      if (leadSources.length) a.leadSources = leadSources;
+      return Object.keys(a).length ? a : { all: true };
+    }
+    const a = {};
+    // Map UI role/farm-type keys to valid DB businessType enum values
+    const roleTobt = { farmer: "farmer", supplier: null, buyer: null, driver: null, admin: null };
+    const farmTobt = { poultry: "farmer", fishery: "farmer", piggery: "farmer", cropfarming: "farmer", cattle: "farmer" };
+    const bts = [...new Set([...userRoles.map((r) => roleTobt[r]).filter(Boolean), ...farmTypes.map((f) => farmTobt[f]).filter(Boolean)])];
+    if (bts.length) a.businessTypes = bts;
+    if (states.length) a.states = states;
+    if (creditStatus.length) a.creditStatus = creditStatus;
+    if (productInterest.length) a.productInterest = productInterest;
+    if (userActivity.length) a.userActivity = userActivity;
+    if (minOrders) a.minOrders = Number(minOrders);
+    if (spentAbove) a.spentAbove = Number(String(spentAbove).replace(/[^0-9]/g, ""));
+    if (lastPurchase) a.lastPurchase = lastPurchase;
+    return Object.keys(a).length ? a : { all: true };
+  };
+
   // Stable string for effect deps
   const depsKey = [
+    recipientKind,
     audienceType,
     [...userRoles].sort().join(","),
     [...farmTypes].sort().join(","),
@@ -1650,32 +1707,19 @@ const EditAudienceModal = ({ isOpen, initial, onApply, onClose }) => {
     [...creditStatus].sort().join(","),
     [...productInterest].sort().join(","),
     [...userActivity].sort().join(","),
+    [...leadStatuses].sort().join(","),
+    [...leadSources].sort().join(","),
     minOrders, spentAbove, lastPurchase,
   ].join("|");
 
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
-    const audience = audienceType === "all" ? { all: true } : (() => {
-      const a = {};
-      // Map UI role/farm-type keys to valid DB businessType enum values
-      const roleTobt = { farmer: "farmer", supplier: null, buyer: null, driver: null, admin: null };
-      const farmTobt = { poultry: "farmer", fishery: "farmer", piggery: "farmer", cropfarming: "farmer", cattle: "farmer" };
-      const bts = [...new Set([...userRoles.map((r) => roleTobt[r]).filter(Boolean), ...farmTypes.map((f) => farmTobt[f]).filter(Boolean)])];
-      if (bts.length) a.businessTypes = bts;
-      if (states.length) a.states = states;
-      if (creditStatus.length) a.creditStatus = creditStatus;
-      if (productInterest.length) a.productInterest = productInterest;
-      if (userActivity.length) a.userActivity = userActivity;
-      if (minOrders) a.minOrders = Number(minOrders);
-      if (spentAbove) a.spentAbove = Number(String(spentAbove).replace(/[^0-9]/g, ""));
-      if (lastPurchase) a.lastPurchase = lastPurchase;
-      return Object.keys(a).length ? a : { all: true };
-    })();
+    const audience = buildAudience();
     const timer = setTimeout(() => {
       setLoadingEstimate(true);
       apiClient
-        .post("/message/campaign/audience-estimate", { audience })
+        .post("/message/campaign/audience-estimate", { audience, audienceType: recipientKind })
         .then((res) => { if (!cancelled) setEstimatedReach(res.data?.count ?? 0); })
         .catch(() => { if (!cancelled) setEstimatedReach(0); })
         .finally(() => { if (!cancelled) setLoadingEstimate(false); });
@@ -1687,22 +1731,7 @@ const EditAudienceModal = ({ isOpen, initial, onApply, onClose }) => {
     setter((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]);
 
   const handleApply = () => {
-    const audience = audienceType === "all" ? { all: true } : (() => {
-      const a = {};
-      const roleTobt = { farmer: "farmer", supplier: null, buyer: null, driver: null, admin: null };
-      const farmTobt = { poultry: "farmer", fishery: "farmer", piggery: "farmer", cropfarming: "farmer", cattle: "farmer" };
-      const bts = [...new Set([...userRoles.map((r) => roleTobt[r]).filter(Boolean), ...farmTypes.map((f) => farmTobt[f]).filter(Boolean)])];
-      if (bts.length) a.businessTypes = bts;
-      if (states.length) a.states = states;
-      if (creditStatus.length) a.creditStatus = creditStatus;
-      if (productInterest.length) a.productInterest = productInterest;
-      if (userActivity.length) a.userActivity = userActivity;
-      if (minOrders) a.minOrders = Number(minOrders);
-      if (spentAbove) a.spentAbove = Number(String(spentAbove).replace(/[^0-9]/g, ""));
-      if (lastPurchase) a.lastPurchase = lastPurchase;
-      return Object.keys(a).length ? a : { all: true };
-    })();
-    onApply(audience, estimatedReach);
+    onApply(buildAudience(), estimatedReach, recipientKind);
     onClose();
   };
 
@@ -1711,6 +1740,7 @@ const EditAudienceModal = ({ isOpen, initial, onApply, onClose }) => {
     setUserRoles([]); setFarmTypes([]); setStates([]);
     setCreditStatus([]); setMinOrders(""); setSpentAbove("");
     setLastPurchase(""); setProductInterest([]); setUserActivity([]);
+    setLeadStatuses([]); setLeadSources([]);
   };
 
   const applyAiSuggestion = (sug) => {
@@ -1745,7 +1775,7 @@ const EditAudienceModal = ({ isOpen, initial, onApply, onClose }) => {
           <div>
             <p className="text-[11px] font-medium text-[#667085]">Estimated Reach</p>
             <p className="text-xl font-bold text-[#008f45]">
-              {loadingEstimate ? "..." : estimatedReach.toLocaleString()} users
+              {loadingEstimate ? "..." : estimatedReach.toLocaleString()} {recipientKind}
             </p>
           </div>
           <button
@@ -1761,14 +1791,42 @@ const EditAudienceModal = ({ isOpen, initial, onApply, onClose }) => {
         {/* Scrollable body */}
         <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
 
+          {/* Recipient Kind */}
+          <section>
+            <p className="mb-2.5 text-xs font-semibold text-[#344054]">Recipients</p>
+            <div className="flex flex-wrap gap-5">
+              {[
+                { value: "users", label: "Registered Users" },
+                { value: "leads", label: "Leads" },
+              ].map((opt) => (
+                <label key={opt.value} className="flex cursor-pointer items-center gap-2 text-sm text-[#344054]">
+                  <input
+                    type="radio"
+                    name="recipient-kind"
+                    value={opt.value}
+                    checked={recipientKind === opt.value}
+                    onChange={(e) => setRecipientKind(e.target.value)}
+                    className="accent-[#008f45]"
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+            {recipientKind === "leads" && (
+              <p className="mt-2 text-[11px] text-[#98a2b3]">
+                Only Email and SMS channels are available for leads. Message content can be personalized per-lead.
+              </p>
+            )}
+          </section>
+
           {/* Audience Type */}
           <section>
             <p className="mb-2.5 text-xs font-semibold text-[#344054]">Audience Type</p>
             <div className="flex flex-wrap gap-5">
               {[
-                { value: "all", label: "All Users" },
+                { value: "all", label: recipientKind === "leads" ? "All Leads" : "All Users" },
                 { value: "custom", label: "Custom Audience" },
-                { value: "saved", label: "Saved Audience" },
+                ...(recipientKind === "leads" ? [] : [{ value: "saved", label: "Saved Audience" }]),
               ].map((opt) => (
                 <label key={opt.value} className="flex cursor-pointer items-center gap-2 text-sm text-[#344054]">
                   <input
@@ -1785,7 +1843,73 @@ const EditAudienceModal = ({ isOpen, initial, onApply, onClose }) => {
             </div>
           </section>
 
-          {audienceType === "custom" && (
+          {audienceType === "custom" && recipientKind === "leads" && (
+            <>
+              {/* Lead Status */}
+              <section>
+                <p className="mb-2.5 text-xs font-semibold text-[#344054]">Lead Status</p>
+                <div className="flex flex-wrap gap-2">
+                  {LEAD_STATUS_OPTIONS.map(({ key, label }) => (
+                    <CheckPill key={key} label={label} checked={leadStatuses.includes(key)} onToggle={() => toggle(setLeadStatuses, key)} />
+                  ))}
+                </div>
+              </section>
+
+              {/* Lead Source */}
+              <section>
+                <p className="mb-2.5 text-xs font-semibold text-[#344054]">Lead Source</p>
+                <div className="flex flex-wrap gap-2">
+                  {LEAD_SOURCE_OPTIONS.map(({ key, label }) => (
+                    <CheckPill key={key} label={label} checked={leadSources.includes(key)} onToggle={() => toggle(setLeadSources, key)} />
+                  ))}
+                </div>
+              </section>
+
+              {/* Location (shared with users) */}
+              <section>
+                <p className="mb-2.5 text-xs font-semibold text-[#344054]">State</p>
+                {states.length > 0 && (
+                  <div className="mb-1.5 flex flex-wrap gap-1.5">
+                    {states.map((s) => (
+                      <span key={s} className="flex items-center gap-1 rounded-full bg-[#dcf8e4] px-2.5 py-0.5 text-xs font-medium text-[#006638]">
+                        {s}
+                        <button type="button" onClick={() => setStates((p) => p.filter((x) => x !== s))}>
+                          <FontAwesomeIcon icon={faXmark} className="text-[9px]" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search and select states..."
+                    value={stateSearch}
+                    onFocus={() => setShowStateDrop(true)}
+                    onBlur={() => setTimeout(() => setShowStateDrop(false), 150)}
+                    onChange={(e) => { setStateSearch(e.target.value); setShowStateDrop(true); }}
+                    className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-sm text-[#344054] outline-none focus:border-[#008f45]"
+                  />
+                  {showStateDrop && filteredStates.length > 0 && (
+                    <div className="absolute left-0 top-full z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-md border border-[#d0d5dd] bg-white shadow-lg">
+                      {filteredStates.slice(0, 12).map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onMouseDown={() => { setStates((p) => [...p, s]); setStateSearch(""); }}
+                          className="flex w-full px-3 py-2 text-sm text-[#344054] hover:bg-[#f0fbf5] text-left"
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+            </>
+          )}
+
+          {audienceType === "custom" && recipientKind === "users" && (
             <>
               {/* User Role */}
               <section>
@@ -2382,6 +2506,7 @@ const Notifications = () => {
   const [bannerPreview, setBannerPreview] = useState(null);
   const [sending, setSending] = useState(false);
   const [audience, setAudience] = useState({ all: true });
+  const [recipientKind, setRecipientKind] = useState("users");
 
   // Email design fields
   const [emailCategoryLabel, setEmailCategoryLabel] = useState("");
@@ -2399,8 +2524,13 @@ const Notifications = () => {
   const [audienceModalOpen, setAudienceModalOpen] = useState(false);
 
   const audienceLabel = (() => {
-    if (audience.all) return "All Users";
+    if (audience.all) return recipientKind === "leads" ? "All Leads" : "All Users";
     const parts = [];
+    if (recipientKind === "leads") {
+      if (audience.leadStatuses?.length) parts.push(audience.leadStatuses.map((s) => s[0].toUpperCase() + s.slice(1)).join(", "));
+      if (audience.leadSources?.length) parts.push(audience.leadSources.map((s) => s[0].toUpperCase() + s.slice(1)).join(", "));
+      return parts.join(" · ") || "Custom Lead Audience";
+    }
     const btLabels = { farmer: "Farmers", frozen_food: "Frozen Food", others: "Others" };
     if (audience.businessTypes?.length) parts.push(audience.businessTypes.map((t) => btLabels[t] ?? t).join(", "));
     if (audience.creditStatus?.length) parts.push(audience.creditStatus.map((c) => c.replace(/([A-Z])/g, " $1").trim()).join(", "));
@@ -2409,7 +2539,40 @@ const Notifications = () => {
   })();
   const audienceLocation = audience.states?.join(", ") || "All Locations";
 
+  // Leads have no app account: push/in-app are never applicable, so prune
+  // them automatically whenever the audience switches to leads.
+  useEffect(() => {
+    if (recipientKind !== "leads") return;
+    setSelectedChannels((prev) => {
+      const next = new Set([...prev].filter((id) => id === "email" || id === "sms"));
+      return next.size ? next : new Set(["email"]);
+    });
+  }, [recipientKind]);
+
+  const channelsForDisplay = CHANNELS.map((ch) =>
+    recipientKind === "leads" && (ch.id === "push" || ch.id === "in-app")
+      ? { ...ch, disabled: true, disabledReason: "Not available for leads" }
+      : ch,
+  );
+
   const fileInputRef = useRef();
+  const titleRef = useRef();
+  const messageRef = useRef();
+
+  const insertPersonalizationToken = (ref, setter, maxLength, token) => {
+    const el = ref.current;
+    const current = el?.value ?? "";
+    const start = el?.selectionStart ?? current.length;
+    const end = el?.selectionEnd ?? current.length;
+    const insertion = `{{${token}}}`;
+    setter((current.slice(0, start) + insertion + current.slice(end)).slice(0, maxLength));
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      const cursor = start + insertion.length;
+      el.setSelectionRange(cursor, cursor);
+    });
+  };
 
   const toggleChannel = (id) => {
     setSelectedChannels((prev) => {
@@ -2475,6 +2638,7 @@ const Notifications = () => {
       category: CATEGORY_MAP[notificationType] ?? "announcement",
       channels,
       audience,
+      audienceType: recipientKind,
       ...(ctaText && { ctaText }),
       ...(ctaLink && { ctaLink }),
       ...(scheduledAt && { scheduledAt }),
@@ -2586,7 +2750,7 @@ const Notifications = () => {
                         <p className="text-[11px] text-[#667085]">
                           {audienceLocation} —{" "}
                           <span className="font-semibold text-[#008f45]">
-                            {audienceEstimate.toLocaleString()} users
+                            {audienceEstimate.toLocaleString()} {recipientKind}
                           </span>
                         </p>
                       </div>
@@ -2606,7 +2770,7 @@ const Notifications = () => {
                 {/* Step 3 – Channels */}
                 <Step number="3" title="Channels">
                   <div className="flex flex-wrap gap-2">
-                    {CHANNELS.map((ch) => {
+                    {channelsForDisplay.map((ch) => {
                       const active = selectedChannels.has(ch.id);
                       return (
                         <button
@@ -2614,7 +2778,7 @@ const Notifications = () => {
                           type="button"
                           disabled={ch.disabled}
                           onClick={() => !ch.disabled && toggleChannel(ch.id)}
-                          title={ch.disabled ? "Coming soon" : undefined}
+                          title={ch.disabled ? (ch.disabledReason ?? "Coming soon") : undefined}
                           className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium transition-all ${
                             ch.disabled
                               ? "cursor-not-allowed border-[#e5e7eb] bg-[#f9fafb] text-[#98a2b3]"
@@ -2627,7 +2791,7 @@ const Notifications = () => {
                           {ch.label}
                           {ch.disabled && (
                             <span className="rounded-full bg-[#f0f2f5] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#98a2b3]">
-                              Soon
+                              {ch.disabledReason ? "N/A" : "Soon"}
                             </span>
                           )}
                         </button>
@@ -2645,6 +2809,7 @@ const Notifications = () => {
                       <label className="mb-1 block text-xs font-medium text-[#344054]">Title</label>
                       <div className="relative">
                         <input
+                          ref={titleRef}
                           type="text"
                           value={title}
                           onChange={(e) => setTitle(e.target.value.slice(0, 100))}
@@ -2654,12 +2819,28 @@ const Notifications = () => {
                           {title.length}/100
                         </span>
                       </div>
+                      {recipientKind === "leads" && (
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          <span className="text-[11px] text-[#98a2b3]">Insert:</span>
+                          {LEAD_PERSONALIZATION_TOKENS.map(({ token, label }) => (
+                            <button
+                              key={token}
+                              type="button"
+                              onClick={() => insertPersonalizationToken(titleRef, setTitle, 100, token)}
+                              className="rounded-full border border-[#d0d5dd] bg-white px-2 py-0.5 text-[10px] font-medium text-[#344054] hover:border-[#008f45] hover:text-[#006638]"
+                            >
+                              {`{{${token}}}`} <span className="text-[#98a2b3]">{label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div>
                       <label className="mb-1 block text-xs font-medium text-[#344054]">Message</label>
                       <div className="relative">
                         <textarea
+                          ref={messageRef}
                           value={message}
                           onChange={(e) => setMessage(e.target.value.slice(0, 250))}
                           rows={3}
@@ -2669,6 +2850,21 @@ const Notifications = () => {
                           {message.length}/250
                         </span>
                       </div>
+                      {recipientKind === "leads" && (
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          <span className="text-[11px] text-[#98a2b3]">Insert:</span>
+                          {LEAD_PERSONALIZATION_TOKENS.map(({ token, label }) => (
+                            <button
+                              key={token}
+                              type="button"
+                              onClick={() => insertPersonalizationToken(messageRef, setMessage, 250, token)}
+                              className="rounded-full border border-[#d0d5dd] bg-white px-2 py-0.5 text-[10px] font-medium text-[#344054] hover:border-[#008f45] hover:text-[#006638]"
+                            >
+                              {`{{${token}}}`} <span className="text-[#98a2b3]">{label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div>
@@ -2962,6 +3158,20 @@ const Notifications = () => {
               </div>
               <div className="space-y-2.5">
                 {(() => {
+                  if (recipientKind === "leads") {
+                    const statusLabel = audience.leadStatuses?.length
+                      ? audience.leadStatuses.map((s) => s[0].toUpperCase() + s.slice(1)).join(", ")
+                      : "All";
+                    const sourceLabel = audience.leadSources?.length
+                      ? audience.leadSources.map((s) => s[0].toUpperCase() + s.slice(1)).join(", ")
+                      : "All";
+                    return [
+                      { icon: faTag, label: "Target", value: audienceLabel },
+                      { icon: faUsers, label: "Leads", value: `${audienceEstimate.toLocaleString()} leads` },
+                      { icon: faShieldHalved, label: "Lead Status", value: statusLabel },
+                      { icon: faChartBar, label: "Lead Source", value: sourceLabel },
+                    ];
+                  }
                   const btLabels = { farmer: "Farmers", frozen_food: "Frozen Food", others: "Others" };
                   const rolesLabel = audience.businessTypes?.length
                     ? audience.businessTypes.map((t) => btLabels[t] ?? t).join(", ")
@@ -3037,7 +3247,7 @@ const Notifications = () => {
                 Your notification will be sent to approximately:
               </p>
               <p className="mb-4 text-xl font-bold text-[#008f45]">
-                {audienceEstimate > 0 ? audienceEstimate.toLocaleString() : "—"} users
+                {audienceEstimate > 0 ? audienceEstimate.toLocaleString() : "—"} {recipientKind}
               </p>
               {selectedChannels.size > 0 && (
                 <div className="space-y-2">
@@ -3088,7 +3298,8 @@ const Notifications = () => {
       <EditAudienceModal
         isOpen={audienceModalOpen}
         initial={audience}
-        onApply={(newAudience, reach) => { setAudience(newAudience); setAudienceEstimate(reach); }}
+        initialKind={recipientKind}
+        onApply={(newAudience, reach, kind) => { setAudience(newAudience); setAudienceEstimate(reach); setRecipientKind(kind); }}
         onClose={() => setAudienceModalOpen(false)}
       />
 

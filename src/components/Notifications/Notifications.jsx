@@ -49,6 +49,7 @@ import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { apiClient, parseApiError } from "../../lib/apiClient";
 import RecipientsModal from "./RecipientsModal";
+import PreviewMessageModal from "./PreviewMessageModal";
 
 const NOTIFICATION_TYPES = ["Promotion", "Announcement", "Reminder", "Order Update", "System Alert"];
 
@@ -2175,6 +2176,7 @@ const CronJobsTab = () => {
   const [runs, setRuns] = useState({});
   const [runsLoading, setRunsLoading] = useState({});
   const [recipientsJob, setRecipientsJob] = useState(null);
+  const [previewJob, setPreviewJob] = useState(null);
 
   useEffect(() => {
     apiClient
@@ -2363,6 +2365,15 @@ const CronJobsTab = () => {
 
                     <button
                       type="button"
+                      onClick={() => setPreviewJob(job)}
+                      className="flex items-center gap-1.5 rounded-md border border-[#d0d5dd] bg-white px-3 py-1.5 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
+                    >
+                      <FontAwesomeIcon icon={faEnvelope} className="text-[10px]" />
+                      Preview
+                    </button>
+
+                    <button
+                      type="button"
                       disabled={toggling[job.jobName]}
                       onClick={() => handleToggle(job.jobName, job.enabled)}
                       className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60 ${
@@ -2477,6 +2488,13 @@ const CronJobsTab = () => {
         onClose={() => setRecipientsJob(null)}
         title={JOB_META[recipientsJob?.jobName]?.label ?? recipientsJob?.jobName}
         jobName={recipientsJob?.jobName}
+      />
+
+      <PreviewMessageModal
+        isOpen={!!previewJob}
+        onClose={() => setPreviewJob(null)}
+        title={JOB_META[previewJob?.jobName]?.label ?? previewJob?.jobName}
+        jobName={previewJob?.jobName}
       />
     </div>
   );

@@ -50,6 +50,7 @@ import { toast } from "react-toastify";
 import { apiClient, parseApiError } from "../../lib/apiClient";
 import RecipientsModal from "./RecipientsModal";
 import PreviewMessageModal from "./PreviewMessageModal";
+import DeliveryStatusModal from "./DeliveryStatusModal";
 
 const NOTIFICATION_TYPES = ["Promotion", "Announcement", "Reminder", "Order Update", "System Alert"];
 
@@ -2177,6 +2178,9 @@ const CronJobsTab = () => {
   const [runsLoading, setRunsLoading] = useState({});
   const [recipientsJob, setRecipientsJob] = useState(null);
   const [previewJob, setPreviewJob] = useState(null);
+  const [deliveryStatusJob, setDeliveryStatusJob] = useState(null);
+  const [runNowMenuJob, setRunNowMenuJob] = useState(null);
+  const [runningNow, setRunningNow] = useState({});
 
   useEffect(() => {
     apiClient
@@ -2199,6 +2203,26 @@ const CronJobsTab = () => {
       toast.error(parseApiError(err).message || "Failed to update job.");
     } finally {
       setToggling((prev) => ({ ...prev, [jobName]: false }));
+    }
+  };
+
+  const handleRunNow = async (jobName, contactFilter) => {
+    setRunNowMenuJob(null);
+    setRunningNow((prev) => ({ ...prev, [jobName]: true }));
+    try {
+      const res = await apiClient.post(`/message/cron-jobs/${jobName}/run-now`, {
+        ...(contactFilter ? { contactFilter } : {}),
+      });
+      const { sent, total } = res.data || {};
+      toast.success(
+        total
+          ? `${JOB_META[jobName]?.label ?? jobName}: ${sent} of ${total} sent.`
+          : "No matching targets right now.",
+      );
+    } catch (err) {
+      toast.error(parseApiError(err).message || "Failed to run job.");
+    } finally {
+      setRunningNow((prev) => ({ ...prev, [jobName]: false }));
     }
   };
 
@@ -2372,6 +2396,61 @@ const CronJobsTab = () => {
                       Preview
                     </button>
 
+                    {job.jobName !== "vaccination_due_reminders" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setDeliveryStatusJob(job)}
+                          className="flex items-center gap-1.5 rounded-md border border-[#d0d5dd] bg-white px-3 py-1.5 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
+                        >
+                          <FontAwesomeIcon icon={faListCheck} className="text-[10px]" />
+                          Delivery Status
+                        </button>
+
+                        <div className="relative">
+                          <button
+                            type="button"
+                            disabled={runningNow[job.jobName]}
+                            onClick={() =>
+                              setRunNowMenuJob(runNowMenuJob === job.jobName ? null : job.jobName)
+                            }
+                            className="flex items-center gap-1.5 rounded-md border border-[#d0d5dd] bg-white px-3 py-1.5 text-xs font-medium text-[#344054] hover:bg-[#f9fafb] disabled:opacity-60"
+                          >
+                            <FontAwesomeIcon
+                              icon={faBolt}
+                              className={`text-[10px] ${runningNow[job.jobName] ? "animate-pulse" : ""}`}
+                            />
+                            Run Now
+                          </button>
+                          {runNowMenuJob === job.jobName && (
+                            <div className="absolute right-0 top-full z-20 mt-1 w-48 overflow-hidden rounded-xl border border-[#e5e7eb] bg-white py-1 shadow-xl">
+                              <button
+                                type="button"
+                                onClick={() => handleRunNow(job.jobName)}
+                                className="flex w-full items-center px-3.5 py-2.5 text-left text-sm text-[#344054] hover:bg-[#f9fafb]"
+                              >
+                                Full audience
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRunNow(job.jobName, "EMAIL_ONLY")}
+                                className="flex w-full items-center px-3.5 py-2.5 text-left text-sm text-[#344054] hover:bg-[#f9fafb]"
+                              >
+                                Email only
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRunNow(job.jobName, "PHONE_ONLY")}
+                                className="flex w-full items-center px-3.5 py-2.5 text-left text-sm text-[#344054] hover:bg-[#f9fafb]"
+                              >
+                                Phone only
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+
                     <button
                       type="button"
                       disabled={toggling[job.jobName]}
@@ -2495,6 +2574,13 @@ const CronJobsTab = () => {
         onClose={() => setPreviewJob(null)}
         title={JOB_META[previewJob?.jobName]?.label ?? previewJob?.jobName}
         jobName={previewJob?.jobName}
+      />
+
+      <DeliveryStatusModal
+        isOpen={!!deliveryStatusJob}
+        onClose={() => setDeliveryStatusJob(null)}
+        title={JOB_META[deliveryStatusJob?.jobName]?.label ?? deliveryStatusJob?.jobName}
+        jobName={deliveryStatusJob?.jobName}
       />
     </div>
   );

@@ -20,6 +20,7 @@ import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { assets } from "../../assets/assets";
 import { ACTIONS, RESOURCES } from "../../constants/permissions";
 import { ShopContext } from "../../context/ShopContext";
 import { apiClient } from "../../lib/apiClient";
@@ -34,6 +35,15 @@ const titleCase = (value = "") =>
     .toString()
     .replace(/_/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const formatPhoneForWhatsApp = (phone) => {
+  let digits = phone.replace(/[^\d]/g, "");
+  digits = digits.replace(/^0+/, "");
+  if (!digits.startsWith("234")) {
+    digits = "234" + digits;
+  }
+  return digits;
+};
 
 const formatDateTime = (date) => {
   if (!date) return "N/A";
@@ -518,15 +528,29 @@ const OrderDetail = () => {
                         <div className="flex items-center gap-2">
                           {orderData?.phoneNumber || "N/A"}
                           {orderData?.phoneNumber && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                copyText(orderData.phoneNumber, "Phone number")
-                              }
-                              className="text-[#667085]"
-                            >
-                              <FontAwesomeIcon icon={faCopy} />
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  copyText(orderData.phoneNumber, "Phone number")
+                                }
+                                className="text-[#667085]"
+                              >
+                                <FontAwesomeIcon icon={faCopy} />
+                              </button>
+                              <a
+                                href={`https://wa.me/${formatPhoneForWhatsApp(orderData.phoneNumber)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Message on WhatsApp"
+                              >
+                                <img
+                                  src={assets.message_icon}
+                                  alt="WhatsApp"
+                                  className="h-4 w-4"
+                                />
+                              </a>
+                            </>
                           )}
                         </div>
                       }

@@ -31,12 +31,6 @@ const generatePeriods = () => {
       endDate: endDate.toISOString(),
     });
   }
-  periods.push({
-    id: 0,
-    name: "May 12, 2025 - May 18, 2025",
-    startDate: "2025-05-12",
-    endDate: "2025-05-18T23:59:59.999Z",
-  });
   return periods;
 };
 

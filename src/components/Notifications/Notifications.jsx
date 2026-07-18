@@ -51,6 +51,7 @@ import { apiClient, parseApiError } from "../../lib/apiClient";
 import RecipientsModal from "./RecipientsModal";
 import PreviewMessageModal from "./PreviewMessageModal";
 import DeliveryStatusModal from "./DeliveryStatusModal";
+import TestSendModal from "./TestSendModal";
 
 const NOTIFICATION_TYPES = ["Promotion", "Announcement", "Reminder", "Order Update", "System Alert"];
 
@@ -2697,7 +2698,50 @@ const Notifications = () => {
   };
 
   const handleSaveDraft = () => toast.success("Notification saved as draft.");
-  const handleSendTest = () => toast.info("Test notification sent to your account.");
+
+  const [testSendOpen, setTestSendOpen] = useState(false);
+
+  const handleOpenSendTest = () => {
+    if (!title.trim()) return toast.error("Please enter a notification title first.");
+    if (!message.trim()) return toast.error("Please enter a notification message first.");
+    setTestSendOpen(true);
+  };
+
+  const handleTestSend = async (target) => {
+    const emailContent = selectedChannels.has("email")
+      ? generateEmailHtml({
+          title: title.trim(),
+          message: message.trim(),
+          ctaText,
+          ctaLink,
+          categoryLabel: emailCategoryLabel,
+          heroImageUrl: emailHeroImageUrl,
+          features: emailFeatures,
+          showAyo: emailShowAyo,
+        })
+      : undefined;
+
+    try {
+      const res = await apiClient.post("/message/campaign/test-send", {
+        title: title.trim(),
+        message: message.trim(),
+        ...(ctaText && { ctaText }),
+        ...(ctaLink && { ctaLink }),
+        ...(emailContent && { emailContent }),
+        audienceType: recipientKind,
+        ...target,
+      });
+      const results = res.data ?? [];
+      const failed = results.find((r) => !r.success);
+      if (failed) {
+        toast.error(`Test send failed on ${failed.channel}: ${failed.error || "unknown error"}`);
+      } else {
+        toast.success(`Test message sent via ${results.map((r) => r.channel).join(", ") || "the selected channel"}.`);
+      }
+    } catch (err) {
+      toast.error(parseApiError(err).message || "Failed to send test message.");
+    }
+  };
 
   const CATEGORY_MAP = {
     Promotion: "promotional",
@@ -3232,7 +3276,7 @@ const Notifications = () => {
               </button>
               <button
                 type="button"
-                onClick={handleSendTest}
+                onClick={handleOpenSendTest}
                 className="inline-flex h-10 items-center gap-2 rounded-md border border-[#008f45] bg-white px-5 text-sm font-semibold text-[#008f45] shadow-sm hover:bg-[#f0fbf5]"
               >
                 <FontAwesomeIcon icon={faPaperPlane} />
@@ -3405,6 +3449,12 @@ const Notifications = () => {
         initialKind={recipientKind}
         onApply={(newAudience, reach, kind) => { setAudience(newAudience); setAudienceEstimate(reach); setRecipientKind(kind); }}
         onClose={() => setAudienceModalOpen(false)}
+      />
+
+      <TestSendModal
+        isOpen={testSendOpen}
+        onClose={() => setTestSendOpen(false)}
+        onSend={handleTestSend}
       />
 
       {activeTab === 1 && <ScheduledTab onScheduleNew={() => setActiveTab(0)} />}

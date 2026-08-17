@@ -71,13 +71,11 @@ const DeliveryStatusModal = ({ isOpen, onClose, title, jobName }) => {
   const handleRetry = async () => {
     setRetrying(true);
     try {
-      const res = await apiClient.post(`/message/cron-jobs/${jobName}/retry-failed`);
-      const { sent, total } = res.data || {};
-      toast.success(
-        total ? `Retried ${total} failed message${total === 1 ? "" : "s"} — ${sent} sent.` : "No failed messages to retry.",
-      );
-      setPage(1);
-      load();
+      await apiClient.post(`/message/cron-jobs/${jobName}/retry-failed`);
+      // Retries run in the background (could be a lot of recipients), so
+      // this just confirms it started — reopen this panel in a moment to
+      // see the updated failed count.
+      toast.success("Retry started. Reopen this panel shortly to see the updated result.");
     } catch (err) {
       toast.error(parseApiError(err).message || "Failed to retry.");
     } finally {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import ModalComponent from "../modals/ModalComponent";
 
 const TestSendModal = ({ isOpen, onClose, onSend }) => {
@@ -6,13 +6,13 @@ const TestSendModal = ({ isOpen, onClose, onSend }) => {
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (sending) return;
     setValue("");
     onClose();
-  };
+  }, [onClose, sending]);
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (!value.trim()) return;
     setSending(true);
     try {
@@ -26,7 +26,7 @@ const TestSendModal = ({ isOpen, onClose, onSend }) => {
     } finally {
       setSending(false);
     }
-  };
+  }, [contactType, onClose, onSend, value]);
 
   return (
     <ModalComponent

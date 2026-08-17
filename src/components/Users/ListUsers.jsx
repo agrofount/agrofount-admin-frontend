@@ -345,6 +345,34 @@ const ListUsers = () => {
     }
   };
 
+  const handleResendVerification = async (user) => {
+    const email = String(user.email || "").trim();
+    const phone = String(user.phone || "").trim();
+
+    if (!email && !phone) {
+      toast.error("This customer has no email or phone number to receive verification.");
+      return;
+    }
+
+    try {
+      setActionLoadingId(user.id);
+
+      if (email) {
+        await apiClient.post("/auth/resend-verification-email", {
+          identifier: email,
+        });
+        toast.success(`Verification email resent to ${email}.`);
+      } else {
+        await apiClient.post("/auth/resend-otp", { phone });
+        toast.success(`Verification code resent to ${phone}.`);
+      }
+    } catch (error) {
+      toast.error(error.message || "Unable to resend verification code.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   const exportCustomers = () => {
     const header = ["Customer", "Email", "Gender", "Phone", "Location", "Verification", "Joined"];
     const rows = filteredUsers.map((user, index) => [
@@ -606,6 +634,21 @@ const ListUsers = () => {
                                   {user.isVerified ? "Unverify" : "Verify"} Customer
                                 </button>
                               </MenuItem>
+                              {!user.isVerified && (
+                                <MenuItem>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleResendVerification(user)}
+                                    className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={user.email ? faEnvelope : faPhone}
+                                      className={user.email ? "text-[#1f7ae0]" : "text-[#008f45]"}
+                                    />
+                                    {user.email ? "Resend Email Verification" : "Resend SMS Code"}
+                                  </button>
+                                </MenuItem>
+                              )}
                               <MenuItem>
                                 <button
                                   type="button"

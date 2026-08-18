@@ -2179,6 +2179,7 @@ const CronJobsTab = () => {
   const [runsLoading, setRunsLoading] = useState({});
   const [recipientsJob, setRecipientsJob] = useState(null);
   const [previewJob, setPreviewJob] = useState(null);
+  const [testSendJob, setTestSendJob] = useState(null);
   const [deliveryStatusJob, setDeliveryStatusJob] = useState(null);
   const [runNowMenuJob, setRunNowMenuJob] = useState(null);
   const [runningNow, setRunningNow] = useState({});
@@ -2211,19 +2212,36 @@ const CronJobsTab = () => {
     setRunNowMenuJob(null);
     setRunningNow((prev) => ({ ...prev, [jobName]: true }));
     try {
-      const res = await apiClient.post(`/message/cron-jobs/${jobName}/run-now`, {
+      await apiClient.post(`/message/cron-jobs/${jobName}/run-now`, {
         ...(contactFilter ? { contactFilter } : {}),
       });
-      const { sent, total } = res.data || {};
+      // Sends run in the background (an audience can be thousands of
+      // people), so this only confirms it started — check History for the
+      // actual sent/total once it finishes.
       toast.success(
-        total
-          ? `${JOB_META[jobName]?.label ?? jobName}: ${sent} of ${total} sent.`
-          : "No matching targets right now.",
+        `${JOB_META[jobName]?.label ?? jobName} started. Check History for the result.`,
       );
     } catch (err) {
       toast.error(parseApiError(err).message || "Failed to run job.");
     } finally {
       setRunningNow((prev) => ({ ...prev, [jobName]: false }));
+    }
+  };
+
+  const handleCronTestSend = async (target) => {
+    if (!testSendJob?.jobName) return;
+    try {
+      const res = await apiClient.post(
+        `/message/cron-jobs/${testSendJob.jobName}/test-send`,
+        target,
+      );
+      toast.success(
+        res.data?.message ||
+          `${JOB_META[testSendJob.jobName]?.label ?? testSendJob.jobName} test message sent.`,
+      );
+    } catch (err) {
+      toast.error(parseApiError(err).message || "Failed to send cron test message.");
+      throw err;
     }
   };
 
@@ -2401,6 +2419,15 @@ const CronJobsTab = () => {
                       <>
                         <button
                           type="button"
+                          onClick={() => setTestSendJob(job)}
+                          className="flex items-center gap-1.5 rounded-md border border-[#d0d5dd] bg-white px-3 py-1.5 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
+                        >
+                          <FontAwesomeIcon icon={faPaperPlane} className="text-[10px]" />
+                          Send Test
+                        </button>
+
+                        <button
+                          type="button"
                           onClick={() => setDeliveryStatusJob(job)}
                           className="flex items-center gap-1.5 rounded-md border border-[#d0d5dd] bg-white px-3 py-1.5 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
                         >
@@ -2575,6 +2602,12 @@ const CronJobsTab = () => {
         onClose={() => setPreviewJob(null)}
         title={JOB_META[previewJob?.jobName]?.label ?? previewJob?.jobName}
         jobName={previewJob?.jobName}
+      />
+
+      <TestSendModal
+        isOpen={!!testSendJob}
+        onClose={() => setTestSendJob(null)}
+        onSend={handleCronTestSend}
       />
 
       <DeliveryStatusModal

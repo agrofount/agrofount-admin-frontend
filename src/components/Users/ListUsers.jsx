@@ -65,6 +65,15 @@ const getInitials = (name) =>
 const getLocation = (user) =>
   user?.state?.name || user?.state || user?.city?.name || user?.city || user?.location || "N/A";
 
+const formatPhoneForWhatsApp = (phone) => {
+  let digits = phone.replace(/[^\d]/g, "");
+  digits = digits.replace(/^0+/, "");
+  if (!digits.startsWith("234")) {
+    digits = "234" + digits;
+  }
+  return digits;
+};
+
 const formatJoinedDate = (value) => {
   if (!value) return ["N/A", ""];
   const date = new Date(value);
@@ -577,6 +586,16 @@ const ListUsers = () => {
                           <span className="inline-flex items-center gap-2 text-xs text-[#475467]">
                             <FontAwesomeIcon icon={faPhone} className="text-[#008f45]" />
                             {user.phone || "N/A"}
+                            {user.phone && (
+                              <a
+                                href={`https://wa.me/${formatPhoneForWhatsApp(user.phone)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Message on WhatsApp"
+                              >
+                                <img src={assets.message_icon} alt="WhatsApp" className="h-4 w-4" />
+                              </a>
+                            )}
                           </span>
                         </td>
                         <td className="px-4 py-3">

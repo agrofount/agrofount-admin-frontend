@@ -25,6 +25,7 @@ import {
   faEye,
   faFileLines,
   faFloppyDisk,
+  faHashtag,
   faImage,
   faLeaf,
   faLightbulb,
@@ -1600,10 +1601,23 @@ const LEAD_SOURCE_OPTIONS = [
 // per-lead from their custom fields on the backend.
 const LEAD_PERSONALIZATION_TOKENS = [
   { token: "name", label: "Name" },
+  { token: "phone", label: "Phone" },
   { token: "state", label: "State" },
   { token: "statedInterest", label: "Stated Interest" },
+  { token: "insights", label: "Insights" },
   { token: "isNewFarmer", label: "New Farmer?" },
+  { token: "campaignName", label: "Campaign" },
+  { token: "sourceLeadId", label: "Source ID" },
+  { token: "campaignId", label: "Campaign ID" },
+  { token: "adName", label: "Ad" },
+  { token: "formName", label: "Form" },
 ];
+
+const splitListInput = (value) =>
+  String(value ?? "")
+    .split(/[\n,]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 
 const AI_AUDIENCES = [
   { id: "highValuePoultry", label: "High-value Poultry Farmers", userTypes: ["farmer"], businessTypes: ["poultry"] },
@@ -1646,6 +1660,8 @@ const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) =
   const [userActivity, setUserActivity] = useState([]);
   const [leadStatuses, setLeadStatuses] = useState([]);
   const [leadSources, setLeadSources] = useState([]);
+  const [leadSourceIdsText, setLeadSourceIdsText] = useState("");
+  const [leadCampaignNamesText, setLeadCampaignNamesText] = useState("");
   const [estimatedReach, setEstimatedReach] = useState(0);
   const [loadingEstimate, setLoadingEstimate] = useState(false);
 
@@ -1659,6 +1675,7 @@ const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) =
       setCreditStatus([]); setProductInterest([]); setUserActivity([]);
       setMinOrders(""); setSpentAbove(""); setLastPurchase("");
       setLeadStatuses([]); setLeadSources([]);
+      setLeadSourceIdsText(""); setLeadCampaignNamesText("");
     } else {
       setAudienceType("custom");
       setUserRoles(initial.userTypes ?? []);
@@ -1672,6 +1689,8 @@ const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) =
       setLastPurchase(initial.lastPurchase ?? "");
       setLeadStatuses(initial.leadStatuses ?? []);
       setLeadSources(initial.leadSources ?? []);
+      setLeadSourceIdsText((initial.leadSourceIds ?? []).join(", "));
+      setLeadCampaignNamesText((initial.leadCampaignNames ?? []).join(", "));
     }
   }, [isOpen]);  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1682,6 +1701,10 @@ const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) =
       if (states.length) a.states = states;
       if (leadStatuses.length) a.leadStatuses = leadStatuses;
       if (leadSources.length) a.leadSources = leadSources;
+      const leadSourceIds = splitListInput(leadSourceIdsText);
+      const leadCampaignNames = splitListInput(leadCampaignNamesText);
+      if (leadSourceIds.length) a.leadSourceIds = leadSourceIds;
+      if (leadCampaignNames.length) a.leadCampaignNames = leadCampaignNames;
       return Object.keys(a).length ? a : { all: true };
     }
     const a = {};
@@ -1712,6 +1735,8 @@ const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) =
     [...userActivity].sort().join(","),
     [...leadStatuses].sort().join(","),
     [...leadSources].sort().join(","),
+    splitListInput(leadSourceIdsText).sort().join(","),
+    splitListInput(leadCampaignNamesText).sort().join(","),
     minOrders, spentAbove, lastPurchase,
   ].join("|");
 
@@ -1744,6 +1769,7 @@ const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) =
     setCreditStatus([]); setMinOrders(""); setSpentAbove("");
     setLastPurchase(""); setProductInterest([]); setUserActivity([]);
     setLeadStatuses([]); setLeadSources([]);
+    setLeadSourceIdsText(""); setLeadCampaignNamesText("");
   };
 
   const applyAiSuggestion = (sug) => {
@@ -1866,6 +1892,30 @@ const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) =
                     <CheckPill key={key} label={label} checked={leadSources.includes(key)} onToggle={() => toggle(setLeadSources, key)} />
                   ))}
                 </div>
+              </section>
+
+              {/* Lead Source IDs */}
+              <section>
+                <p className="mb-2.5 text-xs font-semibold text-[#344054]">Source IDs</p>
+                <textarea
+                  value={leadSourceIdsText}
+                  onChange={(e) => setLeadSourceIdsText(e.target.value)}
+                  rows={2}
+                  placeholder="Paste source IDs separated by commas or new lines"
+                  className="w-full resize-none rounded-md border border-[#d0d5dd] bg-white px-3 py-2 text-sm text-[#344054] outline-none focus:border-[#008f45]"
+                />
+              </section>
+
+              {/* Lead Campaign Names */}
+              <section>
+                <p className="mb-2.5 text-xs font-semibold text-[#344054]">Campaign Names</p>
+                <textarea
+                  value={leadCampaignNamesText}
+                  onChange={(e) => setLeadCampaignNamesText(e.target.value)}
+                  rows={2}
+                  placeholder="Paste campaign names separated by commas or new lines"
+                  className="w-full resize-none rounded-md border border-[#d0d5dd] bg-white px-3 py-2 text-sm text-[#344054] outline-none focus:border-[#008f45]"
+                />
               </section>
 
               {/* Location (shared with users) */}
@@ -2667,6 +2717,8 @@ const Notifications = () => {
     if (recipientKind === "leads") {
       if (audience.leadStatuses?.length) parts.push(audience.leadStatuses.map((s) => s[0].toUpperCase() + s.slice(1)).join(", "));
       if (audience.leadSources?.length) parts.push(audience.leadSources.map((s) => s[0].toUpperCase() + s.slice(1)).join(", "));
+      if (audience.leadSourceIds?.length) parts.push(`${audience.leadSourceIds.length} source ID${audience.leadSourceIds.length === 1 ? "" : "s"}`);
+      if (audience.leadCampaignNames?.length) parts.push(audience.leadCampaignNames.join(", "));
       return parts.join(" · ") || "Custom Lead Audience";
     }
     const btLabels = { farmer: "Farmers", frozen_food: "Frozen Food", others: "Others" };
@@ -3346,11 +3398,19 @@ const Notifications = () => {
                     const sourceLabel = audience.leadSources?.length
                       ? audience.leadSources.map((s) => s[0].toUpperCase() + s.slice(1)).join(", ")
                       : "All";
+                    const sourceIdLabel = audience.leadSourceIds?.length
+                      ? `${audience.leadSourceIds.length} selected`
+                      : "All";
+                    const campaignNameLabel = audience.leadCampaignNames?.length
+                      ? audience.leadCampaignNames.join(", ")
+                      : "All";
                     return [
                       { icon: faTag, label: "Target", value: audienceLabel },
                       { icon: faUsers, label: "Leads", value: `${audienceEstimate.toLocaleString()} leads` },
                       { icon: faShieldHalved, label: "Lead Status", value: statusLabel },
                       { icon: faChartBar, label: "Lead Source", value: sourceLabel },
+                      { icon: faHashtag, label: "Source IDs", value: sourceIdLabel },
+                      { icon: faBullhorn, label: "Campaign Name", value: campaignNameLabel },
                     ];
                   }
                   const btLabels = { farmer: "Farmers", frozen_food: "Frozen Food", others: "Others" };

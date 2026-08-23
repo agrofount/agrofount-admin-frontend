@@ -12,6 +12,7 @@ import {
   faEllipsisVertical,
   faEnvelope,
   faFilter,
+  faHashtag,
   faLocationDot,
   faMagnifyingGlass,
   faMars,
@@ -59,6 +60,26 @@ const STATUS_LABELS = {
   new:       "Reopen as New",
 };
 
+const LEAD_SOURCE_OPTIONS = [
+  { key: "all", label: "All Sources" },
+  { key: "meta", label: "Meta Ads" },
+  { key: "manual", label: "Manual" },
+  { key: "website", label: "Website" },
+  { key: "other", label: "Other" },
+];
+
+const LEAD_SMS_TOKENS = [
+  { token: "name", label: "Name" },
+  { token: "phone", label: "Phone" },
+  { token: "insights", label: "Insights" },
+  { token: "statedInterest", label: "Interest" },
+  { token: "campaignName", label: "Campaign" },
+  { token: "sourceLeadId", label: "Source ID" },
+];
+
+const DEFAULT_LEAD_SMS_MESSAGE =
+  "Hi {{name}}, thanks for your interest in {{insights}} on tiktok. Shop here: https://www.agrofount.com/shop or WhatsApp us: 09019170273.";
+
 const formatDate = (val) => {
   if (!val) return ["—", ""];
   const d = new Date(val);
@@ -70,6 +91,8 @@ const formatDate = (val) => {
 
 const getInitials = (name = "") =>
   name.split(/\s+/).slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase() || "?";
+
+const valueOrDash = (value) => value || "—";
 
 const StatCard = ({ label, value, icon, bg, color, sub }) => (
   <div className="rounded-xl border border-[#e5e7eb] bg-white px-4 py-4 shadow-[0_4px_16px_rgba(16,24,40,0.04)]">
@@ -88,7 +111,7 @@ const StatCard = ({ label, value, icon, bg, color, sub }) => (
 
 const NotifyModal = ({ lead, onClose, onSent }) => {
   const [channel, setChannel] = useState("sms");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(DEFAULT_LEAD_SMS_MESSAGE);
   const [subject, setSubject] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -145,7 +168,7 @@ const NotifyModal = ({ lead, onClose, onSent }) => {
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder={`Write your ${channel === "sms" ? "SMS" : "email"} message...`}
+          placeholder={DEFAULT_LEAD_SMS_MESSAGE}
           rows={4}
           className="w-full resize-none rounded-md border border-[#d0d5dd] p-3 text-xs outline-none focus:border-[#008f45]"
         />
@@ -159,6 +182,134 @@ const NotifyModal = ({ lead, onClose, onSent }) => {
             className="h-9 rounded-md bg-[#008f45] px-5 text-xs font-semibold text-white disabled:opacity-60"
           >
             {sending ? "Sending…" : `Send ${channel.toUpperCase()}`}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
+
+const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
+  const [title, setTitle] = useState("Lead SMS campaign");
+  const [message, setMessage] = useState(DEFAULT_LEAD_SMS_MESSAGE);
+  const [sending, setSending] = useState(false);
+  const textareaRef = useRef(null);
+
+  const insertToken = (token) => {
+    const el = textareaRef.current;
+    const current = el?.value ?? message;
+    const start = el?.selectionStart ?? current.length;
+    const end = el?.selectionEnd ?? current.length;
+    const next = `${current.slice(0, start)}{{${token}}}${current.slice(end)}`;
+    setMessage(next);
+    requestAnimationFrame(() => {
+      el?.focus();
+      const pos = start + token.length + 4;
+      el?.setSelectionRange(pos, pos);
+    });
+  };
+
+  const handleSend = async () => {
+    if (!message.trim()) {
+      toast.error("SMS message is required");
+      return;
+    }
+    try {
+      setSending(true);
+      await apiClient.post("/leads/bulk-sms", {
+        title: title.trim() || "Lead SMS campaign",
+        message,
+        statuses: filters.status && filters.status !== "all" ? [filters.status] : undefined,
+        sources: filters.source && filters.source !== "all" ? [filters.source] : undefined,
+        sourceIds: filters.sourceId ? [filters.sourceId] : undefined,
+        campaignNames: filters.campaignName ? [filters.campaignName] : undefined,
+      });
+      toast.success("Bulk SMS campaign queued");
+      onSent();
+      onClose();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err.message || "Failed to send bulk SMS");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const activeFilters = [
+    filters.status !== "all" && `Status: ${STATUS_META[filters.status]?.label ?? filters.status}`,
+    filters.source !== "all" && `Source: ${LEAD_SOURCE_OPTIONS.find((s) => s.key === filters.source)?.label ?? filters.source}`,
+    filters.sourceId && `Source ID: ${filters.sourceId}`,
+    filters.campaignName && `Campaign: ${filters.campaignName}`,
+  ].filter(Boolean);
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-black/40" onClick={onClose} />
+      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-[#101828]">Send Bulk SMS</h3>
+            <p className="mt-1 text-[11px] text-[#667085]">
+              Targets the current lead filters{totalItems ? `, currently ${totalItems.toLocaleString()} leads` : ""}.
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-md text-[#667085] hover:bg-[#f3f4f6]">
+            <FontAwesomeIcon icon={faTimes} />
+          </button>
+        </div>
+
+        {activeFilters.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-1.5">
+            {activeFilters.map((filter) => (
+              <span key={filter} className="rounded-full bg-[#f0fdf4] px-2.5 py-1 text-[10px] font-semibold text-[#006638]">
+                {filter}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <label className="mb-3 block">
+          <span className="mb-1 block text-[11px] font-semibold text-[#344054]">Campaign title</span>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="h-9 w-full rounded-md border border-[#d0d5dd] px-3 text-xs outline-none focus:border-[#008f45]"
+          />
+        </label>
+
+        <div className="mb-3">
+          <p className="mb-2 text-[11px] font-semibold text-[#344054]">Personalization</p>
+          <div className="flex flex-wrap gap-1.5">
+            {LEAD_SMS_TOKENS.map(({ token, label }) => (
+              <button
+                key={token}
+                type="button"
+                onClick={() => insertToken(token)}
+                className="rounded-md border border-[#d0d5dd] px-2.5 py-1 text-[11px] font-semibold text-[#344054] hover:border-[#008f45] hover:text-[#008f45]"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <textarea
+          ref={textareaRef}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder={DEFAULT_LEAD_SMS_MESSAGE}
+          rows={5}
+          className="w-full resize-none rounded-md border border-[#d0d5dd] p-3 text-xs outline-none focus:border-[#008f45]"
+        />
+
+        <div className="mt-4 flex justify-end gap-3">
+          <button type="button" onClick={onClose} className="h-9 rounded-md border border-[#d0d5dd] px-4 text-xs font-semibold text-[#344054]">Cancel</button>
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={sending}
+            className="h-9 rounded-md bg-[#008f45] px-5 text-xs font-semibold text-white disabled:opacity-60"
+          >
+            {sending ? "Queueing..." : "Queue Bulk SMS"}
           </button>
         </div>
       </div>
@@ -248,7 +399,7 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
             </div>
           </div>
 
-          {(lead.campaignName || lead.adName) && (
+          {(lead.campaignName || lead.adName || lead.sourceLeadId || lead.campaignId || lead.formName || lead.sourceCreatedAt) && (
             <div className="space-y-2">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">Campaign</p>
               {lead.campaignName && (
@@ -269,6 +420,70 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
                   <p className="mt-1 text-xs font-medium text-[#101828]">{srcDate}</p>
                 </div>
               )}
+              {(lead.sourceLeadId || lead.campaignId || lead.formName) && (
+                <div className="grid grid-cols-1 gap-2">
+                  {lead.sourceLeadId && (
+                    <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
+                      <p className="text-[10px] text-[#667085]">Source ID</p>
+                      <p className="mt-1 break-all text-xs font-medium text-[#101828]">{lead.sourceLeadId}</p>
+                    </div>
+                  )}
+                  {lead.campaignId && (
+                    <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
+                      <p className="text-[10px] text-[#667085]">Campaign ID</p>
+                      <p className="mt-1 break-all text-xs font-medium text-[#101828]">{lead.campaignId}</p>
+                    </div>
+                  )}
+                  {lead.formName && (
+                    <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
+                      <p className="text-[10px] text-[#667085]">Form</p>
+                      <p className="mt-1 text-xs font-medium text-[#101828]">{lead.formName}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {(lead.insights || lead.personalizationVariables) && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">Insights</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
+                  <p className="text-[10px] text-[#667085]">Stated interest</p>
+                  <p className="mt-1 text-xs font-medium text-[#101828]">{valueOrDash(lead.insights?.statedInterest)}</p>
+                </div>
+                <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
+                  <p className="text-[10px] text-[#667085]">New farmer</p>
+                  <p className="mt-1 text-xs font-medium text-[#101828]">
+                    {lead.insights?.isNewFarmer === true ? "Yes" : lead.insights?.isNewFarmer === false ? "No" : "—"}
+                  </p>
+                </div>
+              </div>
+              {lead.personalizationVariables && (
+                <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
+                  <p className="text-[10px] text-[#667085]">SMS variables</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {Object.entries(lead.personalizationVariables).map(([key, value]) => (
+                      <span key={key} className="rounded-full bg-[#f3f4f6] px-2 py-1 text-[10px] font-semibold text-[#344054]">
+                        {key}: {valueOrDash(value)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {lead.customFields && Object.keys(lead.customFields).length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">Form Answers</p>
+              {Object.entries(lead.customFields).map(([question, answer]) => (
+                <div key={question} className="rounded-lg border border-[#e5e7eb] px-4 py-3">
+                  <p className="text-[10px] text-[#667085]">{question}</p>
+                  <p className="mt-1 text-xs font-medium text-[#101828]">{answer}</p>
+                </div>
+              ))}
             </div>
           )}
 
@@ -329,6 +544,11 @@ const ListLeads = () => {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [sourceIdFilter, setSourceIdFilter] = useState("");
+  const [campaignNameFilter, setCampaignNameFilter] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [bulkSmsOpen, setBulkSmsOpen] = useState(false);
   const [detailLead, setDetailLead] = useState(null);
   const [notifyTarget, setNotifyTarget] = useState(null);
   const [actionLoadingId, setActionLoadingId] = useState(null);
@@ -339,7 +559,15 @@ const ListLeads = () => {
     try {
       setLoading(true);
       const res = await apiClient.get("/leads", {
-        params: { page, limit: PAGE_SIZE, search: search || undefined, status: statusFilter !== "all" ? statusFilter : undefined },
+        params: {
+          page,
+          limit: PAGE_SIZE,
+          search: search || undefined,
+          status: statusFilter !== "all" ? statusFilter : undefined,
+          source: sourceFilter !== "all" ? sourceFilter : undefined,
+          sourceId: sourceIdFilter.trim() || undefined,
+          campaignName: campaignNameFilter.trim() || undefined,
+        },
       });
       setLeads(res.data);
     } catch (err) {
@@ -347,7 +575,7 @@ const ListLeads = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter]);
+  }, [page, search, statusFilter, sourceFilter, sourceIdFilter, campaignNameFilter]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -371,6 +599,26 @@ const ListLeads = () => {
       setPage(1);
       setSearch(e.target.value);
     }, 400);
+  };
+
+  const resetFilters = () => {
+    setStatusFilter("all");
+    setSourceFilter("all");
+    setSourceIdFilter("");
+    setCampaignNameFilter("");
+    setSearchInput("");
+    setSearch("");
+    setPage(1);
+  };
+
+  const openLeadDetails = async (lead) => {
+    setDetailLead(lead);
+    try {
+      const res = await apiClient.get(`/leads/${lead.id}`);
+      setDetailLead(res.data);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to load lead details");
+    }
   };
 
   const handleFileUpload = async (fileList) => {
@@ -443,6 +691,18 @@ const ListLeads = () => {
   const totalPages = Number(leads.meta?.totalPages ?? 1);
   const currentPage = Number(leads.meta?.currentPage ?? page);
   const totalItems = Number(leads.meta?.totalItems ?? 0);
+  const currentFilters = {
+    status: statusFilter,
+    source: sourceFilter,
+    sourceId: sourceIdFilter.trim(),
+    campaignName: campaignNameFilter.trim(),
+  };
+  const activeFilterCount = [
+    statusFilter !== "all",
+    sourceFilter !== "all",
+    sourceIdFilter.trim(),
+    campaignNameFilter.trim(),
+  ].filter(Boolean).length;
 
   const statCards = stats ? [
     { label: "Total Leads",    value: stats.total,          icon: faUsers,       bg: "#ede9fe", color: "#7c3aed" },
@@ -461,6 +721,14 @@ const ListLeads = () => {
           <p className="mt-1 text-xs font-medium text-[#667085]">Import, manage and convert ad leads into Agrofount customers</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setBulkSmsOpen(true)}
+            className="inline-flex h-9 items-center gap-2 rounded-md border border-[#008f45] bg-white px-4 text-xs font-semibold text-[#008f45] shadow-sm hover:bg-[#f0fdf4]"
+          >
+            <FontAwesomeIcon icon={faComment} />
+            Bulk SMS
+          </button>
           <button
             type="button"
             onClick={exportCSV}
@@ -526,15 +794,67 @@ const ListLeads = () => {
                 className="h-9 w-56 rounded-md border border-[#d0d5dd] bg-white pl-9 pr-3 text-xs outline-none focus:border-[#008f45]"
               />
             </label>
-            <button type="button" onClick={() => { setStatusFilter("all"); setSearchInput(""); setSearch(""); setPage(1); }} className="inline-flex h-9 items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-xs text-[#667085]">
+            <button type="button" onClick={resetFilters} className="inline-flex h-9 items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-xs text-[#667085]">
               <FontAwesomeIcon icon={faRotateLeft} />
             </button>
-            <button type="button" className="inline-flex h-9 items-center gap-2 rounded-md bg-[#006b3a] px-4 text-xs font-semibold text-white">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((open) => !open)}
+              className="inline-flex h-9 items-center gap-2 rounded-md bg-[#006b3a] px-4 text-xs font-semibold text-white"
+            >
               <FontAwesomeIcon icon={faFilter} />
-              Filter
+              Filter{activeFilterCount ? ` (${activeFilterCount})` : ""}
             </button>
           </div>
         </div>
+
+        {filtersOpen && (
+          <div className="mt-4 grid gap-3 rounded-lg border border-[#e5e7eb] bg-[#fbfcfd] p-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label>
+              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[#667085]">Lead Source</span>
+              <select
+                value={sourceFilter}
+                onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
+                className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-xs outline-none focus:border-[#008f45]"
+              >
+                {LEAD_SOURCE_OPTIONS.map((source) => (
+                  <option key={source.key} value={source.key}>{source.label}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[#667085]">Source ID</span>
+              <div className="relative">
+                <FontAwesomeIcon icon={faHashtag} className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-[#98a2b3]" />
+                <input
+                  value={sourceIdFilter}
+                  onChange={(e) => { setSourceIdFilter(e.target.value); setPage(1); }}
+                  placeholder="Meta lead ID"
+                  className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white pl-8 pr-3 text-xs outline-none focus:border-[#008f45]"
+                />
+              </div>
+            </label>
+            <label>
+              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[#667085]">Campaign Name</span>
+              <input
+                value={campaignNameFilter}
+                onChange={(e) => { setCampaignNameFilter(e.target.value); setPage(1); }}
+                placeholder="Campaign name"
+                className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-xs outline-none focus:border-[#008f45]"
+              />
+            </label>
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={() => setBulkSmsOpen(true)}
+                className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-[#008f45] bg-white px-4 text-xs font-semibold text-[#008f45] hover:bg-[#f0fdf4]"
+              >
+                <FontAwesomeIcon icon={faComment} />
+                SMS Filtered Leads
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="mt-4 overflow-hidden rounded-lg border border-[#e5e7eb]">
           <div className="w-full overflow-x-auto">
@@ -639,7 +959,7 @@ const ListLeads = () => {
                             </MenuButton>
                             <MenuItems className="absolute right-0 z-20 mt-1 w-48 rounded-md border border-[#e5e7eb] bg-white py-1 shadow-lg focus:outline-none">
                               <MenuItem>
-                                <button type="button" onClick={() => setDetailLead(lead)} className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]">
+                                <button type="button" onClick={() => openLeadDetails(lead)} className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]">
                                   <FontAwesomeIcon icon={faUser} className="text-[#1f7ae0]" />
                                   View Details
                                 </button>
@@ -731,6 +1051,15 @@ const ListLeads = () => {
         <NotifyModal
           lead={notifyTarget}
           onClose={() => setNotifyTarget(null)}
+          onSent={() => { fetchLeads(); fetchStats(); }}
+        />
+      )}
+
+      {bulkSmsOpen && (
+        <BulkSmsModal
+          filters={currentFilters}
+          totalItems={totalItems}
+          onClose={() => setBulkSmsOpen(false)}
           onSent={() => { fetchLeads(); fetchStats(); }}
         />
       )}

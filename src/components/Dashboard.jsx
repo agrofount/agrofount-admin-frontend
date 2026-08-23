@@ -18,7 +18,7 @@ import { ShopContext } from "../context/ShopContext";
 import { apiClient } from "../lib/apiClient";
 
 const generatePeriods = () => {
-  const periods = [];
+  const periods = [{ id: "all-time", name: "All time" }];
   const now = new Date();
   for (let i = 5; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -113,10 +113,14 @@ export const Dashboard = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
+        const params = selectedDate.startDate && selectedDate.endDate
+          ? {
+              "filter.createdAt": [`$gte:${selectedDate.startDate}`, `$lte:${selectedDate.endDate}`],
+            }
+          : {};
+
         const response = await apiClient.get("/order/admin/all", {
-          params: {
-            "filter.createdAt": [`$gte:${selectedDate.startDate}`, `$lte:${selectedDate.endDate}`],
-          },
+          params,
           paramsSerializer: (params) => qs.stringify(params, { arrayFormat: "repeat" }),
         });
         setOrders(response.data?.data || []);

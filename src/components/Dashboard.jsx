@@ -134,7 +134,7 @@ export const Dashboard = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await apiClient.get("/user", { params: { limit: 25 } });
+        const response = await apiClient.get("/user");
         setUsers(response.data?.data || response.data || []);
       } catch {
         setUsers([]);

@@ -148,7 +148,7 @@ const SideBar = () => {
             {can.users && <NavLink to="/users" icon={faUsers} label="Customers" onClick={closeOnMobile} />}
             {can.leads && <NavLink to="/leads" icon={faUserPlus} label="Leads" onClick={closeOnMobile} />}
             {can.payments && <NavLink to="/payments" icon={faBriefcase} label="Payments" onClick={closeOnMobile} />}
-              {can.reports && <NavLink to="/" icon={faChartSimple} label="Reports" onClick={closeOnMobile} />}
+              {can.reports && <NavLink to="/reports" icon={faChartSimple} label="Reports" onClick={closeOnMobile} />}
           </Section>
 
           <Section title="Reports">
@@ -183,12 +183,12 @@ const SideBar = () => {
           <Section title="Settings">
             {can.roles && <NavLink to="/roles" icon={faUsers} label="Users & Roles" onClick={closeOnMobile} />}
             <NavLink to="/settings" icon={faGear} label="Settings" onClick={closeOnMobile} />
-            <NavLink to="/" icon={faCircleQuestion} label="Help Center" onClick={closeOnMobile} />
+            <NavLink to="/help-center" icon={faCircleQuestion} label="Help Center" onClick={closeOnMobile} />
           </Section>
         </nav>
 
         <Link
-          to="/"
+          to="/help-center"
           onClick={closeOnMobile}
           className="mt-4 flex items-center justify-center gap-2 rounded-md border border-white/25 bg-white/5 px-3 py-2.5 text-xs font-medium text-white"
         >

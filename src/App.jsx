@@ -82,6 +82,11 @@ const SellerInterestsList = lazy(() =>
 const SellerInterestDetail = lazy(() =>
   import("./components/SellerInterests/SellerInterestDetail")
 );
+const ComingSoonPage = lazy(() => import("./components/common/ComingSoonPage"));
+
+const comingSoon = (title, description) => (
+  <ComingSoonPage title={title} description={description} />
+);
 
 const adminRoutes = [
   { path: "/", element: <Dashboard /> },
@@ -104,6 +109,26 @@ const adminRoutes = [
   { path: "/orders/:orderId", element: <OrderDetail /> },
   { path: "/orders/:orderId/track", element: <TrackOrder /> },
   { path: "/payments", element: <ListPayments /> },
+  {
+    path: "/reports",
+    element: comingSoon("Reports", "Business reporting dashboards will be available here."),
+  },
+  {
+    path: "/sales-reports",
+    element: comingSoon("Sales Reports", "Sales reporting tools will be available here."),
+  },
+  {
+    path: "/customer-reports",
+    element: comingSoon("Customer Reports", "Customer reporting tools will be available here."),
+  },
+  {
+    path: "/inventory-reports",
+    element: comingSoon("Inventory Reports", "Inventory reporting tools will be available here."),
+  },
+  {
+    path: "/career-reports",
+    element: comingSoon("Career Reports", "Career reporting tools will be available here."),
+  },
   { path: "/admins", element: <ListAdmins /> },
   { path: "/admins/add", element: <InviteAdmin /> },
   { path: "/admins/:adminId/edit", element: <EditAdmin /> },
@@ -138,6 +163,10 @@ const adminRoutes = [
   { path: "/ayo-ai", element: <AyoAIAnalytics /> },
   { path: "/ayo-ai/knowledge", element: <AyoKnowledgeBase /> },
   { path: "/settings", element: <Settings /> },
+  {
+    path: "/help-center",
+    element: comingSoon("Help Center", "Help center resources will be available here."),
+  },
 ];
 
 function Layout() {

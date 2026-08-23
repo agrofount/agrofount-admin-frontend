@@ -37,14 +37,14 @@ const brands = [
   { id: "Cascada", name: "Cascada" },
 ];
 
-const AddProductForm = ({ setShowProductForm }) => {
+const AddProductForm = ({ onCancel, onProductCreated, setShowProductForm }) => {
   const [categories, setCategories] = useState({});
   const [primaryCategories, setPrimaryCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
   const [selectedPrimaryCategory, setSelectedPrimaryCategory] = useState("");
-  const [selectedBrand, setSelectedBrand] = useState(brands[1]);
+  const [selectedBrand, setSelectedBrand] = useState(null);
   const [productName, setProductName] = useState("");
   const [description, setDescription] = useState("");
   const [processing, setProcessing] = useState(false);
@@ -53,15 +53,28 @@ const AddProductForm = ({ setShowProductForm }) => {
   const [files, setFiles] = useState([]);
   const [images, setImages] = useState([]);
 
-  const { socket } = useContext(ShopContext);
+  const { navigate, socket } = useContext(ShopContext);
+
+  const closeProductForm = () => {
+    if (typeof onCancel === "function") {
+      onCancel();
+      return;
+    }
+
+    if (typeof setShowProductForm === "function") {
+      setShowProductForm(false);
+      return;
+    }
+
+    navigate("/list-products");
+  };
 
   const fetchCategories = useCallback(async () => {
     try {
       const response = await apiClient.get("/product/livestock-feed-categories");
       if (response.data) {
-        setCategories(response.data.livestock);
-        setPrimaryCategories(response.data.primaryCategories);
-        setSelectedCategory(Object.keys(response.data.livestock)[0]);
+        setCategories(response.data.livestock || {});
+        setPrimaryCategories(response.data.primaryCategories || []);
       }
     } catch (error) {
       toast.error(error.message);
@@ -136,7 +149,7 @@ const AddProductForm = ({ setShowProductForm }) => {
       description,
       category: selectedCategory,
       subCategory: selectedSubCategory,
-      brand: selectedBrand.name,
+      brand: selectedBrand?.name || "",
       images: images,
       primaryCategory: selectedPrimaryCategory,
     };
@@ -146,7 +159,12 @@ const AddProductForm = ({ setShowProductForm }) => {
       const response = await apiClient.post("/product", payload);
 
       if (response.status === 201) {
-        setShowProductForm(false);
+        if (typeof onProductCreated === "function") {
+          onProductCreated(response.data?.data || response.data);
+          return;
+        }
+
+        closeProductForm();
       }
     } catch (error) {
       toast.error(error.message);
@@ -161,7 +179,7 @@ const AddProductForm = ({ setShowProductForm }) => {
       : [];
 
     setSubCategories(sub);
-    setSelectedSubCategory(sub[0]);
+    setSelectedSubCategory("");
   }, [categories, selectedCategory]);
 
   useEffect(() => {
@@ -198,7 +216,7 @@ const AddProductForm = ({ setShowProductForm }) => {
           </p>
           <div
             className="flex flex-row gap-2 text-[15px] font-bold leading-normal tracking-[0.3px] text-black cursor-pointer"
-            onClick={() => setShowProductForm(false)}
+            onClick={closeProductForm}
           >
             <p>
               <FontAwesomeIcon
@@ -321,6 +339,7 @@ const AddProductForm = ({ setShowProductForm }) => {
               onChange={(e) => setSelectedPrimaryCategory(e.target.value)}
               className="block w-full border border-gray-500 rounded-full bg-white py-3 pr-8 pl-3 text-gray-500 focus:outline-[#61BF75] text-sm appearance-none"
             >
+              <option value="">Select primary category</option>
               {primaryCategories.map((category) => (
                 <option key={category} value={category}>
                   {category}
@@ -346,7 +365,7 @@ const AddProductForm = ({ setShowProductForm }) => {
                 "data-[focus]:outline-2 data-[focus]:-outline-offset-2 data-[focus]:outline-[#61BF75]"
               )}
             >
-              {selectedCategory}
+              {selectedCategory || "Select category"}
               <ChevronDownIcon
                 className="group pointer-events-none absolute top-2.5 right-2.5 size-4 fill-gray-500"
                 aria-hidden="true"
@@ -387,9 +406,9 @@ const AddProductForm = ({ setShowProductForm }) => {
                 className={clsx(
                   "relative block w-full border border-gray-500 rounded-full bg-white/5 py-3 pr-8 pl-3 text-left text-gray-500 focus:outline-[#61BF75] text-sm",
                   "data-[focus]:outline-2 data-[focus]:-outline-offset-2 data-[focus]:outline-[#61BF75]"
-                )}
-              >
-                {selectedSubCategory}
+              )}
+            >
+                {selectedSubCategory || "Select sub category"}
                 <ChevronDownIcon
                   className="group pointer-events-none absolute top-2.5 right-2.5 size-4 fill-gray-500"
                   aria-hidden="true"
@@ -430,7 +449,7 @@ const AddProductForm = ({ setShowProductForm }) => {
                   "data-[focus]:outline-2 data-[focus]:-outline-offset-2 data-[focus]:outline-[#61BF75]"
                 )}
               >
-                {selectedBrand.name}
+                {selectedBrand?.name || "Select brand"}
                 <ChevronDownIcon
                   className="group pointer-events-none absolute top-2.5 right-2.5 size-4 fill-gray-500"
                   aria-hidden="true"

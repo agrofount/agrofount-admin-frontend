@@ -219,6 +219,7 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
       await apiClient.post("/leads/bulk-sms", {
         title: title.trim() || "Lead SMS campaign",
         message,
+        search: filters.search || undefined,
         statuses: filters.status && filters.status !== "all" ? [filters.status] : undefined,
         sources: filters.source && filters.source !== "all" ? [filters.source] : undefined,
         sourceIds: filters.sourceId ? [filters.sourceId] : undefined,
@@ -235,6 +236,7 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
   };
 
   const activeFilters = [
+    filters.search && `Search: ${filters.search}`,
     filters.status !== "all" && `Status: ${STATUS_META[filters.status]?.label ?? filters.status}`,
     filters.source !== "all" && `Source: ${LEAD_SOURCE_OPTIONS.find((s) => s.key === filters.source)?.label ?? filters.source}`,
     filters.sourceId && `Source ID: ${filters.sourceId}`,
@@ -692,6 +694,7 @@ const ListLeads = () => {
   const currentPage = Number(leads.meta?.currentPage ?? page);
   const totalItems = Number(leads.meta?.totalItems ?? 0);
   const currentFilters = {
+    search: search.trim(),
     status: statusFilter,
     source: sourceFilter,
     sourceId: sourceIdFilter.trim(),

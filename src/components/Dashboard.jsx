@@ -103,6 +103,7 @@ const Panel = ({ title, action = "View all", children, className = "" }) => (
 );
 
 const productImages = [assets.broiler_starter_mash_1, assets.soya, assets.image_placeholder];
+const ORDER_PAGE_SIZE = 100;
 
 export const Dashboard = () => {
   const { currency, user, token, navigate } = useContext(ShopContext);
@@ -113,17 +114,36 @@ export const Dashboard = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const params = selectedDate.startDate && selectedDate.endDate
-          ? {
-              "filter.createdAt": [`$gte:${selectedDate.startDate}`, `$lte:${selectedDate.endDate}`],
-            }
-          : {};
+        const dateParams =
+          selectedDate.startDate && selectedDate.endDate
+            ? {
+                "filter.createdAt": [`$gte:${selectedDate.startDate}`, `$lte:${selectedDate.endDate}`],
+              }
+            : {};
 
-        const response = await apiClient.get("/order/admin/all", {
-          params,
+        const firstResponse = await apiClient.get("/order/admin/all", {
+          params: { ...dateParams, page: 1, limit: ORDER_PAGE_SIZE },
           paramsSerializer: (params) => qs.stringify(params, { arrayFormat: "repeat" }),
         });
-        setOrders(response.data?.data || []);
+
+        const firstPage = firstResponse.data?.data || [];
+        const totalPages = firstResponse.data?.meta?.totalPages || 1;
+
+        if (totalPages <= 1) {
+          setOrders(firstPage);
+          return;
+        }
+
+        const remainingResponses = await Promise.all(
+          Array.from({ length: totalPages - 1 }, (_, index) =>
+            apiClient.get("/order/admin/all", {
+              params: { ...dateParams, page: index + 2, limit: ORDER_PAGE_SIZE },
+              paramsSerializer: (params) => qs.stringify(params, { arrayFormat: "repeat" }),
+            })
+          )
+        );
+
+        setOrders([...firstPage, ...remainingResponses.flatMap((response) => response.data?.data || [])]);
       } catch {
         setOrders([]);
       }

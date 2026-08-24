@@ -40,7 +40,7 @@ const SEOForm = ({ productLocationData }) => {
     acceptedFiles.forEach((file) => {
       formData.append("files", file);
     });
-    formData.append("clientId", socket?.id || "");
+    formData.append("purpose", "product");
 
     try {
       const response = await apiClient.post("/upload", formData, {
@@ -56,14 +56,14 @@ const SEOForm = ({ productLocationData }) => {
           })
         )
       );
-      setImages(response.data.images[0]);
+      setImages(response.data?.uploads?.[0]?.publicUrl || "");
     } catch (error) {
       toast.error(error.message);
       setUploadProgress({});
     } finally {
       setUploading(false);
     }
-  }, [socket?.id]);
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

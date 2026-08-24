@@ -99,7 +99,7 @@ const AddProductForm = ({ onCancel, onProductCreated, setShowProductForm }) => {
     acceptedFiles.forEach((file) => {
       formData.append("files", file);
     });
-    formData.append("clientId", socket?.id || "");
+    formData.append("purpose", "product");
 
     try {
       const response = await apiClient.post("/upload", formData, {
@@ -115,14 +115,17 @@ const AddProductForm = ({ onCancel, onProductCreated, setShowProductForm }) => {
           })
         )
       );
-      setImages(response.data.images);
+      const uploadedUrls = (response.data?.uploads || [])
+        .map((upload) => upload.publicUrl)
+        .filter(Boolean);
+      setImages(uploadedUrls);
     } catch (error) {
       toast.error(error.message);
       setUploadProgress({});
     } finally {
       setUploading(false);
     }
-  }, [socket?.id]);
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

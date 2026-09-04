@@ -113,16 +113,18 @@ export const Dashboard = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const params = selectedDate.startDate && selectedDate.endDate
-          ? {
-              "filter.createdAt": [`$gte:${selectedDate.startDate}`, `$lte:${selectedDate.endDate}`],
-            }
-          : {};
+        const dateParams =
+          selectedDate.startDate && selectedDate.endDate
+            ? {
+                "filter.createdAt": [`$gte:${selectedDate.startDate}`, `$lte:${selectedDate.endDate}`],
+              }
+            : {};
 
         const response = await apiClient.get("/order/admin/all", {
-          params,
+          params: { ...dateParams, limit: -1 },
           paramsSerializer: (params) => qs.stringify(params, { arrayFormat: "repeat" }),
         });
+
         setOrders(response.data?.data || []);
       } catch {
         setOrders([]);

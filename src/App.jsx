@@ -30,6 +30,10 @@ const ListOrders = lazy(() =>
 const OrderDetail = lazy(() => import("./components/Orders/OrderDetail"));
 const TrackOrder = lazy(() => import("./components/Orders/TrackOrder"));
 const ListPayments = lazy(() => import("./components/Payments/ListPayments"));
+const Reports = lazy(() => import("./components/Reports/Reports"));
+const CreateReport = lazy(() => import("./components/Reports/CreateReport"));
+const ReportPreview = lazy(() => import("./components/Reports/ReportPreview"));
+const ScheduledReports = lazy(() => import("./components/Reports/ScheduledReports"));
 const ListCountries = lazy(() => import("./components/Countries/ListCountries"));
 const EditCountries = lazy(() =>
   import("./components/Countries/EditCountries")
@@ -69,6 +73,7 @@ const AyoKnowledgeBase = lazy(() =>
   import("./components/AyoAI/AyoKnowledgeBase")
 );
 const Settings = lazy(() => import("./components/Settings/Settings"));
+const LogisticsPricing = lazy(() => import("./components/LogisticsPricing/LogisticsPricing"));
 const CareersOverview = lazy(() => import("./components/Careers/CareersOverview"));
 const JobOpenings = lazy(() => import("./components/Careers/JobOpenings"));
 const JobDetail = lazy(() => import("./components/Careers/JobDetail"));
@@ -109,10 +114,10 @@ const adminRoutes = [
   { path: "/orders/:orderId", element: <OrderDetail /> },
   { path: "/orders/:orderId/track", element: <TrackOrder /> },
   { path: "/payments", element: <ListPayments /> },
-  {
-    path: "/reports",
-    element: comingSoon("Reports", "Business reporting dashboards will be available here."),
-  },
+  { path: "/reports", element: <Reports /> },
+  { path: "/reports/create", element: <CreateReport /> },
+  { path: "/reports/preview", element: <ReportPreview /> },
+  { path: "/reports/scheduled", element: <ScheduledReports /> },
   {
     path: "/sales-reports",
     element: comingSoon("Sales Reports", "Sales reporting tools will be available here."),
@@ -163,6 +168,7 @@ const adminRoutes = [
   { path: "/ayo-ai", element: <AyoAIAnalytics /> },
   { path: "/ayo-ai/knowledge", element: <AyoKnowledgeBase /> },
   { path: "/settings", element: <Settings /> },
+  { path: "/logistics-pricing", element: <LogisticsPricing /> },
   {
     path: "/help-center",
     element: comingSoon("Help Center", "Help center resources will be available here."),

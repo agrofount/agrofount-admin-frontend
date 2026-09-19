@@ -33,6 +33,7 @@ export const RESOURCES = {
   DRIVERS: "drivers",
   TRACKING: "tracking",
   DELIVERY_ZONES: "deliveryZones",
+  LOGISTICS_PRICING: "logisticsPricing",
 
   // Content
   BLOG_POSTS: "blogPosts",
@@ -236,6 +237,10 @@ export const PERMISSION_SETS = {
 
   // Shipping & logistics permissions
   SHIPPING_MANAGEMENT: [
+    {
+      resource: RESOURCES.LOGISTICS_PRICING,
+      actions: [ACTIONS.CREATE, ACTIONS.READ, ACTIONS.UPDATE, ACTIONS.DELETE],
+    },
     {
       resource: RESOURCES.SHIPMENTS,
       actions: [

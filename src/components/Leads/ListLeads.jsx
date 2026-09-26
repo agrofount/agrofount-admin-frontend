@@ -536,7 +536,7 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
   );
 };
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [20, 50, 100, 250, 500, 1000];
 
 const ListLeads = () => {
   const [leads, setLeads] = useState({ data: [], meta: {} });
@@ -545,6 +545,7 @@ const ListLeads = () => {
   const [statsLoading, setStatsLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -566,7 +567,7 @@ const ListLeads = () => {
       const res = await apiClient.get("/leads", {
         params: {
           page,
-          limit: PAGE_SIZE,
+          limit: pageSize,
           search: search || undefined,
           status: statusFilter !== "all" ? statusFilter : undefined,
           source: sourceFilter !== "all" ? sourceFilter : undefined,
@@ -581,7 +582,7 @@ const ListLeads = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter, sourceFilter, sourceIdFilter, campaignNameFilter, campaignIdFilter]);
+  }, [page, pageSize, search, statusFilter, sourceFilter, sourceIdFilter, campaignNameFilter, campaignIdFilter]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -875,6 +876,21 @@ const ListLeads = () => {
           </div>
         )}
 
+        <div className="mt-4 flex justify-end">
+          <label className="flex items-center gap-2 text-xs text-[#667085]">
+            Rows per page
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              className="h-9 rounded-md border border-[#d0d5dd] bg-white px-3 text-xs outline-none focus:border-[#008f45]"
+            >
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>{size.toLocaleString()}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
         <div className="mt-4 overflow-hidden rounded-lg border border-[#e5e7eb]">
           <div className="w-full overflow-x-auto">
             <table className="min-w-[1150px] w-full text-left">
@@ -1048,7 +1064,7 @@ const ListLeads = () => {
 
         <div className="mt-4 flex flex-col gap-3 px-1 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-[#667085]">
-            Showing {totalItems ? (currentPage - 1) * PAGE_SIZE + 1 : 0} – {Math.min(currentPage * PAGE_SIZE, totalItems)} of {totalItems} leads
+            Showing {totalItems ? (currentPage - 1) * pageSize + 1 : 0} – {Math.min(currentPage * pageSize, totalItems)} of {totalItems} leads
           </p>
           <div className="flex items-center gap-2">
             <button

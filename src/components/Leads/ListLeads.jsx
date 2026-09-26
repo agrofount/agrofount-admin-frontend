@@ -224,6 +224,7 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
         sources: filters.source && filters.source !== "all" ? [filters.source] : undefined,
         sourceIds: filters.sourceId ? [filters.sourceId] : undefined,
         campaignNames: filters.campaignName ? [filters.campaignName] : undefined,
+        campaignIds: filters.campaignId ? [filters.campaignId] : undefined,
       });
       toast.success("Bulk SMS campaign queued");
       onSent();
@@ -241,6 +242,7 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
     filters.source !== "all" && `Source: ${LEAD_SOURCE_OPTIONS.find((s) => s.key === filters.source)?.label ?? filters.source}`,
     filters.sourceId && `Source ID: ${filters.sourceId}`,
     filters.campaignName && `Campaign: ${filters.campaignName}`,
+    filters.campaignId && `Campaign ID: ${filters.campaignId}`,
   ].filter(Boolean);
 
   return (
@@ -251,7 +253,7 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
           <div>
             <h3 className="text-sm font-semibold text-[#101828]">Send Bulk SMS</h3>
             <p className="mt-1 text-[11px] text-[#667085]">
-              Targets the current lead filters{totalItems ? `, currently ${totalItems.toLocaleString()} leads` : ""}.
+              Targets the current lead filters{totalItems ? `, currently ${totalItems.toLocaleString()} leads` : ""}. Leads with a previous successful SMS will be skipped automatically; the number sent may be lower.
             </p>
           </div>
           <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-md text-[#667085] hover:bg-[#f3f4f6]">
@@ -549,6 +551,7 @@ const ListLeads = () => {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [sourceIdFilter, setSourceIdFilter] = useState("");
   const [campaignNameFilter, setCampaignNameFilter] = useState("");
+  const [campaignIdFilter, setCampaignIdFilter] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [bulkSmsOpen, setBulkSmsOpen] = useState(false);
   const [detailLead, setDetailLead] = useState(null);
@@ -569,6 +572,7 @@ const ListLeads = () => {
           source: sourceFilter !== "all" ? sourceFilter : undefined,
           sourceId: sourceIdFilter.trim() || undefined,
           campaignName: campaignNameFilter.trim() || undefined,
+          campaignId: campaignIdFilter.trim() || undefined,
         },
       });
       setLeads(res.data);
@@ -577,7 +581,7 @@ const ListLeads = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter, sourceFilter, sourceIdFilter, campaignNameFilter]);
+  }, [page, search, statusFilter, sourceFilter, sourceIdFilter, campaignNameFilter, campaignIdFilter]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -608,6 +612,7 @@ const ListLeads = () => {
     setSourceFilter("all");
     setSourceIdFilter("");
     setCampaignNameFilter("");
+    setCampaignIdFilter("");
     setSearchInput("");
     setSearch("");
     setPage(1);
@@ -699,12 +704,14 @@ const ListLeads = () => {
     source: sourceFilter,
     sourceId: sourceIdFilter.trim(),
     campaignName: campaignNameFilter.trim(),
+    campaignId: campaignIdFilter.trim(),
   };
   const activeFilterCount = [
     statusFilter !== "all",
     sourceFilter !== "all",
     sourceIdFilter.trim(),
     campaignNameFilter.trim(),
+    campaignIdFilter.trim(),
   ].filter(Boolean).length;
 
   const statCards = stats ? [
@@ -846,6 +853,15 @@ const ListLeads = () => {
                 className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-xs outline-none focus:border-[#008f45]"
               />
             </label>
+            <label>
+              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[#667085]">Campaign ID</span>
+              <input
+                value={campaignIdFilter}
+                onChange={(e) => { setCampaignIdFilter(e.target.value); setPage(1); }}
+                placeholder="Exact campaign ID"
+                className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-xs outline-none focus:border-[#008f45]"
+              />
+            </label>
             <div className="flex items-end">
               <button
                 type="button"
@@ -861,20 +877,20 @@ const ListLeads = () => {
 
         <div className="mt-4 overflow-hidden rounded-lg border border-[#e5e7eb]">
           <div className="w-full overflow-x-auto">
-            <table className="min-w-[900px] w-full text-left">
+            <table className="min-w-[1150px] w-full text-left">
               <thead className="border-b border-[#e5e7eb] bg-[#fbfcfd]">
                 <tr>
-                  {["Lead", "Phone", "State", "Gender", "Campaign / Ad", "Status", "Imported", "Actions"].map((h) => (
+                  {["Lead", "Phone", "State", "Gender", "Campaign / Ad", "Status", "SMS Status", "Last SMS Sent", "Imported", "Actions"].map((h) => (
                     <th key={h} className="px-4 py-3 text-[9px] font-semibold uppercase tracking-wide text-[#667085]">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#eef2f6]">
                 {loading ? (
-                  <TableRowsSkeleton rows={6} columns={8} />
+                  <TableRowsSkeleton rows={6} columns={10} />
                 ) : leads.data.length === 0 ? (
                   <tr>
-                    <td colSpan="8">
+                    <td colSpan="10">
                       <div className="flex h-52 flex-col items-center justify-center gap-3">
                         <div className="grid h-12 w-12 place-items-center rounded-full bg-[#f3f4f6]">
                           <FontAwesomeIcon icon={faUsers} className="text-[#98a2b3]" />
@@ -894,6 +910,9 @@ const ListLeads = () => {
                   leads.data.map((lead) => {
                     const sm = STATUS_META[lead.status] ?? STATUS_META.new;
                     const [date, time] = formatDate(lead.createdAt);
+                    const [smsDate, smsTime] = formatDate(lead.lastSmsSentAt);
+                    const smsSent = lead.smsStatus === "sent";
+                    const smsKnown = smsSent || lead.smsStatus === "not_sent";
                     const gender = lead.gender || "N/A";
                     const transitions = STATUS_TRANSITIONS[lead.status] ?? [];
                     return (
@@ -936,12 +955,34 @@ const ListLeads = () => {
                           <div className="max-w-[160px]">
                             <p className="truncate text-xs text-[#344054]">{lead.campaignName || "—"}</p>
                             {lead.adName && <p className="truncate text-[10px] text-[#98a2b3]">{lead.adName}</p>}
+                            {lead.campaignId && (
+                              <button
+                                type="button"
+                                title={`Filter by campaign ID ${lead.campaignId}`}
+                                onClick={() => { setCampaignIdFilter(lead.campaignId); setFiltersOpen(true); setPage(1); }}
+                                className="mt-1 block max-w-full truncate text-[10px] text-[#008f45] underline"
+                              >
+                                ID: {lead.campaignId}
+                              </button>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3">
                           <span className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: sm.bg, color: sm.text }}>
                             {sm.label}
                           </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            title={smsSent ? "Accepted by the SMS provider; delivery is not confirmed." : "No successful SMS send is recorded."}
+                            className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${smsSent ? "bg-[#dcf8e4] text-[#008f45]" : "bg-[#f3f4f6] text-[#667085]"}`}
+                          >
+                            {smsSent ? "Sent" : smsKnown ? "Not sent" : "Unavailable"}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-xs text-[#475467]">
+                          <p>{smsDate}</p>
+                          <p className="text-[10px] text-[#667085]">{smsTime}</p>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-start gap-1.5 text-xs text-[#475467]">

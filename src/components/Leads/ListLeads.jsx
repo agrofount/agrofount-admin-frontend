@@ -322,14 +322,15 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
 };
 
 const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
+  const [updating, setUpdating] = useState(null);
+  const [notifyOpen, setNotifyOpen] = useState(false);
+
   if (!lead) return null;
   const [date, time] = formatDate(lead.createdAt);
   const [srcDate] = formatDate(lead.sourceCreatedAt);
   const gender = lead.gender || "N/A";
   const sm = STATUS_META[lead.status] ?? STATUS_META.new;
   const transitions = STATUS_TRANSITIONS[lead.status] ?? [];
-  const [updating, setUpdating] = useState(null);
-  const [notifyOpen, setNotifyOpen] = useState(false);
 
   const doTransition = async (status) => {
     try {
@@ -560,8 +561,10 @@ const ListLeads = () => {
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const fileInputRef = useRef();
   const searchTimeout = useRef();
+  const leadsRequestId = useRef(0);
 
   const fetchLeads = useCallback(async () => {
+    const requestId = ++leadsRequestId.current;
     try {
       setLoading(true);
       const res = await apiClient.get("/leads", {
@@ -576,11 +579,18 @@ const ListLeads = () => {
           campaignId: campaignIdFilter.trim() || undefined,
         },
       });
+      if (requestId !== leadsRequestId.current) return;
+      const lastPage = Math.max(1, Number(res.data.meta?.totalPages ?? 1));
+      if (page > lastPage) {
+        setPage(lastPage);
+        return;
+      }
       setLeads(res.data);
     } catch (err) {
+      if (requestId !== leadsRequestId.current) return;
       toast.error(err?.response?.data?.message || "Failed to load leads");
     } finally {
-      setLoading(false);
+      if (requestId === leadsRequestId.current) setLoading(false);
     }
   }, [page, pageSize, search, statusFilter, sourceFilter, sourceIdFilter, campaignNameFilter, campaignIdFilter]);
 
@@ -696,9 +706,12 @@ const ListLeads = () => {
     URL.revokeObjectURL(url);
   };
 
-  const totalPages = Number(leads.meta?.totalPages ?? 1);
+  const totalPages = Math.max(1, Number(leads.meta?.totalPages ?? 1));
   const currentPage = Number(leads.meta?.currentPage ?? page);
   const totalItems = Number(leads.meta?.totalItems ?? 0);
+  const effectivePageSize = Number(leads.meta?.itemsPerPage ?? pageSize);
+  const firstItem = leads.data.length ? (currentPage - 1) * effectivePageSize + 1 : 0;
+  const lastItem = leads.data.length ? Math.min(firstItem + leads.data.length - 1, totalItems) : 0;
   const currentFilters = {
     search: search.trim(),
     status: statusFilter,
@@ -893,11 +906,16 @@ const ListLeads = () => {
 
         <div className="mt-4 overflow-hidden rounded-lg border border-[#e5e7eb]">
           <div className="w-full overflow-x-auto">
-            <table className="min-w-[1150px] w-full text-left">
+            <table className="w-full min-w-[1100px] text-left">
               <thead className="border-b border-[#e5e7eb] bg-[#fbfcfd]">
                 <tr>
                   {["Lead", "Phone", "State", "Gender", "Campaign / Ad", "Status", "SMS Status", "Last SMS Sent", "Imported", "Actions"].map((h) => (
-                    <th key={h} className="px-4 py-3 text-[9px] font-semibold uppercase tracking-wide text-[#667085]">{h}</th>
+                    <th
+                      key={h}
+                      className={`whitespace-nowrap px-4 py-3 text-[9px] font-semibold uppercase tracking-wide text-[#667085] ${h === "Actions" ? "sticky right-0 bg-[#fbfcfd] text-right" : ""}`}
+                    >
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -938,28 +956,28 @@ const ListLeads = () => {
                             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#dcf8e4] text-xs font-bold text-[#008f45]">
                               {getInitials(lead.name)}
                             </span>
-                            <div>
-                              <p className="text-xs font-semibold text-[#101828]">{lead.name}</p>
-                              <p className="text-[10px] text-[#667085]">{lead.source}</p>
+                            <div className="min-w-0 max-w-[180px]">
+                              <p className="truncate text-xs font-semibold text-[#101828]" title={lead.name}>{lead.name}</p>
+                              <p className="truncate text-[10px] text-[#667085]">{lead.source}</p>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="inline-flex items-center gap-1.5 text-xs text-[#475467]">
+                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-[#475467]">
                             <FontAwesomeIcon icon={faPhone} className="text-[#008f45]" />
                             {lead.phone}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           {lead.state ? (
-                            <span className="inline-flex items-center gap-1.5 text-xs text-[#475467]">
-                              <FontAwesomeIcon icon={faLocationDot} className="text-[#008f45]" />
-                              {lead.state}
+                            <span className="flex max-w-[160px] items-center gap-1.5 text-xs text-[#475467]" title={lead.state}>
+                              <FontAwesomeIcon icon={faLocationDot} className="shrink-0 text-[#008f45]" />
+                              <span className="truncate">{lead.state}</span>
                             </span>
                           ) : <span className="text-xs text-[#98a2b3]">—</span>}
                         </td>
                         <td className="px-4 py-3">
-                          <span className="inline-flex items-center gap-1.5 text-xs text-[#475467]">
+                          <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-[#475467]">
                             <FontAwesomeIcon
                               icon={String(gender).toLowerCase() === "female" ? faVenus : faMars}
                               className={String(gender).toLowerCase() === "female" ? "text-[#ef3f7a]" : "text-[#1f7ae0]"}
@@ -968,8 +986,8 @@ const ListLeads = () => {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <div className="max-w-[160px]">
-                            <p className="truncate text-xs text-[#344054]">{lead.campaignName || "—"}</p>
+                          <div className="max-w-[180px]">
+                            <p className="truncate text-xs text-[#344054]" title={lead.campaignName}>{lead.campaignName || "—"}</p>
                             {lead.adName && <p className="truncate text-[10px] text-[#98a2b3]">{lead.adName}</p>}
                             {lead.campaignId && (
                               <button
@@ -984,7 +1002,7 @@ const ListLeads = () => {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: sm.bg, color: sm.text }}>
+                          <span className="inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: sm.bg, color: sm.text }}>
                             {sm.label}
                           </span>
                         </td>
@@ -1001,7 +1019,7 @@ const ListLeads = () => {
                           <p className="text-[10px] text-[#667085]">{smsTime}</p>
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-start gap-1.5 text-xs text-[#475467]">
+                          <div className="flex items-start gap-1.5 whitespace-nowrap text-xs text-[#475467]">
                             <FontAwesomeIcon icon={faCalendarDays} className="mt-0.5 text-[#667085]" />
                             <div>
                               <p>{date}</p>
@@ -1009,11 +1027,11 @@ const ListLeads = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="sticky right-0 bg-white px-4 py-3 text-right group-hover:bg-[#f9fafb]">
                           <Menu as="div" className="relative inline-block">
                             <MenuButton
                               disabled={actionLoadingId === lead.id}
-                              className="grid h-8 w-8 place-items-center rounded-md border border-[#e5e7eb] text-[#667085] opacity-0 group-hover:opacity-100 hover:bg-[#f8fafc] disabled:opacity-40"
+                              className="grid h-8 w-8 place-items-center rounded-md border border-[#e5e7eb] text-[#667085] hover:bg-[#f8fafc] lg:opacity-0 lg:group-hover:opacity-100 lg:focus:opacity-100 disabled:opacity-40"
                             >
                               <FontAwesomeIcon icon={faEllipsisVertical} />
                             </MenuButton>
@@ -1064,13 +1082,13 @@ const ListLeads = () => {
 
         <div className="mt-4 flex flex-col gap-3 px-1 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-[#667085]">
-            Showing {totalItems ? (currentPage - 1) * pageSize + 1 : 0} – {Math.min(currentPage * pageSize, totalItems)} of {totalItems} leads
+            {loading ? "Loading leads…" : `Showing ${firstItem} – ${lastItem} of ${totalItems} leads`}
           </p>
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage <= 1}
+              onClick={() => setPage(Math.max(1, currentPage - 1))}
+              disabled={loading || currentPage <= 1}
               className="grid h-8 w-8 place-items-center rounded-md border border-[#d0d5dd] text-xs text-[#667085] disabled:opacity-40"
             >
               <FontAwesomeIcon icon={faChevronLeft} />
@@ -1083,6 +1101,7 @@ const ListLeads = () => {
                   key={p}
                   type="button"
                   onClick={() => setPage(p)}
+                  disabled={loading}
                   className={`h-8 min-w-8 rounded-md px-2.5 text-xs font-semibold ${currentPage === p ? "bg-[#008f45] text-white" : "border border-[#e5e7eb] text-[#344054]"}`}
                 >
                   {p}
@@ -1091,8 +1110,8 @@ const ListLeads = () => {
             })()}
             <button
               type="button"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage >= totalPages}
+              onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+              disabled={loading || currentPage >= totalPages}
               className="grid h-8 w-8 place-items-center rounded-md border border-[#d0d5dd] text-xs text-[#667085] disabled:opacity-40"
             >
               <FontAwesomeIcon icon={faChevronRight} />

@@ -16,6 +16,7 @@ import qs from "qs";
 import { assets } from "../assets/assets";
 import { ShopContext } from "../context/ShopContext";
 import { apiClient } from "../lib/apiClient";
+import { calculateDashboardMetrics } from "../lib/dashboardMetrics";
 
 const generatePeriods = () => {
   const periods = [{ id: "all-time", name: "All time" }];
@@ -107,7 +108,6 @@ const productImages = [assets.broiler_starter_mash_1, assets.soya, assets.image_
 export const Dashboard = () => {
   const { currency, user, token, navigate } = useContext(ShopContext);
   const [orders, setOrders] = useState([]);
-  const [users, setUsers] = useState([]);
   const [selectedDate, setSelectedDate] = useState(periods[periods.length - 1]);
 
   useEffect(() => {
@@ -134,33 +134,10 @@ export const Dashboard = () => {
   }, [selectedDate]);
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await apiClient.get("/user");
-        setUsers(response.data?.data || response.data || []);
-      } catch {
-        setUsers([]);
-      }
-    };
-    fetchUsers();
-  }, []);
-
-  useEffect(() => {
     if (!token) navigate("/login");
   }, [token, navigate]);
 
-  const metrics = useMemo(() => {
-    const totalSales = orders.reduce((sum, order) => sum + Number(order.totalPrice || order.total || 0), 0);
-    const income = orders
-      .filter((order) => order.paymentStatus === "completed" || order.status === "confirmed")
-      .reduce((sum, order) => sum + Number(order.totalPrice || 0), 0);
-    return {
-      totalSales,
-      totalOrders: orders.length,
-      totalCustomers: Array.isArray(users) ? users.length : 0,
-      income,
-    };
-  }, [orders, users]);
+  const metrics = useMemo(() => calculateDashboardMetrics(orders), [orders]);
 
   const displayName = user?.username || "akinbamidayo";
   const recentOrders = orders.slice(0, 5);
@@ -205,10 +182,10 @@ export const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total Sales" value={formatCurrency(metrics.totalSales || 92000, currency, true)} trend="1.56%" icon={faSuitcase} color="text-[#009444]" colorHex="#009444" bg="bg-[#e8f8ee]" dark data={[14, 22, 31, 28, 35, 30, 38, 34, 43, 39, 48, 55, 49, 44]} />
-        <StatCard title="Total Orders" value={metrics.totalOrders || 128} trend="8.45%" icon={faSuitcase} color="text-[#1587d9]" colorHex="#1587d9" bg="bg-[#eaf5ff]" data={[20, 28, 39, 33, 30, 42, 38, 34, 32, 26, 39, 45, 37, 48, 50]} />
-        <StatCard title="Total Customers" value={metrics.totalCustomers || 25} trend="3.21%" icon={faUsers} color="text-[#7f3fd9]" colorHex="#7f3fd9" bg="bg-[#f1e9ff]" data={[12, 17, 23, 19, 17, 25, 21, 18, 18, 13, 20, 25, 21, 28, 28]} />
-        <StatCard title="Total Income" value={formatCurrency(metrics.income || 92000, currency, true)} trend="1.56%" icon={faWallet} color="text-[#f79009]" colorHex="#f79009" bg="bg-[#fff2df]" data={[10, 15, 24, 19, 17, 27, 23, 18, 16, 12, 21, 26, 21, 31, 32]} />
+        <StatCard title="Total Sales" value={formatCurrency(metrics.totalSales, currency, true)} trend="1.56%" icon={faSuitcase} color="text-[#009444]" colorHex="#009444" bg="bg-[#e8f8ee]" dark data={[14, 22, 31, 28, 35, 30, 38, 34, 43, 39, 48, 55, 49, 44]} />
+        <StatCard title="Total Orders" value={metrics.totalOrders} trend="8.45%" icon={faSuitcase} color="text-[#1587d9]" colorHex="#1587d9" bg="bg-[#eaf5ff]" data={[20, 28, 39, 33, 30, 42, 38, 34, 32, 26, 39, 45, 37, 48, 50]} />
+        <StatCard title="Total Customers" value={metrics.totalCustomers} trend="3.21%" icon={faUsers} color="text-[#7f3fd9]" colorHex="#7f3fd9" bg="bg-[#f1e9ff]" data={[12, 17, 23, 19, 17, 25, 21, 18, 18, 13, 20, 25, 21, 28, 28]} />
+        <StatCard title="Total Income" value={formatCurrency(metrics.income, currency, true)} trend="1.56%" icon={faWallet} color="text-[#f79009]" colorHex="#f79009" bg="bg-[#fff2df]" data={[10, 15, 24, 19, 17, 27, 23, 18, 16, 12, 21, 26, 21, 31, 32]} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">

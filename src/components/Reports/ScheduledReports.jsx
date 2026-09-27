@@ -1,332 +1,146 @@
-import {
-  faBox,
-  faBriefcase,
-  faCalendarDays,
-  faChartColumn,
-  faCheck,
-  faChevronLeft,
-  faChevronRight,
-  faEllipsis,
-  faFileExcel,
-  faFilePdf,
-  faLightbulb,
-  faPen,
-  faPlus,
-  faRobot,
-  faSearch,
-  faUsers,
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faChevronRight, faPlus, faSearch, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "react-toastify";
+import { apiClient } from "../../lib/apiClient";
 
-const tabs = ["All (6)", "Active (5)", "Paused (1)"];
+const initialForm = { name: "", type: "sales", format: "xlsx", frequency: "weekly", dayOfWeek: 1, dayOfMonth: 1, time: "08:00", recipients: "" };
+const inputClass = "h-10 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-sm outline-none focus:border-[#008f45]";
 
-const scheduleRows = [
-  {
-    id: 1,
-    name: "Weekly Sales Report",
-    description: "Sales performance summary",
-    type: "Sales Report",
-    typeIcon: faChartColumn,
-    tone: "green",
-    frequency: "Weekly",
-    schedule: "Every Monday, 8:00 AM",
-    nextRun: "Mon, Sep 7, 2026",
-    nextRunTime: "8:00 AM",
-    recipients: "3 recipients",
-    format: "Excel (.xlsx)",
-    formatType: "excel",
-    active: true,
-  },
-  {
-    id: 2,
-    name: "Monthly Inventory Report",
-    description: "Stock levels and movements",
-    type: "Inventory Report",
-    typeIcon: faBox,
-    tone: "orange",
-    frequency: "Monthly",
-    schedule: "1st of every month, 8:00 AM",
-    nextRun: "Sep 1, 2026",
-    nextRunTime: "8:00 AM",
-    recipients: "2 recipients",
-    format: "PDF (.pdf)",
-    formatType: "pdf",
-    active: true,
-  },
-  {
-    id: 3,
-    name: "Customer Growth Report",
-    description: "New and returning customers",
-    type: "Customer Report",
-    typeIcon: faUsers,
-    tone: "purple",
-    frequency: "Weekly",
-    schedule: "Every Friday, 8:00 AM",
-    nextRun: "Fri, Sep 11, 2026",
-    nextRunTime: "8:00 AM",
-    recipients: "4 recipients",
-    format: "Excel (.xlsx)",
-    formatType: "excel",
-    active: true,
-  },
-  {
-    id: 4,
-    name: "Ayo AI Usage Report",
-    description: "Chat usage and top topics",
-    type: "Ayo AI Analytics",
-    typeIcon: faRobot,
-    tone: "pink",
-    frequency: "Monthly",
-    schedule: "1st of every month, 9:00 AM",
-    nextRun: "Sep 1, 2026",
-    nextRunTime: "9:00 AM",
-    recipients: "2 recipients",
-    format: "PDF (.pdf)",
-    formatType: "pdf",
-    active: true,
-  },
-  {
-    id: 5,
-    name: "Career Applications Report",
-    description: "Applications and hiring pipeline",
-    type: "Career Report",
-    typeIcon: faBriefcase,
-    tone: "blue",
-    frequency: "Weekly",
-    schedule: "Every Monday, 9:00 AM",
-    nextRun: "Mon, Sep 7, 2026",
-    nextRunTime: "9:00 AM",
-    recipients: "2 recipients",
-    format: "Excel (.xlsx)",
-    formatType: "excel",
-    active: true,
-  },
-  {
-    id: 6,
-    name: "Low Stock Alert Report",
-    description: "Products below threshold",
-    type: "Inventory Report",
-    typeIcon: faBox,
-    tone: "orange",
-    frequency: "Daily",
-    schedule: "Every day, 7:00 AM",
-    nextRun: "Tomorrow, 7:00 AM",
-    nextRunTime: "Aug 24, 2026",
-    recipients: "1 recipient",
-    format: "PDF (.pdf)",
-    formatType: "pdf",
-    active: false,
-  },
-];
-
-const toneClasses = {
-  green: "bg-[#e8f8ee] text-[#008f45]",
-  orange: "bg-[#fff2df] text-[#f79009]",
-  purple: "bg-[#f1e9ff] text-[#7f3fd9]",
-  blue: "bg-[#eaf5ff] text-[#1f7ae0]",
-  pink: "bg-[#ffe8ef] text-[#e11d48]",
+const describeSchedule = (schedule) => {
+  const time = String(schedule.time).slice(0, 5);
+  if (schedule.frequency === "daily") return `Daily at ${time}`;
+  if (schedule.frequency === "weekly") {
+    const day = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][schedule.dayOfWeek];
+    return `Every ${day} at ${time}`;
+  }
+  return `Day ${schedule.dayOfMonth} of every month at ${time}`;
 };
 
-const TypeBadge = ({ icon, tone, label }) => (
-  <div className="flex min-w-[150px] items-center gap-3">
-    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${toneClasses[tone]}`}>
-      <FontAwesomeIcon icon={icon} />
-    </span>
-    <span className="font-medium text-[#344054]">{label}</span>
-  </div>
-);
+const ScheduledReports = () => {
+  const [schedules, setSchedules] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [form, setForm] = useState(initialForm);
 
-const FormatBadge = ({ type, label }) => {
-  const isPdf = type === "pdf";
+  const loadSchedules = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data } = await apiClient.get("/reports/schedules");
+      setSchedules(data);
+    } catch (error) {
+      toast.error(error.message || "Unable to load scheduled reports");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadSchedules(); }, [loadSchedules]);
+
+  const visibleSchedules = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return term ? schedules.filter((schedule) => schedule.name.toLowerCase().includes(term)) : schedules;
+  }, [schedules, search]);
+
+  const updateForm = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+
+  const createSchedule = async (event) => {
+    event.preventDefault();
+    const recipients = form.recipients.split(",").map((value) => value.trim()).filter(Boolean);
+    if (!form.name.trim() || recipients.length === 0) {
+      toast.error("A schedule name and at least one recipient are required");
+      return;
+    }
+    try {
+      setSaving(true);
+      await apiClient.post("/reports/schedules", { ...form, name: form.name.trim(), recipients, filters: {} });
+      toast.success("Report schedule created");
+      setForm(initialForm);
+      setFormOpen(false);
+      await loadSchedules();
+    } catch (error) {
+      toast.error(error.message || "Unable to create schedule");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleSchedule = async (schedule) => {
+    try {
+      const { data } = await apiClient.patch(`/reports/schedules/${schedule.id}`, { active: !schedule.active });
+      setSchedules((current) => current.map((item) => item.id === data.id ? data : item));
+    } catch (error) {
+      toast.error(error.message || "Unable to update schedule");
+    }
+  };
+
+  const deleteSchedule = async (schedule) => {
+    if (!window.confirm(`Delete “${schedule.name}”?`)) return;
+    try {
+      await apiClient.delete(`/reports/schedules/${schedule.id}`);
+      setSchedules((current) => current.filter((item) => item.id !== schedule.id));
+      toast.success("Report schedule deleted");
+    } catch (error) {
+      toast.error(error.message || "Unable to delete schedule");
+    }
+  };
+
   return (
-    <span className="inline-flex items-center gap-2 whitespace-nowrap font-medium text-[#344054]">
-      <FontAwesomeIcon icon={isPdf ? faFilePdf : faFileExcel} className={isPdf ? "text-[#ef3340]" : "text-[#008f45]"} />
-      {label}
-    </span>
+    <div className="w-full min-w-0 space-y-4 text-[#101828]">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <div className="mb-3 flex items-center gap-2 text-xs text-[#667085]"><Link to="/reports" className="hover:text-[#008f45]">Reports</Link><FontAwesomeIcon icon={faChevronRight} className="text-[10px]" /><span>Scheduled Reports</span></div>
+          <h1 className="text-2xl font-bold">Scheduled Reports</h1>
+          <p className="mt-1 text-sm text-[#667085]">Create and manage recurring reports for your team.</p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Link to="/reports" className="inline-flex h-10 items-center gap-2 rounded-md border border-[#d0d5dd] px-4 text-sm font-semibold"><FontAwesomeIcon icon={faArrowLeft} /> Back to Reports</Link>
+          <button type="button" onClick={() => setFormOpen((open) => !open)} className="inline-flex h-10 items-center gap-2 rounded-md bg-[#008f45] px-4 text-sm font-semibold text-white"><FontAwesomeIcon icon={faPlus} /> {formOpen ? "Close" : "Add Schedule"}</button>
+        </div>
+      </div>
+
+      {formOpen && (
+        <form onSubmit={createSchedule} className="rounded-lg border border-[#cfeedd] bg-[#f0fbf5] p-4 shadow-sm">
+          <h2 className="mb-4 text-base font-semibold">New report schedule</h2>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <label><span className="mb-1 block text-xs font-semibold">Name</span><input value={form.name} onChange={(event) => updateForm("name", event.target.value)} className={inputClass} placeholder="Weekly sales report" /></label>
+            <label><span className="mb-1 block text-xs font-semibold">Report type</span><select value={form.type} onChange={(event) => updateForm("type", event.target.value)} className={inputClass}><option value="sales">Sales</option><option value="customer">Customer</option><option value="inventory">Inventory</option><option value="career">Career</option></select></label>
+            <label><span className="mb-1 block text-xs font-semibold">Format</span><select value={form.format} onChange={(event) => updateForm("format", event.target.value)} className={inputClass}><option value="xlsx">Excel</option><option value="csv">CSV</option><option value="pdf">PDF</option></select></label>
+            <label><span className="mb-1 block text-xs font-semibold">Frequency</span><select value={form.frequency} onChange={(event) => updateForm("frequency", event.target.value)} className={inputClass}><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></label>
+            {form.frequency === "weekly" && <label><span className="mb-1 block text-xs font-semibold">Day</span><select value={form.dayOfWeek} onChange={(event) => updateForm("dayOfWeek", Number(event.target.value))} className={inputClass}>{["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, index) => <option key={day} value={index}>{day}</option>)}</select></label>}
+            {form.frequency === "monthly" && <label><span className="mb-1 block text-xs font-semibold">Day of month</span><input type="number" min="1" max="28" value={form.dayOfMonth} onChange={(event) => updateForm("dayOfMonth", Number(event.target.value))} className={inputClass} /></label>}
+            <label><span className="mb-1 block text-xs font-semibold">Time</span><input type="time" value={form.time} onChange={(event) => updateForm("time", event.target.value)} className={inputClass} /></label>
+            <label className="md:col-span-2"><span className="mb-1 block text-xs font-semibold">Recipients</span><input value={form.recipients} onChange={(event) => updateForm("recipients", event.target.value)} className={inputClass} placeholder="email@example.com, team@example.com" /></label>
+          </div>
+          <div className="mt-4 flex justify-end"><button type="submit" disabled={saving} className="h-10 rounded-md bg-[#008f45] px-5 text-sm font-semibold text-white disabled:opacity-60">{saving ? "Saving…" : "Create Schedule"}</button></div>
+        </form>
+      )}
+
+      <section className="rounded-lg border border-[#e5e7eb] bg-white p-4 shadow-sm">
+        <label className="relative mb-4 block max-w-sm"><FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#667085]" /><input value={search} onChange={(event) => setSearch(event.target.value)} className={`${inputClass} pl-9`} placeholder="Search scheduled reports…" /></label>
+        <div className="overflow-x-auto rounded-md border border-[#e5e7eb]">
+          <table className="w-full min-w-[900px] text-left text-xs">
+            <thead className="bg-[#f8fafc]"><tr>{["Report", "Type", "Schedule", "Recipients", "Format", "Next run", "Status", "Actions"].map((heading) => <th key={heading} className="px-4 py-3 font-semibold">{heading}</th>)}</tr></thead>
+            <tbody className="divide-y divide-[#eef2f6]">
+              {visibleSchedules.map((schedule) => (
+                <tr key={schedule.id}>
+                  <td className="px-4 py-3 font-semibold">{schedule.name}</td><td className="px-4 py-3 capitalize">{schedule.type}</td><td className="px-4 py-3">{describeSchedule(schedule)}</td><td className="px-4 py-3">{schedule.recipients.length}</td><td className="px-4 py-3 uppercase">{schedule.format}</td><td className="px-4 py-3">{new Date(schedule.nextRunAt).toLocaleString("en-GB")}</td>
+                  <td className="px-4 py-3"><button type="button" onClick={() => toggleSchedule(schedule)} className={`relative h-6 w-11 rounded-full ${schedule.active ? "bg-[#008f45]" : "bg-[#d0d5dd]"}`} aria-label={`${schedule.active ? "Pause" : "Enable"} ${schedule.name}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${schedule.active ? "left-6" : "left-1"}`} /></button></td>
+                  <td className="px-4 py-3"><button type="button" onClick={() => deleteSchedule(schedule)} className="text-[#dc2626]" aria-label={`Delete ${schedule.name}`}><FontAwesomeIcon icon={faTrash} /></button></td>
+                </tr>
+              ))}
+              {!loading && visibleSchedules.length === 0 && <tr><td colSpan="8" className="px-4 py-12 text-center text-[#667085]">No scheduled reports found.</td></tr>}
+              {loading && <tr><td colSpan="8" className="px-4 py-12 text-center text-[#667085]">Loading schedules…</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-4 text-xs text-[#667085]">Showing {visibleSchedules.length} scheduled reports</p>
+      </section>
+    </div>
   );
 };
-
-const StatusToggle = ({ active }) => (
-  <span className="inline-flex items-center gap-3">
-    <span className={`relative h-6 w-11 rounded-full ${active ? "bg-[#008f45]" : "bg-[#d0d5dd]"}`}>
-      <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm ${active ? "left-6" : "left-1"}`} />
-    </span>
-    <span className="font-medium text-[#344054]">{active ? "Active" : "Paused"}</span>
-  </span>
-);
-
-const ScheduledReports = () => (
-  <div className="w-full min-w-0 space-y-4 overflow-hidden text-[#101828]">
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-      <div className="min-w-0">
-        <div className="mb-4 flex flex-wrap items-center gap-2 text-xs font-medium text-[#667085]">
-          <Link to="/reports" className="hover:text-[#008f45]">Reports</Link>
-          <FontAwesomeIcon icon={faChevronRight} className="text-[10px]" />
-          <span>Scheduled Reports</span>
-        </div>
-        <h1 className="text-2xl font-bold tracking-normal">Scheduled Reports</h1>
-        <p className="mt-1 text-sm font-medium text-[#667085]">
-          Set up automated reports to be generated and sent to your email or team members.
-        </p>
-      </div>
-      <button type="button" className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#008f45] px-6 text-sm font-semibold text-white shadow-sm hover:bg-[#007a3b] sm:self-start lg:self-auto">
-        <FontAwesomeIcon icon={faPlus} />
-        Create Schedule
-      </button>
-    </div>
-
-    <section className="overflow-hidden rounded-lg border border-[#cfeedd] bg-[#f0fbf5] px-4 py-5 shadow-[0_8px_24px_rgba(16,24,40,0.04)] sm:px-6">
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px_minmax(240px,300px)] lg:items-center">
-        <div className="flex min-w-0 items-center gap-4">
-          <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-[#d8f5e5] text-2xl text-[#008f45]">
-            <FontAwesomeIcon icon={faCalendarDays} />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-lg font-bold tracking-normal text-[#101828]">Save time with automated reports</h2>
-            <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-[#475467]">
-              Schedule your reports to be generated and delivered automatically at your preferred time.
-            </p>
-          </div>
-        </div>
-
-        <div className="hidden justify-center lg:flex">
-          <div className="relative h-24 w-40">
-            <div className="absolute left-3 top-2 h-20 w-20 rounded-md bg-white shadow-lg">
-              <div className="mx-auto mt-4 h-1.5 w-8 rounded bg-[#d8f5e5]" />
-              <div className="mx-auto mt-3 flex h-8 w-12 items-end gap-1">
-                {[22, 34, 48].map((height) => (
-                  <span key={height} className="flex-1 rounded-t bg-[#15b76c]" style={{ height }} />
-                ))}
-              </div>
-              <div className="mx-auto mt-3 h-1.5 w-12 rounded bg-[#d8f5e5]" />
-            </div>
-            <div className="absolute right-3 top-8 grid h-14 w-14 place-items-center rounded-full border-4 border-[#008f45] bg-white text-[#008f45] shadow-md">
-              <FontAwesomeIcon icon={faCalendarDays} />
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-3 text-sm font-medium text-[#344054] sm:grid-cols-2 lg:grid-cols-1">
-          {["Daily, weekly or monthly", "Multiple recipients", "Choose report format", "Custom filters"].map((item) => (
-            <div key={item} className="flex items-center gap-3">
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-[#008f45] text-white">
-                <FontAwesomeIcon icon={faCheck} className="text-xs" />
-              </span>
-              {item}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <section className="min-w-0 rounded-lg border border-[#e5e7eb] bg-white p-3 shadow-[0_8px_24px_rgba(16,24,40,0.04)] sm:p-4">
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {tabs.map((tab, index) => (
-            <button key={tab} type="button" className={`h-10 rounded-md border px-5 text-sm font-semibold ${index === 0 ? "border-[#008f45] bg-white text-[#008f45]" : "border-[#d0d5dd] bg-white text-[#344054]"}`}>
-              {tab}
-            </button>
-          ))}
-        </div>
-        <label className="relative block w-full lg:w-[340px]">
-          <FontAwesomeIcon icon={faSearch} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#667085]" />
-          <input className="h-10 w-full rounded-md border border-[#d0d5dd] bg-white pl-11 pr-4 text-sm font-medium outline-none placeholder:text-[#98a2b3] focus:border-[#008f45]" placeholder="Search scheduled reports..." />
-        </label>
-      </div>
-
-      <div className="max-w-full overflow-x-auto rounded-md border border-[#e5e7eb]">
-        <table className="w-full min-w-[1120px] text-left text-xs">
-          <thead className="bg-[#f8fafc] text-[#101828]">
-            <tr>
-              {["#", "Report Name", "Report Type", "Frequency", "Next Run", "Recipients", "Format", "Status", "Actions"].map((heading) => (
-                <th key={heading} className="border-r border-[#eef2f6] px-4 py-3 font-semibold last:border-r-0">{heading}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#eef2f6]">
-            {scheduleRows.map((row) => (
-              <tr key={row.id} className="align-middle">
-                <td className="border-r border-[#eef2f6] px-4 py-3 font-semibold">{row.id}</td>
-                <td className="min-w-[220px] border-r border-[#eef2f6] px-4 py-3">
-                  <p className="font-semibold text-[#101828]">{row.name}</p>
-                  <p className="mt-1 font-medium text-[#667085]">{row.description}</p>
-                </td>
-                <td className="border-r border-[#eef2f6] px-4 py-3">
-                  <TypeBadge icon={row.typeIcon} tone={row.tone} label={row.type} />
-                </td>
-                <td className="min-w-[170px] border-r border-[#eef2f6] px-4 py-3">
-                  <p className="font-semibold text-[#101828]">{row.frequency}</p>
-                  <p className="mt-1 font-medium text-[#667085]">{row.schedule}</p>
-                </td>
-                <td className="min-w-[160px] border-r border-[#eef2f6] px-4 py-3">
-                  <p className="font-semibold text-[#101828]">{row.nextRun}</p>
-                  <p className="mt-1 font-medium text-[#667085]">{row.nextRunTime}</p>
-                </td>
-                <td className="border-r border-[#eef2f6] px-4 py-3">
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap font-medium text-[#344054]">
-                    <FontAwesomeIcon icon={faUsers} />
-                    {row.recipients}
-                  </span>
-                </td>
-                <td className="border-r border-[#eef2f6] px-4 py-3">
-                  <FormatBadge type={row.formatType} label={row.format} />
-                </td>
-                <td className="border-r border-[#eef2f6] px-4 py-3">
-                  <StatusToggle active={row.active} />
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-5 text-[#101828]">
-                    <button type="button" aria-label={`Edit ${row.name}`}>
-                      <FontAwesomeIcon icon={faPen} />
-                    </button>
-                    <button type="button" aria-label={`More actions for ${row.name}`}>
-                      <FontAwesomeIcon icon={faEllipsis} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-4 flex flex-col gap-3 text-sm font-medium text-[#667085] sm:flex-row sm:items-center sm:justify-between">
-        <span>Showing 1 - 6 of 6 scheduled reports</span>
-        <div className="flex items-center gap-1">
-          <button type="button" className="grid h-9 w-9 place-items-center rounded-md border border-[#d0d5dd] bg-white text-[#98a2b3]">
-            <FontAwesomeIcon icon={faChevronLeft} />
-          </button>
-          <button type="button" className="grid h-9 w-9 place-items-center rounded-md bg-[#008f45] text-sm font-semibold text-white">1</button>
-          <button type="button" className="grid h-9 w-9 place-items-center rounded-md border border-[#d0d5dd] bg-white text-[#98a2b3]">
-            <FontAwesomeIcon icon={faChevronRight} />
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <section className="rounded-lg border border-[#e5e7eb] bg-white p-4 shadow-[0_8px_24px_rgba(16,24,40,0.04)]">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 gap-4">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#fff4e5] text-xl text-[#f79009]">
-            <FontAwesomeIcon icon={faLightbulb} />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-[#101828]">Tips for scheduled reports</h2>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-xs font-medium leading-5 text-[#475467]">
-              <li>Add multiple recipients to keep your team informed.</li>
-              <li>Use filters to get more relevant data.</li>
-              <li>You can pause or edit a schedule at any time.</li>
-            </ul>
-          </div>
-        </div>
-        <button type="button" className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-6 text-sm font-semibold text-[#101828]">
-          <FontAwesomeIcon icon={faCalendarDays} />
-          Learn more about scheduled reports
-        </button>
-      </div>
-    </section>
-  </div>
-);
 
 export default ScheduledReports;

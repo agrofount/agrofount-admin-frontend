@@ -27,7 +27,7 @@ import { apiClient } from "../../lib/apiClient";
 import { TableRowsSkeleton } from "../common/LoadingStates";
 import ModalComponent from "../modals/ModalComponent";
 
-const pageSizeOptions = [10, 20, 30, 50];
+const pageSizeOptions = [10, 20, 50, 100, 250, 500];
 const statusOptions = ["All Status", "Completed", "Pending", "Cancelled", "Failed", "Refunded"];
 const dateRangeOptions = ["Select date range", "Last 7 days", "Last 30 days", "This month"];
 

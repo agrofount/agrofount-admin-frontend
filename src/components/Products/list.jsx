@@ -397,7 +397,7 @@ const ListProducts = () => {
                 <FontAwesomeIcon icon={faChevronDown} className="text-xs text-[#667085]" />
               </MenuButton>
               <MenuItems anchor="bottom" className="z-20 mt-2 rounded-md border border-[#e5e7eb] bg-white p-1 shadow-lg">
-                {[10, 20, 30, 40, 50].map((limit) => (
+                {[10, 20, 50, 100, 250, 500].map((limit) => (
                   <MenuItem key={limit}>
                     <button type="button" onClick={() => handlePageLimitChange(limit)} className="block w-full rounded px-6 py-2 text-left text-sm hover:bg-gray-50">
                       {limit}

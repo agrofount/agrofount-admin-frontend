@@ -18,7 +18,10 @@ import {
   faUsers,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import { apiClient } from "../../lib/apiClient";
 
 const statCards = [
   ["Total Revenue", "₦12,842,600", "18.4%", faMoneyBillTrendUp],
@@ -92,7 +95,104 @@ const Chart = () => {
   );
 };
 
-const ReportPreview = () => (
+const labelize = (value) => String(value).replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
+const displayValue = (value) => value instanceof Date ? value.toLocaleString() : typeof value === "object" && value !== null ? JSON.stringify(value) : String(value ?? "—");
+
+const LiveReportPreview = ({ report }) => {
+  const headers = report.rows?.length ? Object.keys(report.rows[0]) : [];
+
+  const download = async () => {
+    try {
+      const response = await apiClient.get(`/reports/${report.id}/download`, { responseType: "blob" });
+      const url = URL.createObjectURL(response.data);
+      const filename = response.headers["content-disposition"]?.match(/filename="?([^";]+)"?/i)?.[1] || `${report.name}.${report.format}`;
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(error.message || "Unable to download report");
+    }
+  };
+
+  return (
+    <div className="w-full min-w-0 space-y-4 overflow-hidden text-[#101828]">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <div className="mb-3 flex items-center gap-2 text-xs text-[#667085]">
+            <Link to="/reports" className="hover:text-[#008f45]">Reports</Link>
+            <FontAwesomeIcon icon={faChevronRight} className="text-[10px]" />
+            <span>Report Preview</span>
+          </div>
+          <h1 className="text-2xl font-bold">{report.name}</h1>
+          <p className="mt-1 text-sm text-[#667085]">
+            {new Date(report.periodStart).toLocaleDateString("en-GB")} – {new Date(report.periodEnd).toLocaleDateString("en-GB")} · {report.rowCount.toLocaleString()} rows
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Link to="/reports/create" className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-5 text-sm font-semibold">
+            <FontAwesomeIcon icon={faArrowLeft} /> Edit Filters
+          </Link>
+          <button type="button" onClick={download} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#008f45] px-5 text-sm font-semibold text-white">
+            <FontAwesomeIcon icon={faDownload} /> Download {report.format.toUpperCase()}
+          </button>
+        </div>
+      </div>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {Object.entries(report.summary ?? {}).map(([key, value]) => (
+          <div key={key} className="rounded-lg border border-[#e5e7eb] bg-white p-5 shadow-sm">
+            <p className="text-xs font-medium text-[#667085]">{labelize(key)}</p>
+            <p className="mt-2 text-2xl font-bold tabular-nums">{typeof value === "number" ? value.toLocaleString() : displayValue(value)}</p>
+          </div>
+        ))}
+      </section>
+
+      <section className="rounded-lg border border-[#e5e7eb] bg-white p-4 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-base font-bold">Report data</h2>
+          <span className="text-xs text-[#667085]">Generated {new Date(report.createdAt).toLocaleString("en-GB")}</span>
+        </div>
+        <div className="max-w-full overflow-x-auto rounded-md border border-[#e5e7eb]">
+          <table className="min-w-full whitespace-nowrap text-left text-xs">
+            <thead className="bg-[#f8fafc]">
+              <tr>{headers.map((header) => <th key={header} className="px-4 py-3 font-semibold">{labelize(header)}</th>)}</tr>
+            </thead>
+            <tbody className="divide-y divide-[#eef2f6]">
+              {report.rows?.map((row, index) => (
+                <tr key={row.id ?? row.orderCode ?? index}>
+                  {headers.map((header) => <td key={header} className="max-w-xs truncate px-4 py-3 text-[#344054]">{displayValue(row[header])}</td>)}
+                </tr>
+              ))}
+              {!report.rows?.length && <tr><td className="px-4 py-10 text-center text-[#667085]">No data matched the selected period and filters.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+const ReportPreview = () => {
+  const { state } = useLocation();
+  const [searchParams] = useSearchParams();
+  const [loadedReport, setLoadedReport] = useState(state?.report ?? null);
+  const reportId = searchParams.get("reportId");
+
+  useEffect(() => {
+    if (loadedReport || !reportId) return;
+    apiClient.get(`/reports/${reportId}`)
+      .then(({ data }) => setLoadedReport(data))
+      .catch((error) => toast.error(error.message || "Unable to load report"));
+  }, [loadedReport, reportId]);
+
+  if (loadedReport) return <LiveReportPreview report={loadedReport} />;
+  if (reportId) return <div className="rounded-lg border border-[#e5e7eb] bg-white p-12 text-center text-sm text-[#667085]">Loading report…</div>;
+
+  return (
   <div className="w-full min-w-0 space-y-4 overflow-hidden text-[#101828]">
     <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
       <div className="min-w-0">
@@ -245,6 +345,7 @@ const ReportPreview = () => (
       </div>
     </section>
   </div>
-);
+  );
+};
 
 export default ReportPreview;

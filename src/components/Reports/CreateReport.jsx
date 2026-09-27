@@ -19,8 +19,10 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import { assets } from "../../assets/assets";
+import { apiClient } from "../../lib/apiClient";
 
 const dateRanges = [
   { label: "Today", value: "Sep 5, 2026" },
@@ -162,16 +164,17 @@ const RadioOption = ({ label, checked = false }) => (
   </label>
 );
 
-const ReportDetailsStep = ({ selectedDateRange, setSelectedDateRange, onContinue }) => (
+const ReportDetailsStep = ({ selectedDateRange, setSelectedDateRange, reportType, setReportType, reportName, setReportName, exportFormat, setExportFormat, onContinue }) => (
   <>
     <div className="mt-8 grid min-w-0 gap-5 md:grid-cols-2">
       <label className="block min-w-0">
         <FieldLabel required>Report Type</FieldLabel>
         <div className="relative">
-          <select className={`${selectClass} border-[#008f45] pl-12`}>
+          <select value={reportType} onChange={(event) => setReportType(event.target.value)} className={`${selectClass} border-[#008f45] pl-12`}>
             <option>Sales Report</option>
             <option>Customer Report</option>
             <option>Inventory Report</option>
+            <option>Career Report</option>
           </select>
           <FontAwesomeIcon icon={faChartColumn} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#008f45]" />
         </div>
@@ -179,7 +182,7 @@ const ReportDetailsStep = ({ selectedDateRange, setSelectedDateRange, onContinue
 
       <label className="block min-w-0">
         <FieldLabel required>Report Name</FieldLabel>
-        <input className={selectClass} defaultValue="Sales Performance Report" />
+        <input className={selectClass} value={reportName} onChange={(event) => setReportName(event.target.value)} />
       </label>
 
       <label className="block min-w-0 md:col-span-2">
@@ -230,7 +233,7 @@ const ReportDetailsStep = ({ selectedDateRange, setSelectedDateRange, onContinue
       <label className="block min-w-0">
         <FieldLabel required>Export Format</FieldLabel>
         <div className="relative">
-          <select className={`${selectClass} pl-12`}>
+          <select value={exportFormat} onChange={(event) => setExportFormat(event.target.value)} className={`${selectClass} pl-12`}>
             <option>Excel (.xlsx)</option>
             <option>CSV</option>
             <option>PDF</option>
@@ -265,7 +268,7 @@ const ReportDetailsStep = ({ selectedDateRange, setSelectedDateRange, onContinue
   </>
 );
 
-const FiltersStep = () => (
+const FiltersStep = ({ onGenerate, generating }) => (
   <>
     <div className="mt-8 grid min-w-0 gap-5 xl:grid-cols-3">
       <IconSelect label="Product" icon={faBox} options={["All Products", "Layer Feed 25kg", "Broiler Starter Feed 25kg"]} />
@@ -314,17 +317,64 @@ const FiltersStep = () => (
         <FontAwesomeIcon icon={faGear} />
         Advanced Filters
       </button>
-      <Link to="/reports/preview" className="inline-flex h-11 items-center justify-center gap-3 rounded-md bg-[#008f45] px-10 text-sm font-semibold text-white shadow-sm hover:bg-[#007a3b]">
-        Continue to Preview
+      <button type="button" onClick={onGenerate} disabled={generating} className="inline-flex h-11 items-center justify-center gap-3 rounded-md bg-[#008f45] px-10 text-sm font-semibold text-white shadow-sm hover:bg-[#007a3b] disabled:opacity-60">
+        {generating ? "Generating…" : "Generate & Preview"}
         <FontAwesomeIcon icon={faArrowRight} />
-      </Link>
+      </button>
     </div>
   </>
 );
 
 const CreateReport = () => {
-  const [selectedDateRange, setSelectedDateRange] = useState(dateRanges[3]);
+  const { state } = useLocation();
+  const navigate = useNavigate();
+  const requestedDateRange = {
+    Today: "Today",
+    "Last 7 days": "This Week",
+    "Last 30 days": "Last Month",
+    "This month": "This Month",
+    "Last month": "Last Month",
+    "All time": "All Time",
+  }[state?.dateRange];
+  const [selectedDateRange, setSelectedDateRange] = useState(
+    dateRanges.find((range) => range.label === requestedDateRange) ?? dateRanges[3],
+  );
+  const [reportType, setReportType] = useState(state?.reportType ?? "Sales Report");
+  const [reportName, setReportName] = useState(
+    state?.reportName ?? `${String(state?.reportType ?? "Sales").replace(/ Report$/, "")} Performance Report`,
+  );
+  const [exportFormat, setExportFormat] = useState(state?.format ?? "Excel (.xlsx)");
   const [activeStep, setActiveStep] = useState(1);
+  const [generating, setGenerating] = useState(false);
+
+  const generateReport = async () => {
+    const end = new Date();
+    const start = new Date(end);
+    if (selectedDateRange.label === "Today") start.setHours(0, 0, 0, 0);
+    if (selectedDateRange.label === "This Week") start.setDate(start.getDate() - 6);
+    if (selectedDateRange.label === "This Month") start.setDate(1);
+    if (selectedDateRange.label === "Last Month") {
+      start.setMonth(start.getMonth() - 1, 1);
+      end.setDate(0);
+    }
+    if (selectedDateRange.label === "All Time") start.setFullYear(2000, 0, 1);
+    try {
+      setGenerating(true);
+      const { data } = await apiClient.post("/reports/generate", {
+        type: reportType.toLowerCase().replace(" report", ""),
+        name: reportName.trim() || `${reportType} Report`,
+        format: { "Excel (.xlsx)": "xlsx", CSV: "csv", PDF: "pdf" }[exportFormat],
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+        filters: {},
+      });
+      navigate("/reports/preview", { state: { report: data } });
+    } catch (error) {
+      toast.error(error.message || "Unable to generate report");
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   return (
   <div className="w-full min-w-0 space-y-4 overflow-hidden text-[#101828]">
@@ -351,10 +401,16 @@ const CreateReport = () => {
           <ReportDetailsStep
             selectedDateRange={selectedDateRange}
             setSelectedDateRange={setSelectedDateRange}
+            reportType={reportType}
+            setReportType={setReportType}
+            reportName={reportName}
+            setReportName={setReportName}
+            exportFormat={exportFormat}
+            setExportFormat={setExportFormat}
             onContinue={() => setActiveStep(2)}
           />
         ) : (
-          <FiltersStep />
+          <FiltersStep onGenerate={generateReport} generating={generating} />
         )}
       </section>
 
@@ -376,7 +432,7 @@ const CreateReport = () => {
           <div className="mb-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <img src={assets.agrofount_logo} alt="Agrofount" className="h-9 w-auto" />
             <div className="min-w-0">
-              <h3 className="text-base font-bold">Sales Performance Report</h3>
+              <h3 className="text-base font-bold">{reportName}</h3>
               <p className="text-xs font-medium text-[#667085]">{selectedDateRange.value}</p>
             </div>
           </div>

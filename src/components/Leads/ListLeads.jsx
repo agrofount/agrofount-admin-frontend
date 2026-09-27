@@ -79,6 +79,8 @@ const LEAD_SMS_TOKENS = [
 
 const DEFAULT_LEAD_SMS_MESSAGE =
   "Hi {{name}}, thanks for your interest in {{insights}} on tiktok. Shop here: https://www.agrofount.com/shop or WhatsApp us: 09019170273.";
+const DEFAULT_BULK_SMS_MESSAGE =
+  "Hi {{name}}, looking for poultry inputs, day-old chicks or exotic birds? Join Agrofount to explore products for your farm. Register with this phone number: https://www.agrofount.com/login?register=true.";
 
 const formatDate = (val) => {
   if (!val) return ["—", ""];
@@ -191,7 +193,7 @@ const NotifyModal = ({ lead, onClose, onSent }) => {
 
 const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
   const [title, setTitle] = useState("Lead SMS campaign");
-  const [message, setMessage] = useState(DEFAULT_LEAD_SMS_MESSAGE);
+  const [message, setMessage] = useState(DEFAULT_BULK_SMS_MESSAGE);
   const [sending, setSending] = useState(false);
   const textareaRef = useRef(null);
 
@@ -300,7 +302,7 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
           ref={textareaRef}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder={DEFAULT_LEAD_SMS_MESSAGE}
+          placeholder={DEFAULT_BULK_SMS_MESSAGE}
           rows={5}
           className="w-full resize-none rounded-md border border-[#d0d5dd] p-3 text-xs outline-none focus:border-[#008f45]"
         />

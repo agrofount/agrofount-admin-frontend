@@ -267,10 +267,10 @@ export const ListPost = () => {
                 anchor="bottom"
                 className="bg-white shadow-lg rounded-md py-2 px-4 z-10"
               >
-                {[10, 20, 30, 40, 50].map((n) => (
+                {[10, 20, 50, 100, 250, 500].map((n) => (
                   <MenuItem
                     key={n}
-                    onClick={() => setPageLimit(n)}
+                    onClick={() => { setPageLimit(n); setCurrentPage(1); }}
                     className="cursor-pointer"
                   >
                     <p className="text-sm text-center text-gray-500 py-2">

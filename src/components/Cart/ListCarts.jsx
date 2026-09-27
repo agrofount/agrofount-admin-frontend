@@ -20,19 +20,19 @@ const ListCarts = () => {
   const fetchCarts = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.get("/cart/all");
+      const response = await apiClient.get("/cart/all", { params: { limit: pageLimit } });
 
       console.log("Carts response: ", response.data);
 
       if (response.status === 200) {
-        setCarts(response.data.data);
+        setCarts(response.data?.cart?.items || response.data?.data || []);
       }
     } catch (error) {
       console.error("an error occured: ", error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [pageLimit]);
 
   const handleSearchChange = (e) => {
     const value = e.target.value;
@@ -81,40 +81,13 @@ const ListCarts = () => {
                 <img src={assets.dropdown_icon} alt="" />
               </MenuButton>
               <MenuItems anchor="bottom" className="bg-white py-2 px-4">
-                <MenuItem
-                  onClick={() => setPageLimit(10)}
-                  className="cursor-pointer"
-                >
-                  <p className="text-sm text-center text-gray-500 py-3">10</p>
-                </MenuItem>
-
-                <MenuItem
-                  onClick={() => setPageLimit(20)}
-                  className="cursor-pointer"
-                >
-                  <p className="text-sm text-center text-gray-500  py-3">20</p>
-                </MenuItem>
-
-                <MenuItem
-                  onClick={() => setPageLimit(30)}
-                  className="cursor-pointer"
-                >
-                  <p className="text-sm text-center text-gray-500  py-3">30</p>
-                </MenuItem>
-
-                <MenuItem
-                  onClick={() => setPageLimit(40)}
-                  className="cursor-pointer"
-                >
-                  <p className="text-sm text-center text-gray-500  py-3">40</p>
-                </MenuItem>
-
-                <MenuItem
-                  onClick={() => setPageLimit(50)}
-                  className="cursor-pointer"
-                >
-                  <p className="text-sm text-center text-gray-500  py-3">50</p>
-                </MenuItem>
+                {[10, 20, 50, 100, 250, 500].map((limit) => (
+                  <MenuItem key={limit}>
+                    <button type="button" onClick={() => setPageLimit(limit)} className="block w-full cursor-pointer px-4 py-2 text-sm text-gray-500">
+                      {limit}
+                    </button>
+                  </MenuItem>
+                ))}
               </MenuItems>
             </Menu>
             <p className="text-sm p-1.5 text-gray-500">entries</p>

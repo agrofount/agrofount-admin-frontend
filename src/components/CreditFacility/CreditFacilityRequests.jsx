@@ -417,7 +417,7 @@ const CreditFacilityRequests = () => {
                 <FontAwesomeIcon icon={faChevronDown} className="text-[10px]" />
               </MenuButton>
               <MenuItems anchor="bottom" className="z-20 mt-2 rounded-md border border-[#e5e7eb] bg-white p-1 shadow-lg">
-                {[6, 10, 20, 30, 50].map((limit) => (
+                {[10, 20, 50, 100, 250, 500].map((limit) => (
                   <MenuItem key={limit}>
                     <button type="button" onClick={() => handleLimitChange(limit)} className="block w-full rounded px-5 py-2 text-left text-sm hover:bg-gray-50">
                       {limit}

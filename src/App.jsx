@@ -34,6 +34,8 @@ const Reports = lazy(() => import("./components/Reports/Reports"));
 const CreateReport = lazy(() => import("./components/Reports/CreateReport"));
 const ReportPreview = lazy(() => import("./components/Reports/ReportPreview"));
 const ScheduledReports = lazy(() => import("./components/Reports/ScheduledReports"));
+const SalesReports = lazy(() => import("./components/Reports/SalesReports"));
+const CustomerReports = lazy(() => import("./components/Reports/CustomerReports"));
 const ListCountries = lazy(() => import("./components/Countries/ListCountries"));
 const EditCountries = lazy(() =>
   import("./components/Countries/EditCountries")
@@ -120,11 +122,11 @@ const adminRoutes = [
   { path: "/reports/scheduled", element: <ScheduledReports /> },
   {
     path: "/sales-reports",
-    element: comingSoon("Sales Reports", "Sales reporting tools will be available here."),
+    element: <SalesReports />,
   },
   {
     path: "/customer-reports",
-    element: comingSoon("Customer Reports", "Customer reporting tools will be available here."),
+    element: <CustomerReports />,
   },
   {
     path: "/inventory-reports",

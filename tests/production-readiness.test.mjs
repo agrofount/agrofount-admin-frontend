@@ -108,7 +108,8 @@ test("dashboard widgets use admin endpoints through the shared API client", asyn
   const reviews = await readSource("src/components/DashboardReviewList.jsx");
 
   assert.match(dashboard, /apiClient\.get\("\/order\/admin\/all"/);
-  assert.match(dashboard, /apiClient\.get\("\/user"/);
+  assert.match(dashboard, /calculateDashboardMetrics\(orders\)/);
+  assert.doesNotMatch(dashboard, /apiClient\.get\("\/user"/);
   assert.doesNotMatch(dashboard, /from "axios"/);
   assert.match(targetChart, /apiClient\.get\("\/order\/monthly-target"\)/);
   assert.match(reviews, /apiClient\.get\("\/review"/);

@@ -7,7 +7,9 @@ import {
   faChevronRight,
   faCircleQuestion,
   faGear,
+  faGift,
   faHandshake,
+  faHeadset,
   faHouse,
   faLandmark,
   faListCheck,
@@ -87,6 +89,8 @@ const SideBar = () => {
       users: isAdmin || hasPermission(RESOURCES.USERS, ACTIONS.READ),
       payments: isAdmin || hasPermission(RESOURCES.PAYMENTS, ACTIONS.READ),
       reports: isAdmin || hasPermission(RESOURCES.REPORTS, ACTIONS.READ),
+      vouchers: isAdmin || hasPermission(RESOURCES.VOUCHERS, ACTIONS.READ),
+      complaints: isAdmin || hasPermission(RESOURCES.COMPLAINTS, ACTIONS.READ),
       suppliers: isAdmin || hasPermission(RESOURCES.SUPPLIERS, ACTIONS.READ),
       logisticsPricing: isAdmin || hasPermission(RESOURCES.LOGISTICS_PRICING, ACTIONS.READ),
       creditFacility:
@@ -170,6 +174,8 @@ const SideBar = () => {
             {can.users && <NavLink to="/users" icon={faUsers} label="Customers" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.leads && <NavLink to="/leads" icon={faUserPlus} label="Leads" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.payments && <NavLink to="/payments" icon={faBriefcase} label="Payments" onClick={closeOnMobile} collapsed={collapsed} />}
+            {can.vouchers && <NavLink to="/vouchers" icon={faGift} label="Vouchers" onClick={closeOnMobile} collapsed={collapsed} />}
+            {can.complaints && <NavLink to="/complaints" icon={faHeadset} label="Complaints" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.reports && <NavLink to="/reports" icon={faChartSimple} label="Reports" onClick={closeOnMobile} collapsed={collapsed} />}
           </Section>
 

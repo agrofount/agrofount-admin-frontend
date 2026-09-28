@@ -30,6 +30,8 @@ const ListOrders = lazy(() =>
 const OrderDetail = lazy(() => import("./components/Orders/OrderDetail"));
 const TrackOrder = lazy(() => import("./components/Orders/TrackOrder"));
 const ListPayments = lazy(() => import("./components/Payments/ListPayments"));
+const Vouchers = lazy(() => import("./pages/Vouchers"));
+const Complaints = lazy(() => import("./pages/Complaints"));
 const Reports = lazy(() => import("./components/Reports/Reports"));
 const CreateReport = lazy(() => import("./components/Reports/CreateReport"));
 const ReportPreview = lazy(() => import("./components/Reports/ReportPreview"));
@@ -116,6 +118,8 @@ const adminRoutes = [
   { path: "/orders/:orderId", element: <OrderDetail /> },
   { path: "/orders/:orderId/track", element: <TrackOrder /> },
   { path: "/payments", element: <ListPayments /> },
+  { path: "/vouchers", element: <Vouchers /> },
+  { path: "/complaints", element: <Complaints /> },
   { path: "/reports", element: <Reports /> },
   { path: "/reports/create", element: <CreateReport /> },
   { path: "/reports/preview", element: <ReportPreview /> },

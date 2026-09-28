@@ -51,6 +51,7 @@ export const RESOURCES = {
   SMS_TEMPLATES: "smsTemplates",
   SUBSCRIBERS: "subscribers",
   CONTACT_SUBMISSIONS: "contactSubmissions",
+  COMPLAINTS: "complaints",
 
   // Analytics & Reports
   DASHBOARD: "dashboard",

@@ -40,6 +40,11 @@ const money = (value) =>
 
 const date = (value) => (value ? new Date(value).toLocaleString() : "—");
 
+const discountLabel = (voucher) =>
+  voucher.discountType === "percentage"
+    ? `${voucher.amount}%`
+    : money(voucher.amount);
+
 const dateParts = (value) => {
   if (!value) return { day: "—", time: "" };
   const parsed = new Date(value);
@@ -574,7 +579,7 @@ export default function VoucherDashboard() {
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-3 py-3.5 font-semibold">
-                        {money(voucher.amount)}
+                        {discountLabel(voucher)}
                       </td>
                       <td className="whitespace-nowrap px-3 py-3.5 font-semibold">
                         {money(voucher.minimumSpend)}
@@ -725,7 +730,7 @@ export default function VoucherDashboard() {
                   {Object.entries({
                     Code: detail.code,
                     Status: statusOf(detail),
-                    Discount: money(detail.amount),
+                    Discount: discountLabel(detail),
                     "Minimum spend": money(detail.minimumSpend),
                     Campaign: detail.campaign || "—",
                     Created: date(detail.createdAt),

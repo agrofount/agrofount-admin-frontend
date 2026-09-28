@@ -92,12 +92,49 @@ function MoneyInput({ value, onChange, min, step, label }) {
   );
 }
 
+function PercentInput({ value, onChange, label }) {
+  const bump = (direction) => {
+    const next = Math.min(50, Math.max(1, Number(value || 0) + direction));
+    onChange(String(next));
+  };
+  return (
+    <div className="relative">
+      <input
+        aria-label={label}
+        inputMode="numeric"
+        required
+        className={`${fieldClass} pl-4 pr-16`}
+        value={value}
+        onChange={(event) => {
+          const raw = event.target.value.replace(/[^\d]/g, "");
+          if (raw === "" || Number(raw) <= 50) onChange(raw);
+        }}
+      />
+      <span className="pointer-events-none absolute right-11 top-1/2 -translate-y-1/2 font-semibold text-[#344054]">
+        %
+      </span>
+      <span className="absolute right-3 top-1/2 flex -translate-y-1/2 flex-col text-[10px] text-[#667085]">
+        <button type="button" aria-label={`Increase ${label}`} className="px-1 leading-none hover:text-[#101828]" onClick={() => bump(1)}>
+          <FontAwesomeIcon icon={faChevronUp} />
+        </button>
+        <button type="button" aria-label={`Decrease ${label}`} className="px-1 leading-none hover:text-[#101828]" onClick={() => bump(-1)}>
+          <FontAwesomeIcon icon={faChevronDown} />
+        </button>
+      </span>
+    </div>
+  );
+}
+
 export function VoucherEditor({ voucher, onClose, onSaved, canReadUsers, campaigns = [] }) {
   const editing = Boolean(voucher);
+  // Vouchers created before percentage discounts shipped keep their flat
+  // naira amount and editing UX; only percentage-type (new) vouchers use
+  // the percent input and its 1-50 validation.
+  const isLegacyFixed = editing && voucher?.discountType !== "percentage";
   const [form, setForm] = useState(() => ({
     userId: voucher?.user?.id || "",
     code: voucher?.code || "",
-    amount: String(voucher?.amount ?? 1000),
+    amount: String(voucher?.amount ?? 10),
     minimumSpend: String(voucher?.minimumSpend ?? 0),
     campaign: voucher?.campaign || "",
     expiresAt: localDate(voucher?.expiresAt || Date.now() + 30 * 86400000),
@@ -157,8 +194,13 @@ export function VoucherEditor({ voucher, onClose, onSaved, canReadUsers, campaig
     }
     const amount = Number(form.amount);
     const minimumSpend = Number(form.minimumSpend || 0);
-    if (!Number.isInteger(amount) || amount < 1) {
-      setError("Discount must be a whole naira amount of at least ₦1.");
+    if (isLegacyFixed) {
+      if (!Number.isInteger(amount) || amount < 1) {
+        setError("Discount must be a whole naira amount of at least ₦1.");
+        return;
+      }
+    } else if (!Number.isInteger(amount) || amount < 1 || amount > 50) {
+      setError("Discount must be a whole percentage between 1 and 50.");
       return;
     }
     if (!Number.isFinite(minimumSpend) || minimumSpend < 0) {
@@ -369,8 +411,17 @@ export function VoucherEditor({ voucher, onClose, onSaved, canReadUsers, campaig
                   </Combobox>
                 </div>
                 <div>
-                  <FieldLabel title="Discount amount (₦)" hint="Amount to deduct from the customer's order." required />
-                  <MoneyInput label="discount amount" value={form.amount} min={1} step={100} onChange={(v) => change("amount", v)} />
+                  {isLegacyFixed ? (
+                    <>
+                      <FieldLabel title="Discount amount (₦)" hint="Amount to deduct from the customer's order." required />
+                      <MoneyInput label="discount amount" value={form.amount} min={1} step={100} onChange={(v) => change("amount", v)} />
+                    </>
+                  ) : (
+                    <>
+                      <FieldLabel title="Discount (%)" hint="Percentage of the order subtotal to deduct, 1-50%." required />
+                      <PercentInput label="discount percentage" value={form.amount} onChange={(v) => change("amount", v)} />
+                    </>
+                  )}
                 </div>
                 <div>
                   <FieldLabel title="Minimum spend (₦)" hint="Minimum order amount required to use this voucher." />

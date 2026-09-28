@@ -100,7 +100,7 @@ function FieldLabel({ title, hint, required }) {
 export function VoucherBulkGenerateModal({ onClose, onSaved }) {
   const [form, setForm] = useState({
     segment: SEGMENTS[0].value,
-    amount: "1000",
+    amount: "10",
     minimumSpend: "0",
     campaign: "",
     expiresAt: localDate(Date.now() + 30 * 86400000),
@@ -157,8 +157,8 @@ export function VoucherBulkGenerateModal({ onClose, onSaved }) {
     event.preventDefault();
     setError("");
     const amount = Number(form.amount);
-    if (!Number.isInteger(amount) || amount < 1) {
-      setError("Discount must be a whole naira amount of at least ₦1.");
+    if (!Number.isInteger(amount) || amount < 1 || amount > 50) {
+      setError("Discount must be a whole percentage between 1 and 50.");
       return;
     }
     if (!form.campaign.trim()) {
@@ -409,12 +409,13 @@ export function VoucherBulkGenerateModal({ onClose, onSaved }) {
 
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
-                  <FieldLabel title="Discount amount (₦)" required />
+                  <FieldLabel title="Discount (%)" hint="1-50% of the order subtotal." required />
                   <input
-                    aria-label="Discount amount"
+                    aria-label="Discount percentage"
                     type="number"
                     min={1}
-                    step={100}
+                    max={50}
+                    step={1}
                     required
                     className={fieldClass}
                     value={form.amount}

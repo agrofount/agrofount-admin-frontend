@@ -63,7 +63,10 @@ const shortDate = (value) =>
     : "—";
 
 const customerName = (c) =>
-  [c.firstname, c.lastname].filter(Boolean).join(" ") || "Unnamed customer";
+  [c.firstname, c.lastname].map((name) => name?.trim()).filter(Boolean).join(" ") ||
+  c.username?.trim() ||
+  c.businessName?.trim() ||
+  "Unnamed customer";
 
 const AVATAR_STYLES = [
   "bg-[#e7edff] text-[#3b5bdb]",

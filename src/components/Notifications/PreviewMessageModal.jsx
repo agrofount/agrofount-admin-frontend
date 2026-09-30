@@ -4,10 +4,27 @@ import { useEffect, useState } from "react";
 import { apiClient, parseApiError } from "../../lib/apiClient";
 import ModalComponent from "../modals/ModalComponent";
 
+// Jobs that pick email or SMS per-recipient depending on which contact
+// method they have on file - the preview needs an explicit channel to show
+// both, since a single sample can only demonstrate one at a time.
+const DUAL_CHANNEL_JOBS = new Set([
+  "login_inactivity_reminders",
+  "unverified_account_reminders",
+  "pending_order_reminders",
+  "registered_no_order_nudge",
+]);
+
 const PreviewMessageModal = ({ isOpen, onClose, title, jobName }) => {
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [channel, setChannel] = useState("EMAIL");
+  const showChannelToggle = DUAL_CHANNEL_JOBS.has(jobName);
+
+  useEffect(() => {
+    if (!isOpen || !jobName) return;
+    setChannel("EMAIL");
+  }, [isOpen, jobName]);
 
   useEffect(() => {
     if (!isOpen || !jobName) return;
@@ -15,13 +32,15 @@ const PreviewMessageModal = ({ isOpen, onClose, title, jobName }) => {
     setError("");
     setPreview(null);
     apiClient
-      .get(`/message/cron-jobs/${jobName}/preview`)
+      .get(`/message/cron-jobs/${jobName}/preview`, {
+        params: showChannelToggle ? { channel } : undefined,
+      })
       .then((res) => setPreview(res.data))
       .catch((err) => {
         setError(parseApiError(err).message || "Failed to load preview.");
       })
       .finally(() => setLoading(false));
-  }, [isOpen, jobName]);
+  }, [isOpen, jobName, channel, showChannelToggle]);
 
   return (
     <ModalComponent
@@ -31,6 +50,24 @@ const PreviewMessageModal = ({ isOpen, onClose, title, jobName }) => {
       panelClassName="max-w-2xl w-full"
     >
       <div className="max-h-[70vh] overflow-y-auto">
+        {showChannelToggle && (
+          <div className="mb-4 flex gap-2">
+            {["EMAIL", "SMS"].map((ch) => (
+              <button
+                key={ch}
+                type="button"
+                onClick={() => setChannel(ch)}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                  channel === ch
+                    ? "bg-[#008f45] text-white"
+                    : "border border-[#d0d5dd] bg-white text-[#344054] hover:bg-[#f9fafb]"
+                }`}
+              >
+                {ch === "EMAIL" ? "Email" : "SMS"}
+              </button>
+            ))}
+          </div>
+        )}
         {loading ? (
           <div className="space-y-2 py-2">
             {Array.from({ length: 4 }).map((_, i) => (

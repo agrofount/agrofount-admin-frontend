@@ -251,13 +251,20 @@ const generateEmailHtml = ({ title, message, ctaText, ctaLink, categoryLabel, he
 const getCampaignIcon = (campaign) =>
   CATEGORY_ICON_MAP[campaign.category] ?? { icon: faBullhorn, bg: "#006638", color: "#fff" };
 
+const CUSTOMER_GROUPS = {
+  never_ordered: "Registered but never ordered",
+  one_time_buyer: "Bought once, never returned",
+  lapsed_regular: "Previously regular customers",
+  high_value_churned: "High-spending customers who stopped",
+};
+
 const getAudienceLabel = (audience) => {
   if (!audience) return { name: "All Users", location: "All Locations" };
   if (audience.name) return { name: audience.name, location: audience.location || "All Locations" };
   if (audience.all) return { name: "All Users", location: "All Locations" };
   const bt = audience.businessTypes?.map((b) => b.charAt(0).toUpperCase() + b.slice(1)).join(", ");
   const states = audience.states?.join(", ");
-  return { name: bt || "Custom Audience", location: states || "All Locations" };
+  return { name: CUSTOMER_GROUPS[audience.customerSegment?.segment] || bt || "Custom Audience", location: states || "All Locations" };
 };
 
 const formatScheduled = (scheduledAt, frequency) => {
@@ -1647,6 +1654,11 @@ const CheckPill = ({ label, checked, onToggle }) => (
 const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) => {
   const [recipientKind, setRecipientKind] = useState("users");
   const [audienceType, setAudienceType] = useState("custom");
+  const [customerGroup, setCustomerGroup] = useState("");
+  const [inactivityDays, setInactivityDays] = useState("90");
+  const [groupMinOrders, setGroupMinOrders] = useState("3");
+  const [groupMinSpend, setGroupMinSpend] = useState("100000");
+  const [estimateError, setEstimateError] = useState("");
   const [userRoles, setUserRoles] = useState([]);
   const [farmTypes, setFarmTypes] = useState([]);
   const [states, setStates] = useState([]);
@@ -1669,6 +1681,10 @@ const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) =
   useEffect(() => {
     if (!isOpen) return;
     setRecipientKind(initialKind ?? "users");
+    setCustomerGroup(initial?.customerSegment?.segment ?? "");
+    setInactivityDays(String(initial?.customerSegment?.inactivityDays ?? 90));
+    setGroupMinOrders(String(initial?.customerSegment?.minOrders ?? 3));
+    setGroupMinSpend(String(initial?.customerSegment?.minLifetimeSpend ?? 100000));
     if (!initial || initial.all) {
       setAudienceType("all");
       setUserRoles([]); setFarmTypes([]); setStates([]);
@@ -1708,6 +1724,12 @@ const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) =
       return Object.keys(a).length ? a : { all: true };
     }
     const a = {};
+    if (customerGroup) {
+      a.customerSegment = { segment: customerGroup };
+      if (customerGroup !== "never_ordered") a.customerSegment.inactivityDays = Number(inactivityDays);
+      if (customerGroup === "lapsed_regular") a.customerSegment.minOrders = Number(groupMinOrders);
+      if (customerGroup === "high_value_churned") a.customerSegment.minLifetimeSpend = Number(groupMinSpend);
+    }
     // Map UI role/farm-type keys to valid DB businessType enum values
     const roleTobt = { farmer: "farmer", supplier: null, buyer: null, driver: null, admin: null };
     const farmTobt = { poultry: "farmer", fishery: "farmer", piggery: "farmer", cropfarming: "farmer", cattle: "farmer" };
@@ -1737,19 +1759,20 @@ const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) =
     [...leadSources].sort().join(","),
     splitListInput(leadSourceIdsText).sort().join(","),
     splitListInput(leadCampaignNamesText).sort().join(","),
-    minOrders, spentAbove, lastPurchase,
+    minOrders, spentAbove, lastPurchase, customerGroup, inactivityDays, groupMinOrders, groupMinSpend,
   ].join("|");
 
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
     const audience = buildAudience();
+    setLoadingEstimate(true);
+    setEstimateError("");
     const timer = setTimeout(() => {
-      setLoadingEstimate(true);
       apiClient
         .post("/message/campaign/audience-estimate", { audience, audienceType: recipientKind })
         .then((res) => { if (!cancelled) setEstimatedReach(res.data?.count ?? 0); })
-        .catch(() => { if (!cancelled) setEstimatedReach(0); })
+        .catch(() => { if (!cancelled) { setEstimatedReach(0); setEstimateError("Could not estimate this audience. Check the group thresholds and try again."); } })
         .finally(() => { if (!cancelled) setLoadingEstimate(false); });
     }, 450);
     return () => { cancelled = true; clearTimeout(timer); };
@@ -1759,11 +1782,13 @@ const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) =
     setter((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]);
 
   const handleApply = () => {
+    if (loadingEstimate || estimateError) return;
     onApply(buildAudience(), estimatedReach, recipientKind);
     onClose();
   };
 
   const handleReset = () => {
+    setCustomerGroup(""); setInactivityDays("90"); setGroupMinOrders("3"); setGroupMinSpend("100000");
     setAudienceType("custom");
     setUserRoles([]); setFarmTypes([]); setStates([]);
     setCreditStatus([]); setMinOrders(""); setSpentAbove("");
@@ -1848,6 +1873,23 @@ const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) =
             )}
           </section>
 
+          {recipientKind === "users" && (
+            <section className="space-y-3">
+              <label className="block text-xs font-semibold text-[#344054]">
+                Customer group
+                <select value={customerGroup} onChange={(e) => { setCustomerGroup(e.target.value); setAudienceType("custom"); }} className="mt-2 w-full rounded-md border border-[#d0d5dd] bg-white p-2 text-sm">
+                  <option value="">All customer groups</option>
+                  {Object.entries(CUSTOMER_GROUPS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </label>
+              {customerGroup && <p className="text-xs text-[#667085]">{customerGroup === "never_ordered" ? "Registered customers who have never placed an order." : "Based on completed payments. Inactivity is measured from the last paid order."} Customers with unresolved complaints are excluded. Existing voucher holders are included.</p>}
+              {customerGroup && customerGroup !== "never_ordered" && <label className="block text-xs text-[#344054]">Inactive for at least (days)<input type="number" min="1" max="3650" step="1" value={inactivityDays} onChange={(e) => setInactivityDays(e.target.value)} className="mt-1 w-full rounded-md border p-2" /></label>}
+              {customerGroup === "lapsed_regular" && <label className="block text-xs text-[#344054]">Minimum paid orders<input type="number" min="2" max="100" step="1" value={groupMinOrders} onChange={(e) => setGroupMinOrders(e.target.value)} className="mt-1 w-full rounded-md border p-2" /></label>}
+              {customerGroup === "high_value_churned" && <label className="block text-xs text-[#344054]">Minimum lifetime spend (₦)<input type="number" min="0" step="0.01" value={groupMinSpend} onChange={(e) => setGroupMinSpend(e.target.value)} className="mt-1 w-full rounded-md border p-2" /></label>}
+            </section>
+          )}
+          {estimateError && <p role="alert" className="text-xs text-red-600">{estimateError}</p>}
+
           {/* Audience Type */}
           <section>
             <p className="mb-2.5 text-xs font-semibold text-[#344054]">Audience Type</p>
@@ -1863,7 +1905,7 @@ const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) =
                     name="aud-type"
                     value={opt.value}
                     checked={audienceType === opt.value}
-                    onChange={(e) => setAudienceType(e.target.value)}
+                    onChange={(e) => { setAudienceType(e.target.value); if (e.target.value === "all") setCustomerGroup(""); }}
                     className="accent-[#008f45]"
                   />
                   {opt.label}
@@ -2190,6 +2232,7 @@ const EditAudienceModal = ({ isOpen, initial, initialKind, onApply, onClose }) =
             <button
               type="button"
               onClick={handleApply}
+              disabled={loadingEstimate || Boolean(estimateError)}
               className="h-9 rounded-md bg-[#006638] px-4 text-sm font-semibold text-white hover:bg-[#005530]"
             >
               Apply Audience
@@ -2721,6 +2764,7 @@ const Notifications = () => {
       if (audience.leadCampaignNames?.length) parts.push(audience.leadCampaignNames.join(", "));
       return parts.join(" · ") || "Custom Lead Audience";
     }
+    if (audience.customerSegment) parts.push(CUSTOMER_GROUPS[audience.customerSegment.segment] ?? "Customer group");
     const btLabels = { farmer: "Farmers", frozen_food: "Frozen Food", others: "Others" };
     if (audience.businessTypes?.length) parts.push(audience.businessTypes.map((t) => btLabels[t] ?? t).join(", "));
     if (audience.creditStatus?.length) parts.push(audience.creditStatus.map((c) => c.replace(/([A-Z])/g, " $1").trim()).join(", "));

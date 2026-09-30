@@ -27,6 +27,7 @@ const formatDate = (iso) => {
 
 const RecipientsModal = ({ isOpen, onClose, title, campaignId, jobName }) => {
   const [rows, setRows] = useState([]);
+  const [contactSummary, setContactSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
@@ -56,6 +57,7 @@ const RecipientsModal = ({ isOpen, onClose, title, campaignId, jobName }) => {
       .get(`${baseUrl}?page=${page}&limit=${PAGE_SIZE}`)
       .then((res) => {
         const data = res.data;
+        setContactSummary(data?.contactSummary ?? null);
         setRows(Array.isArray(data?.data) ? data.data : []);
         setTotalPages(data?.meta?.totalPages ?? 1);
         setTotalItems(data?.meta?.totalItems ?? 0);
@@ -75,6 +77,19 @@ const RecipientsModal = ({ isOpen, onClose, title, campaignId, jobName }) => {
       panelClassName="max-w-3xl w-full"
     >
       <div className="max-h-[70vh] overflow-y-auto">
+        {isTargetsView && !loading && !error && contactSummary && (
+          <div className="mb-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {[["Email", contactSummary.email], ["Phone", contactSummary.phone], ["Both", contactSummary.both], ["Neither", contactSummary.neither]].map(([label, count]) => (
+                <div key={label} className="rounded-lg bg-[#f0faf2] p-3">
+                  <p className="text-xs text-[#667085]">{label}</p>
+                  <p className="text-lg font-semibold text-[#006638]">{count.toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-[#667085]">Across all {contactSummary.total.toLocaleString()} targets. Users with both are included in both the email and phone counts. These counts show saved contact details, not confirmed delivery.</p>
+          </div>
+        )}
         {loading ? (
           <div className="space-y-2 py-2">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -112,7 +127,9 @@ const RecipientsModal = ({ isOpen, onClose, title, campaignId, jobName }) => {
                   <tr key={r.id}>
                     <td className="px-3 py-2.5 text-xs text-[#101828]">{r.name || "-"}</td>
                     <td className="px-3 py-2.5 text-xs text-[#344054]">
-                      {r.email || r.phone || "-"}
+                      {r.email?.trim() && <div>{r.email}</div>}
+                      {r.phone?.trim() && <div>{r.phone}</div>}
+                      {!r.email?.trim() && !r.phone?.trim() && "-"}
                     </td>
                     <td className="px-3 py-2.5 text-xs text-[#667085]">{r.reason || "-"}</td>
                   </tr>

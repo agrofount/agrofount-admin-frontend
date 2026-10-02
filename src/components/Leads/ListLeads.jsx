@@ -194,6 +194,8 @@ const NotifyModal = ({ lead, onClose, onSent }) => {
 const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
   const [title, setTitle] = useState("Lead SMS campaign");
   const [message, setMessage] = useState(DEFAULT_BULK_SMS_MESSAGE);
+  const [excludeConverted, setExcludeConverted] = useState(false);
+  const [resend, setResend] = useState(false);
   const [sending, setSending] = useState(false);
   const textareaRef = useRef(null);
 
@@ -227,6 +229,8 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
         sourceIds: filters.sourceId ? [filters.sourceId] : undefined,
         campaignNames: filters.campaignName ? [filters.campaignName] : undefined,
         campaignIds: filters.campaignId ? [filters.campaignId] : undefined,
+        excludeConverted: excludeConverted || undefined,
+        resend: resend || undefined,
       });
       toast.success("Bulk SMS campaign queued");
       onSent();
@@ -255,7 +259,10 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
           <div>
             <h3 className="text-sm font-semibold text-[#101828]">Send Bulk SMS</h3>
             <p className="mt-1 text-[11px] text-[#667085]">
-              Targets the current lead filters{totalItems ? `, currently ${totalItems.toLocaleString()} leads` : ""}. Leads with a previous successful SMS will be skipped automatically; the number sent may be lower.
+              Targets the current lead filters{totalItems ? `, currently ${totalItems.toLocaleString()} leads` : ""}.{" "}
+              {resend
+                ? "Resend is on - leads who already received a previous campaign SMS will be messaged again."
+                : "Leads with a previous successful SMS will be skipped automatically; the number sent may be lower."}
             </p>
           </div>
           <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-md text-[#667085] hover:bg-[#f3f4f6]">
@@ -306,6 +313,37 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
           rows={5}
           className="w-full resize-none rounded-md border border-[#d0d5dd] p-3 text-xs outline-none focus:border-[#008f45]"
         />
+
+        <div className="mt-3 space-y-2">
+          <label className="flex cursor-pointer items-start gap-2 text-xs text-[#344054]">
+            <input
+              type="checkbox"
+              checked={excludeConverted}
+              onChange={(e) => setExcludeConverted(e.target.checked)}
+              className="mt-0.5 h-3.5 w-3.5 rounded accent-[#008f45]"
+            />
+            <span>
+              Exclude already-converted leads
+              <span className="block text-[10px] font-normal text-[#98a2b3]">
+                Skip leads marked converted, regardless of the status filter above.
+              </span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-2 text-xs text-[#344054]">
+            <input
+              type="checkbox"
+              checked={resend}
+              onChange={(e) => setResend(e.target.checked)}
+              className="mt-0.5 h-3.5 w-3.5 rounded accent-[#008f45]"
+            />
+            <span>
+              Resend to previously messaged leads
+              <span className="block text-[10px] font-normal text-[#98a2b3]">
+                Normally off to avoid re-spamming leads - turn on to deliberately message leads again.
+              </span>
+            </span>
+          </label>
+        </div>
 
         <div className="mt-4 flex justify-end gap-3">
           <button type="button" onClick={onClose} className="h-9 rounded-md border border-[#d0d5dd] px-4 text-xs font-semibold text-[#344054]">Cancel</button>

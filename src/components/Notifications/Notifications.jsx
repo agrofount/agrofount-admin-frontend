@@ -1620,6 +1620,10 @@ const LEAD_PERSONALIZATION_TOKENS = [
   { token: "formName", label: "Form" },
 ];
 
+const USER_PERSONALIZATION_TOKENS = [
+  { token: "username", label: "Username" },
+];
+
 const splitListInput = (value) =>
   String(value ?? "")
     .split(/[\n,]+/)
@@ -2753,6 +2757,10 @@ const Notifications = () => {
     setEmailFeatures((prev) => prev.map((f, i) => (i === index ? updated : f)));
   const [audienceEstimate, setAudienceEstimate] = useState(0);
   const [audienceModalOpen, setAudienceModalOpen] = useState(false);
+  const personalizationTokens =
+    recipientKind === "leads"
+      ? LEAD_PERSONALIZATION_TOKENS
+      : USER_PERSONALIZATION_TOKENS;
 
   const audienceLabel = (() => {
     if (audience.all) return recipientKind === "leads" ? "All Leads" : "All Users";
@@ -3096,10 +3104,10 @@ const Notifications = () => {
                           {title.length}/100
                         </span>
                       </div>
-                      {recipientKind === "leads" && (
+                      {personalizationTokens.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                           <span className="text-[11px] text-[#98a2b3]">Insert:</span>
-                          {LEAD_PERSONALIZATION_TOKENS.map(({ token, label }) => (
+                          {personalizationTokens.map(({ token, label }) => (
                             <button
                               key={token}
                               type="button"
@@ -3127,10 +3135,10 @@ const Notifications = () => {
                           {message.length}/250
                         </span>
                       </div>
-                      {recipientKind === "leads" && (
+                      {personalizationTokens.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                           <span className="text-[11px] text-[#98a2b3]">Insert:</span>
-                          {LEAD_PERSONALIZATION_TOKENS.map(({ token, label }) => (
+                          {personalizationTokens.map(({ token, label }) => (
                             <button
                               key={token}
                               type="button"

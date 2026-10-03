@@ -15,7 +15,10 @@ export function getLeadSmsCount(lead) {
     lead.smsStats?.total,
   ];
 
-  const value = candidates.find((candidate) => candidate !== undefined && candidate !== null && candidate !== "");
+  const value = candidates.find(
+    (candidate) =>
+      candidate !== undefined && candidate !== null && candidate !== "",
+  );
   if (value === undefined) return 0;
 
   const numericValue = Number(value);
@@ -45,17 +48,43 @@ export function getLeadSmsRecords(lead) {
     })
     .filter((item) => item && typeof item === "object")
     .map((item) => {
-      const channel = String(item.channel ?? item.type ?? item.kind ?? "sms").toLowerCase();
+      const channel = String(
+        item.channel ?? item.type ?? item.kind ?? "sms",
+      ).toLowerCase();
       if (channel !== "sms" && channel !== "email") {
         return null;
       }
-      const rawMessage = item.message ?? item.body ?? item.text ?? item.content ?? item.smsMessage ?? item.summary ?? "";
+      const rawMessage =
+        item.message ??
+        item.body ??
+        item.text ??
+        item.content ??
+        item.smsMessage ??
+        item.summary ??
+        "";
       return {
-        id: item.id ?? item.uuid ?? item._id ?? `${item.createdAt ?? item.sentAt ?? item.timestamp ?? Date.now()}-${Math.random()}`,
+        id:
+          item.id ??
+          item.uuid ??
+          item._id ??
+          `${item.createdAt ?? item.sentAt ?? item.timestamp ?? Date.now()}-${Math.random()}`,
         channel,
-        message: typeof rawMessage === "string" ? rawMessage : JSON.stringify(rawMessage ?? ""),
-        status: item.status ?? item.smsStatus ?? item.deliveryStatus ?? (item.sent === true ? "sent" : "unknown"),
-        sentAt: item.sentAt ?? item.createdAt ?? item.timestamp ?? item.sent_at ?? item.date ?? item.deliveredAt,
+        message:
+          typeof rawMessage === "string"
+            ? rawMessage
+            : JSON.stringify(rawMessage ?? ""),
+        status:
+          item.status ??
+          item.smsStatus ??
+          item.deliveryStatus ??
+          (item.sent === true ? "sent" : "unknown"),
+        sentAt:
+          item.sentAt ??
+          item.createdAt ??
+          item.timestamp ??
+          item.sent_at ??
+          item.date ??
+          item.deliveredAt,
         provider: item.provider ?? item.gateway ?? item.service,
       };
     })
@@ -63,6 +92,8 @@ export function getLeadSmsRecords(lead) {
 
   if (records.length > 0) return records;
 
-  const fallback = Array.isArray(lead.smsHistoryItems) ? lead.smsHistoryItems : [];
+  const fallback = Array.isArray(lead.smsHistoryItems)
+    ? lead.smsHistoryItems
+    : [];
   return fallback.filter((item) => item && typeof item === "object");
 }

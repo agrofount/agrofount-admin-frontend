@@ -29,7 +29,14 @@ import clsx from "clsx";
 import UpdateProductForm from "./UpdateProductForm";
 import SEOForm from "./SEOForm";
 import { apiClient } from "../../lib/apiClient";
-import { FormSkeletonLoader, LoadingButtonContent } from "../common/LoadingStates";
+import {
+  attachMoqToUom,
+  getProductLocationMoq,
+} from "../../lib/productLocation";
+import {
+  FormSkeletonLoader,
+  LoadingButtonContent,
+} from "../common/LoadingStates";
 
 const FieldLabel = ({ children, required = false }) => (
   <label className="mb-2 block text-xs font-semibold text-[#101828]">
@@ -41,7 +48,9 @@ const Card = ({ title, description, children }) => (
   <section className="rounded-lg border border-[#e5e7eb] bg-white p-4 shadow-[0_8px_24px_rgba(16,24,40,0.04)]">
     <div className="mb-4">
       <h2 className="text-sm font-semibold text-[#101828]">{title}</h2>
-      {description && <p className="mt-2 text-xs font-medium text-[#667085]">{description}</p>}
+      {description && (
+        <p className="mt-2 text-xs font-medium text-[#667085]">{description}</p>
+      )}
     </div>
     {children}
   </section>
@@ -62,9 +71,7 @@ const normalizeUomForPayload = (uom) => ({
   unit: getUnitName(uom.unit),
   vendorPrice: Number(uom.vendorPrice),
   platformPrice: Number(uom.platformPrice),
-  ...(uom.moq !== undefined && uom.moq !== ""
-    ? { moq: Number(uom.moq) }
-    : {}),
+  ...(uom.moq !== undefined && uom.moq !== "" ? { moq: Number(uom.moq) } : {}),
   ...(uom.stockQuantity !== undefined && uom.stockQuantity !== ""
     ? { stockQuantity: Number(uom.stockQuantity) }
     : {}),
@@ -117,7 +124,7 @@ const ProductUpdate = () => {
   // Function to remove a date
   const handleRemoveDate = (dateToRemove) => {
     setAvailableDates((prevDates) =>
-      prevDates.filter((date) => date !== dateToRemove)
+      prevDates.filter((date) => date !== dateToRemove),
     );
   };
 
@@ -144,8 +151,8 @@ const ProductUpdate = () => {
   const handleUomChange = (index, selectedUom) => {
     setUomSections((prevSections) =>
       prevSections.map((section, i) =>
-        i === index ? { ...section, unit: getUnitName(selectedUom) } : section
-      )
+        i === index ? { ...section, unit: getUnitName(selectedUom) } : section,
+      ),
     );
   };
 
@@ -154,8 +161,8 @@ const ProductUpdate = () => {
       prevSections.map((section, i) =>
         i === index
           ? { ...section, [field]: value ? Number(value) : "" }
-          : section
-      )
+          : section,
+      ),
     );
   };
 
@@ -205,7 +212,10 @@ const ProductUpdate = () => {
       if (response.data) {
         setProductLocationData(response.data);
         setAvailableDates(response.data.availableDates);
-        setMoq(response.data.moq);
+        const nextMoq = getProductLocationMoq(response.data);
+        if (nextMoq !== undefined) {
+          setMoq(nextMoq);
+        }
       } else {
         console.log("error", response);
         toast.error(response.data.message);
@@ -222,12 +232,16 @@ const ProductUpdate = () => {
     try {
       setProcessing(true);
       const cleanUom = (uomSections || productLocationData.uom).map(
-        normalizeUomForPayload
+        normalizeUomForPayload,
       );
+      const normalizedMoq = getProductLocationMoq({
+        ...productLocationData,
+        moq,
+      });
       const payload = {
         price: Number(price) || Number(productLocationData?.price),
-        uom: cleanUom,
-        moq: Number(moq),
+        uom: attachMoqToUom(cleanUom, normalizedMoq),
+        ...(normalizedMoq !== undefined ? { moq: normalizedMoq } : {}),
         availableDates,
         countryId: country_id,
         stateId: selectedLocation?.id || productLocationData?.location_id,
@@ -265,16 +279,35 @@ const ProductUpdate = () => {
 
   const product = productLocationData?.product || {};
   const selectedImage = product?.images?.[0] || assets.image_placeholder;
-  const selectedLocationName = selectedLocation?.name || productLocationData?.state?.name || "—";
-  const selectedStatus = product?.status || (product?.isAvailable === false ? "Inactive" : "Active");
-  const availabilityLabel = availableDates?.length ? availableDates.join(", ") : "—";
+  const selectedLocationName =
+    selectedLocation?.name || productLocationData?.state?.name || "—";
+  const selectedStatus =
+    product?.status || (product?.isAvailable === false ? "Inactive" : "Active");
+  const availabilityLabel = availableDates?.length
+    ? availableDates.join(", ")
+    : "—";
   const reviewTiers = (uomSections || []).filter((section) => {
     const firstTier = section.vtp?.[0] || {};
-    return section.platformPrice || section.vendorPrice || firstTier.minVolume || firstTier.maxVolume || firstTier.price || firstTier.discount;
+    return (
+      section.platformPrice ||
+      section.vendorPrice ||
+      firstTier.minVolume ||
+      firstTier.maxVolume ||
+      firstTier.price ||
+      firstTier.discount
+    );
   });
   const steps = [
-    { id: 1, title: "Product Details", description: product?.name || "Edit product" },
-    { id: 2, title: "Location & Pricing", description: `${selectedLocationName}${price ? `, ₦${Number(price).toLocaleString()}` : ""}` },
+    {
+      id: 1,
+      title: "Product Details",
+      description: product?.name || "Edit product",
+    },
+    {
+      id: 2,
+      title: "Location & Pricing",
+      description: `${selectedLocationName}${price ? `, ₦${Number(price).toLocaleString()}` : ""}`,
+    },
     { id: 3, title: "Review & Save", description: "Confirm and update" },
   ];
 
@@ -285,16 +318,26 @@ const ProductUpdate = () => {
         const complete = currentStep > step.id;
         return (
           <div key={step.id} className="flex items-center gap-3">
-            <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-bold ${
-              active || complete ? "bg-[#008f45] text-white" : "bg-[#e5e7eb] text-[#101828]"
-            }`}>
+            <div
+              className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-bold ${
+                active || complete
+                  ? "bg-[#008f45] text-white"
+                  : "bg-[#e5e7eb] text-[#101828]"
+              }`}
+            >
               {complete ? <FontAwesomeIcon icon={faCheckCircle} /> : step.id}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#101828]">{step.title}</p>
-              <p className="truncate text-xs font-medium text-[#667085]">{step.description}</p>
+              <p className="text-sm font-semibold text-[#101828]">
+                {step.title}
+              </p>
+              <p className="truncate text-xs font-medium text-[#667085]">
+                {step.description}
+              </p>
             </div>
-            {index < steps.length - 1 && <div className="hidden h-px flex-1 bg-[#d0d5dd] md:block" />}
+            {index < steps.length - 1 && (
+              <div className="hidden h-px flex-1 bg-[#d0d5dd] md:block" />
+            )}
           </div>
         );
       })}
@@ -305,9 +348,15 @@ const ProductUpdate = () => {
     <Card>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <img src={selectedImage} alt="" className="h-20 w-20 rounded-md border border-[#e5e7eb] object-contain" />
+          <img
+            src={selectedImage}
+            alt=""
+            className="h-20 w-20 rounded-md border border-[#e5e7eb] object-contain"
+          />
           <div>
-            <h2 className="text-lg font-semibold text-[#101828]">{product?.name || "Selected product"}</h2>
+            <h2 className="text-lg font-semibold text-[#101828]">
+              {product?.name || "Selected product"}
+            </h2>
             <p className="mt-1 text-xs font-medium text-[#344054]">
               Brand: {product?.brand || "N/A"}
               <span className="mx-2 text-[#98a2b3]">•</span>
@@ -335,15 +384,27 @@ const ProductUpdate = () => {
   const renderProductDetailsStep = () => (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
       <UpdateProductForm productLocationData={productLocationData} />
-      <Card title="Selected Product" description="Review the product being edited.">
+      <Card
+        title="Selected Product"
+        description="Review the product being edited."
+      >
         <div className="overflow-hidden rounded-md border border-[#e5e7eb]">
           <div className="grid h-56 place-items-center bg-white">
-            <img src={selectedImage} alt="" className="h-full max-h-52 w-full object-contain" />
+            <img
+              src={selectedImage}
+              alt=""
+              className="h-full max-h-52 w-full object-contain"
+            />
           </div>
           <div className="border-t border-[#e5e7eb] p-4">
-            <h2 className="text-base font-semibold text-[#101828]">{product?.name || "—"}</h2>
+            <h2 className="text-base font-semibold text-[#101828]">
+              {product?.name || "—"}
+            </h2>
             {[
-              ["Category", product?.category || product?.primaryCategory || "N/A"],
+              [
+                "Category",
+                product?.category || product?.primaryCategory || "N/A",
+              ],
               ["Brand", product?.brand || "N/A"],
               ["SKU", product?.sku || product?.code || "N/A"],
               ["Status", selectedStatus],
@@ -352,8 +413,12 @@ const ProductUpdate = () => {
                 <p className="font-semibold text-[#344054]">{label}</p>
                 <p className="font-medium text-[#101828]">
                   {label === "Status" ? (
-                    <span className="rounded-full bg-[#dcfce7] px-2.5 py-1 text-[11px] font-semibold text-[#008f45]">{value}</span>
-                  ) : value}
+                    <span className="rounded-full bg-[#dcfce7] px-2.5 py-1 text-[11px] font-semibold text-[#008f45]">
+                      {value}
+                    </span>
+                  ) : (
+                    value
+                  )}
                 </p>
               </div>
             ))}
@@ -368,11 +433,20 @@ const ProductUpdate = () => {
       {renderProductSummaryHeader()}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <Card title="2. Location & Pricing" description="Update location, price, availability and minimum order quantity for this product.">
+        <Card
+          title="2. Location & Pricing"
+          description="Update location, price, availability and minimum order quantity for this product."
+        >
           {productLocationUpdated ? (
             <div className="flex flex-col items-center gap-2 py-8">
-              <FontAwesomeIcon icon={faCheckCircle} size="2x" className="text-[#008f45]" />
-              <p className="text-sm font-semibold text-[#008f45]">Product location updated successfully</p>
+              <FontAwesomeIcon
+                icon={faCheckCircle}
+                size="2x"
+                className="text-[#008f45]"
+              />
+              <p className="text-sm font-semibold text-[#008f45]">
+                Product location updated successfully
+              </p>
               <button
                 type="button"
                 className="mt-4 h-10 rounded-md border border-[#d0d5dd] px-5 text-xs font-semibold text-[#101828]"
@@ -386,26 +460,53 @@ const ProductUpdate = () => {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <FieldLabel required>Location</FieldLabel>
-                  <Listbox value={selectedLocation} onChange={setSelectedLocation}>
-                    <ListboxButton className={clsx(selectButtonClass, "data-[focus]:outline-2 data-[focus]:-outline-offset-2 data-[focus]:outline-[#61BF75]")}>
-                      {selectedLocationName === "—" ? "Select location" : selectedLocationName}
-                      <ChevronDownIcon className="group pointer-events-none absolute top-2.5 right-2.5 size-4 fill-gray-500" aria-hidden="true" />
+                  <Listbox
+                    value={selectedLocation}
+                    onChange={setSelectedLocation}
+                  >
+                    <ListboxButton
+                      className={clsx(
+                        selectButtonClass,
+                        "data-[focus]:outline-2 data-[focus]:-outline-offset-2 data-[focus]:outline-[#61BF75]",
+                      )}
+                    >
+                      {selectedLocationName === "—"
+                        ? "Select location"
+                        : selectedLocationName}
+                      <ChevronDownIcon
+                        className="group pointer-events-none absolute top-2.5 right-2.5 size-4 fill-gray-500"
+                        aria-hidden="true"
+                      />
                     </ListboxButton>
-                    <ListboxOptions anchor="bottom" transition className="w-[var(--button-width)] rounded-xl border border-white/5 bg-white p-1 [--anchor-gap:var(--spacing-1)] focus:outline-[#61BF75]">
+                    <ListboxOptions
+                      anchor="bottom"
+                      transition
+                      className="w-[var(--button-width)] rounded-xl border border-white/5 bg-white p-1 [--anchor-gap:var(--spacing-1)] focus:outline-[#61BF75]"
+                    >
                       {locations.map((location) => (
-                        <ListboxOption key={location.id || location.name} value={location} className="group flex cursor-default items-center gap-2 rounded-lg py-1.5 px-3 select-none data-[focus]:bg-white/10">
+                        <ListboxOption
+                          key={location.id || location.name}
+                          value={location}
+                          className="group flex cursor-default items-center gap-2 rounded-lg py-1.5 px-3 select-none data-[focus]:bg-white/10"
+                        >
                           <CheckIcon className="invisible size-4 fill-white group-data-[selected]:visible" />
-                          <div className="text-sm text-gray-500">{location.name}</div>
+                          <div className="text-sm text-gray-500">
+                            {location.name}
+                          </div>
                         </ListboxOption>
                       ))}
                     </ListboxOptions>
                   </Listbox>
-                  <p className="mt-2 text-xs font-medium text-[#667085]">Select the location where this product is available.</p>
+                  <p className="mt-2 text-xs font-medium text-[#667085]">
+                    Select the location where this product is available.
+                  </p>
                 </div>
                 <div>
                   <FieldLabel required>Price (₦)</FieldLabel>
                   <div className="flex h-10 items-center rounded-md border border-[#d0d5dd] bg-white pl-3 focus-within:border-[#008f45]">
-                    <span className="shrink-0 select-none text-xs text-[#667085]">₦</span>
+                    <span className="shrink-0 select-none text-xs text-[#667085]">
+                      ₦
+                    </span>
                     <input
                       id="price"
                       name="price"
@@ -418,7 +519,9 @@ const ProductUpdate = () => {
                       className="block min-w-0 grow px-2 text-xs text-[#101828] outline-none placeholder:text-[#98a2b3]"
                     />
                   </div>
-                  <p className="mt-2 text-xs font-medium text-[#667085]">Selling price for this location.</p>
+                  <p className="mt-2 text-xs font-medium text-[#667085]">
+                    Selling price for this location.
+                  </p>
                 </div>
                 <div>
                   <FieldLabel required>Minimum Order Quantity</FieldLabel>
@@ -431,32 +534,57 @@ const ProductUpdate = () => {
                     onChange={(e) => setMoq(e.target.value)}
                     className={inputClass}
                   />
-                  <p className="mt-2 text-xs font-medium text-[#667085]">Minimum quantity a customer can order.</p>
+                  <p className="mt-2 text-xs font-medium text-[#667085]">
+                    Minimum quantity a customer can order.
+                  </p>
                 </div>
                 <div>
                   <FieldLabel>Available Dates</FieldLabel>
                   <div className="relative">
-                    <input type="date" onChange={handleAddDate} className={`${inputClass} pr-10`} />
-                    <FontAwesomeIcon icon={faCalendarDays} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#667085]" />
+                    <input
+                      type="date"
+                      onChange={handleAddDate}
+                      className={`${inputClass} pr-10`}
+                    />
+                    <FontAwesomeIcon
+                      icon={faCalendarDays}
+                      className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#667085]"
+                    />
                   </div>
-                  <p className="mt-2 text-xs font-medium text-[#667085]">Add one or more available dates.</p>
+                  <p className="mt-2 text-xs font-medium text-[#667085]">
+                    Add one or more available dates.
+                  </p>
                 </div>
               </div>
 
               {availableDates.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {availableDates.map((date, index) => (
-                    <div key={`${date}-${index}`} className="flex items-center rounded-md border border-[#d0d5dd] px-3 py-2">
+                    <div
+                      key={`${date}-${index}`}
+                      className="flex items-center rounded-md border border-[#d0d5dd] px-3 py-2"
+                    >
                       <span className="text-xs text-[#344054]">{date}</span>
-                      <button type="button" onClick={() => handleRemoveDate(date)} className="ml-3 text-xs text-[#ef3340]">x</button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDate(date)}
+                        className="ml-3 text-xs text-[#ef3340]"
+                      >
+                        x
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
 
               <div className="mt-6 rounded-md border border-[#e5e7eb] p-3">
-                <h3 className="text-sm font-semibold text-[#101828]">Price & Volume Tiers (Optional)</h3>
-                <p className="mt-1 text-xs font-medium text-[#667085]">Set different prices based on order volume. Leave empty to use a single price.</p>
+                <h3 className="text-sm font-semibold text-[#101828]">
+                  Price & Volume Tiers (Optional)
+                </h3>
+                <p className="mt-1 text-xs font-medium text-[#667085]">
+                  Set different prices based on order volume. Leave empty to use
+                  a single price.
+                </p>
                 <div className="mt-3 overflow-x-auto">
                   <table className="w-full min-w-[720px] text-left text-xs">
                     <thead className="bg-[#f8fafc] text-[#101828]">
@@ -476,23 +604,125 @@ const ProductUpdate = () => {
                         return (
                           <tr key={section.id || index}>
                             <td className="px-2 py-2">
-                              <Listbox value={section.unit} onChange={(uom) => handleUomChange(index, uom)}>
+                              <Listbox
+                                value={section.unit}
+                                onChange={(uom) => handleUomChange(index, uom)}
+                              >
                                 <ListboxButton className={selectButtonClass}>
                                   {getUnitName(section.unit)}
-                                  <ChevronDownIcon className="group pointer-events-none absolute top-2.5 right-2.5 size-4 fill-gray-500" aria-hidden="true" />
+                                  <ChevronDownIcon
+                                    className="group pointer-events-none absolute top-2.5 right-2.5 size-4 fill-gray-500"
+                                    aria-hidden="true"
+                                  />
                                 </ListboxButton>
-                                <ListboxOptions anchor="bottom" transition className="w-[var(--button-width)] rounded-xl border border-white/5 bg-white p-1 [--anchor-gap:var(--spacing-1)] focus:outline-[#61BF75]">
-                                  {uoms.map((uom) => <ListboxOption key={uom.name} value={uom.name} className="group flex cursor-default items-center gap-2 rounded-lg py-1.5 px-3 text-xs select-none data-[focus]:bg-[#f8fafc]">{uom.name}</ListboxOption>)}
+                                <ListboxOptions
+                                  anchor="bottom"
+                                  transition
+                                  className="w-[var(--button-width)] rounded-xl border border-white/5 bg-white p-1 [--anchor-gap:var(--spacing-1)] focus:outline-[#61BF75]"
+                                >
+                                  {uoms.map((uom) => (
+                                    <ListboxOption
+                                      key={uom.name}
+                                      value={uom.name}
+                                      className="group flex cursor-default items-center gap-2 rounded-lg py-1.5 px-3 text-xs select-none data-[focus]:bg-[#f8fafc]"
+                                    >
+                                      {uom.name}
+                                    </ListboxOption>
+                                  ))}
                                 </ListboxOptions>
                               </Listbox>
                             </td>
-                            <td className="px-2 py-2"><input className={inputClass} type="number" min={0} value={tier.minVolume} onKeyDown={handleKeyDown} onChange={(e) => handleVtpChange(index, 0, "minVolume", e.target.value)} /></td>
-                            <td className="px-2 py-2"><input className={inputClass} type="number" min={0} value={tier.maxVolume} onKeyDown={handleKeyDown} onChange={(e) => handleVtpChange(index, 0, "maxVolume", e.target.value)} /></td>
-                            <td className="px-2 py-2"><input className={inputClass} type="number" min={0} value={section.platformPrice} onKeyDown={handleKeyDown} onChange={(e) => handleInputChange(index, "platformPrice", e.target.value)} /></td>
-                            <td className="px-2 py-2"><input className={inputClass} type="number" min={0} value={section.vendorPrice} onKeyDown={handleKeyDown} onChange={(e) => handleInputChange(index, "vendorPrice", e.target.value)} /></td>
-                            <td className="px-2 py-2"><input className={inputClass} type="number" min={0} value={tier.discount} onKeyDown={handleKeyDown} onChange={(e) => handleVtpChange(index, 0, "discount", e.target.value)} /></td>
                             <td className="px-2 py-2">
-                              <button type="button" onClick={() => removeUomSection(index)} className="grid h-9 w-9 place-items-center rounded-md text-[#ef3340] hover:bg-[#fff1f1]">x</button>
+                              <input
+                                className={inputClass}
+                                type="number"
+                                min={0}
+                                value={tier.minVolume}
+                                onKeyDown={handleKeyDown}
+                                onChange={(e) =>
+                                  handleVtpChange(
+                                    index,
+                                    0,
+                                    "minVolume",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <input
+                                className={inputClass}
+                                type="number"
+                                min={0}
+                                value={tier.maxVolume}
+                                onKeyDown={handleKeyDown}
+                                onChange={(e) =>
+                                  handleVtpChange(
+                                    index,
+                                    0,
+                                    "maxVolume",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <input
+                                className={inputClass}
+                                type="number"
+                                min={0}
+                                value={section.platformPrice}
+                                onKeyDown={handleKeyDown}
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    index,
+                                    "platformPrice",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <input
+                                className={inputClass}
+                                type="number"
+                                min={0}
+                                value={section.vendorPrice}
+                                onKeyDown={handleKeyDown}
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    index,
+                                    "vendorPrice",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <input
+                                className={inputClass}
+                                type="number"
+                                min={0}
+                                value={tier.discount}
+                                onKeyDown={handleKeyDown}
+                                onChange={(e) =>
+                                  handleVtpChange(
+                                    index,
+                                    0,
+                                    "discount",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                            </td>
+                            <td className="px-2 py-2">
+                              <button
+                                type="button"
+                                onClick={() => removeUomSection(index)}
+                                className="grid h-9 w-9 place-items-center rounded-md text-[#ef3340] hover:bg-[#fff1f1]"
+                              >
+                                x
+                              </button>
                             </td>
                           </tr>
                         );
@@ -500,7 +730,11 @@ const ProductUpdate = () => {
                     </tbody>
                   </table>
                 </div>
-                <button type="button" onClick={addUomSection} className="mt-3 inline-flex h-9 items-center gap-2 rounded-md border border-[#20a45b] px-4 text-xs font-semibold text-[#008f45]">
+                <button
+                  type="button"
+                  onClick={addUomSection}
+                  className="mt-3 inline-flex h-9 items-center gap-2 rounded-md border border-[#20a45b] px-4 text-xs font-semibold text-[#008f45]"
+                >
                   Add Another Tier
                 </button>
               </div>
@@ -508,19 +742,37 @@ const ProductUpdate = () => {
           )}
         </Card>
 
-        <Card title="Location Summary" description="Review the details you've entered.">
+        <Card
+          title="Location Summary"
+          description="Review the details you've entered."
+        >
           <div className="space-y-5 text-xs">
             {[
               [faLocationDot, "Location", selectedLocationName],
-              [faMoneyBill, "Price", price ? `₦${Number(price).toLocaleString()}` : "—"],
+              [
+                faMoneyBill,
+                "Price",
+                price ? `₦${Number(price).toLocaleString()}` : "—",
+              ],
               [faCartShopping, "Min Order Quantity", moq || "—"],
               [faClock, "Availability", availabilityLabel],
               [faSliders, "Price Tiers", `${reviewTiers.length} tier(s) added`],
             ].map(([icon, label, value]) => (
-              <div key={label} className="grid grid-cols-[20px_1fr_auto] items-center gap-3">
+              <div
+                key={label}
+                className="grid grid-cols-[20px_1fr_auto] items-center gap-3"
+              >
                 <FontAwesomeIcon icon={icon} className="text-[#667085]" />
                 <span className="font-semibold text-[#344054]">{label}</span>
-                <span className={label === "Price Tiers" ? "font-semibold text-[#1f7ae0]" : "font-medium text-[#101828]"}>{value}</span>
+                <span
+                  className={
+                    label === "Price Tiers"
+                      ? "font-semibold text-[#1f7ae0]"
+                      : "font-medium text-[#101828]"
+                  }
+                >
+                  {value}
+                </span>
               </div>
             ))}
           </div>
@@ -531,24 +783,46 @@ const ProductUpdate = () => {
 
   const renderReviewStep = () => (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <Card title="3. Review & Save" description="Review all details before updating this product location.">
+      <Card
+        title="3. Review & Save"
+        description="Review all details before updating this product location."
+      >
         <div className="space-y-4">
           <div className="rounded-md border border-[#e5e7eb] p-4">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#101828]">Product Details</h3>
-              <button type="button" onClick={() => setCurrentStep(1)} className="inline-flex h-8 items-center gap-2 rounded-md border border-[#d0d5dd] px-3 text-xs font-semibold text-[#344054]">
+              <h3 className="text-sm font-semibold text-[#101828]">
+                Product Details
+              </h3>
+              <button
+                type="button"
+                onClick={() => setCurrentStep(1)}
+                className="inline-flex h-8 items-center gap-2 rounded-md border border-[#d0d5dd] px-3 text-xs font-semibold text-[#344054]"
+              >
                 Edit
               </button>
             </div>
             <div className="grid gap-4 md:grid-cols-[160px_minmax(0,1fr)]">
               <div className="grid h-36 place-items-center rounded-md border border-[#e5e7eb] bg-[#fbfcfd]">
-                <img src={selectedImage} alt="" className="h-full max-h-32 w-full object-contain" />
+                <img
+                  src={selectedImage}
+                  alt=""
+                  className="h-full max-h-32 w-full object-contain"
+                />
               </div>
               <div className="grid gap-3 text-xs md:grid-cols-2">
                 {[
                   ["Product Name", product?.name || "—"],
                   ["Brand", product?.brand || "—"],
-                  ["Category", [product?.primaryCategory, product?.category, product?.subCategory].filter(Boolean).join(" > ") || "—"],
+                  [
+                    "Category",
+                    [
+                      product?.primaryCategory,
+                      product?.category,
+                      product?.subCategory,
+                    ]
+                      .filter(Boolean)
+                      .join(" > ") || "—",
+                  ],
                   ["SKU (Global)", product?.sku || product?.code || "—"],
                   ["Status", selectedStatus],
                 ].map(([label, value]) => (
@@ -556,8 +830,12 @@ const ProductUpdate = () => {
                     <p className="font-semibold text-[#667085]">{label}</p>
                     <p className="mt-1 font-semibold text-[#101828]">
                       {label === "Status" ? (
-                        <span className="rounded-full bg-[#dcfce7] px-2.5 py-1 text-[11px] text-[#008f45]">{value}</span>
-                      ) : value}
+                        <span className="rounded-full bg-[#dcfce7] px-2.5 py-1 text-[11px] text-[#008f45]">
+                          {value}
+                        </span>
+                      ) : (
+                        value
+                      )}
                     </p>
                   </div>
                 ))}
@@ -567,8 +845,14 @@ const ProductUpdate = () => {
 
           <div className="rounded-md border border-[#e5e7eb] p-4">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#101828]">Location & Pricing</h3>
-              <button type="button" onClick={() => setCurrentStep(2)} className="inline-flex h-8 items-center gap-2 rounded-md border border-[#d0d5dd] px-3 text-xs font-semibold text-[#344054]">
+              <h3 className="text-sm font-semibold text-[#101828]">
+                Location & Pricing
+              </h3>
+              <button
+                type="button"
+                onClick={() => setCurrentStep(2)}
+                className="inline-flex h-8 items-center gap-2 rounded-md border border-[#d0d5dd] px-3 text-xs font-semibold text-[#344054]"
+              >
                 Edit
               </button>
             </div>
@@ -587,20 +871,36 @@ const ProductUpdate = () => {
                 ))}
               </div>
               <div className="grid gap-2 text-xs">
-                <p className="font-semibold text-[#667085]">Price Tiers ({reviewTiers.length})</p>
-                {reviewTiers.length > 0 ? reviewTiers.map((section, index) => {
-                  const tier = section.vtp?.[0] || {};
-                  const min = tier.minVolume || "—";
-                  const max = tier.maxVolume || "No max";
-                  const tierPrice = tier.price || section.platformPrice || price;
-                  return (
-                    <div key={section.id || index} className="grid grid-cols-2 gap-3 border-b border-[#eef2f6] py-1.5 last:border-0">
-                      <p className="font-medium text-[#344054]">{min} - {max} {getUnitName(section.unit)}</p>
-                      <p className="text-right font-semibold text-[#101828]">{tierPrice ? `₦${Number(tierPrice).toLocaleString()}` : "—"}</p>
-                    </div>
-                  );
-                }) : (
-                  <p className="font-medium text-[#667085]">No volume tiers added.</p>
+                <p className="font-semibold text-[#667085]">
+                  Price Tiers ({reviewTiers.length})
+                </p>
+                {reviewTiers.length > 0 ? (
+                  reviewTiers.map((section, index) => {
+                    const tier = section.vtp?.[0] || {};
+                    const min = tier.minVolume || "—";
+                    const max = tier.maxVolume || "No max";
+                    const tierPrice =
+                      tier.price || section.platformPrice || price;
+                    return (
+                      <div
+                        key={section.id || index}
+                        className="grid grid-cols-2 gap-3 border-b border-[#eef2f6] py-1.5 last:border-0"
+                      >
+                        <p className="font-medium text-[#344054]">
+                          {min} - {max} {getUnitName(section.unit)}
+                        </p>
+                        <p className="text-right font-semibold text-[#101828]">
+                          {tierPrice
+                            ? `₦${Number(tierPrice).toLocaleString()}`
+                            : "—"}
+                        </p>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="font-medium text-[#667085]">
+                    No volume tiers added.
+                  </p>
                 )}
               </div>
             </div>
@@ -608,26 +908,48 @@ const ProductUpdate = () => {
         </div>
       </Card>
 
-      <Card title="Summary" description="Here's a summary of the product location you're updating.">
+      <Card
+        title="Summary"
+        description="Here's a summary of the product location you're updating."
+      >
         <div className="overflow-hidden rounded-md border border-[#e5e7eb]">
           <div className="flex items-center gap-3 p-4">
-            <img src={selectedImage} alt="" className="h-16 w-16 rounded-md border border-[#e5e7eb] object-contain" />
+            <img
+              src={selectedImage}
+              alt=""
+              className="h-16 w-16 rounded-md border border-[#e5e7eb] object-contain"
+            />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-[#101828]">{product?.name || "—"}</p>
-              <p className="mt-1 truncate text-xs font-medium text-[#667085]">{[product?.brand, product?.sku || product?.code].filter(Boolean).join(" • ") || "—"}</p>
+              <p className="truncate text-sm font-semibold text-[#101828]">
+                {product?.name || "—"}
+              </p>
+              <p className="mt-1 truncate text-xs font-medium text-[#667085]">
+                {[product?.brand, product?.sku || product?.code]
+                  .filter(Boolean)
+                  .join(" • ") || "—"}
+              </p>
             </div>
-            <span className="rounded-full bg-[#dcfce7] px-2.5 py-1 text-[11px] font-semibold text-[#008f45]">{selectedStatus}</span>
+            <span className="rounded-full bg-[#dcfce7] px-2.5 py-1 text-[11px] font-semibold text-[#008f45]">
+              {selectedStatus}
+            </span>
           </div>
           <div className="border-t border-[#e5e7eb] p-4">
             <div className="space-y-5 text-xs">
               {[
                 [faLocationDot, "Location", selectedLocationName],
-                [faMoneyBill, "Price", price ? `₦${Number(price).toLocaleString()}` : "—"],
+                [
+                  faMoneyBill,
+                  "Price",
+                  price ? `₦${Number(price).toLocaleString()}` : "—",
+                ],
                 [faCartShopping, "Min. Order Quantity", moq || "—"],
                 [faClock, "Availability", availabilityLabel],
                 [faSliders, "Price Tiers", `${reviewTiers.length} tier(s)`],
               ].map(([icon, label, value]) => (
-                <div key={label} className="grid grid-cols-[20px_1fr_auto] items-center gap-3">
+                <div
+                  key={label}
+                  className="grid grid-cols-[20px_1fr_auto] items-center gap-3"
+                >
                   <FontAwesomeIcon icon={icon} className="text-[#667085]" />
                   <span className="font-semibold text-[#344054]">{label}</span>
                   <span className="font-semibold text-[#101828]">{value}</span>
@@ -642,7 +964,10 @@ const ProductUpdate = () => {
             <FontAwesomeIcon icon={faShieldHalved} className="mt-0.5" />
             <div>
               <p className="text-sm font-semibold">Looks good!</p>
-              <p className="mt-1 text-xs font-medium">You&apos;re ready to update this product location. Click Save Changes to apply it.</p>
+              <p className="mt-1 text-xs font-medium">
+                You&apos;re ready to update this product location. Click Save
+                Changes to apply it.
+              </p>
             </div>
           </div>
         </div>
@@ -661,13 +986,20 @@ const ProductUpdate = () => {
         </div>
         <div className="flex flex-col gap-3 sm:items-end">
           <div className="flex items-center gap-2 text-sm text-[#667085]">
-            <Link to="/" className="hover:text-[#008f45]">Dashboard</Link>
+            <Link to="/" className="hover:text-[#008f45]">
+              Dashboard
+            </Link>
             <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
-            <Link to="/list-products" className="hover:text-[#008f45]">Products</Link>
+            <Link to="/list-products" className="hover:text-[#008f45]">
+              Products
+            </Link>
             <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
             <span>Update Product</span>
           </div>
-          <Link to="/list-products" className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-4 text-xs font-semibold text-[#101828] shadow-sm">
+          <Link
+            to="/list-products"
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-4 text-xs font-semibold text-[#101828] shadow-sm"
+          >
             <FontAwesomeIcon icon={faArrowLeft} />
             Back to products
           </Link>
@@ -699,7 +1031,8 @@ const ProductUpdate = () => {
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-[#d0d5dd] px-5 text-xs font-semibold text-[#101828]"
               >
                 <FontAwesomeIcon icon={faArrowLeft} />
-                Back to {currentStep === 2 ? "Product Details" : "Location & Pricing"}
+                Back to{" "}
+                {currentStep === 2 ? "Product Details" : "Location & Pricing"}
               </button>
             )}
 
@@ -716,10 +1049,13 @@ const ProductUpdate = () => {
               {currentStep < 3 ? (
                 <button
                   type="button"
-                  onClick={() => setCurrentStep((step) => Math.min(3, step + 1))}
+                  onClick={() =>
+                    setCurrentStep((step) => Math.min(3, step + 1))
+                  }
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#008f45] px-5 text-xs font-semibold text-white shadow-sm hover:bg-[#007a3b]"
                 >
-                  Continue to {currentStep === 1 ? "Location & Pricing" : "Review & Save"}
+                  Continue to{" "}
+                  {currentStep === 1 ? "Location & Pricing" : "Review & Save"}
                   <FontAwesomeIcon icon={faChevronRight} />
                 </button>
               ) : (
@@ -729,7 +1065,11 @@ const ProductUpdate = () => {
                   onClick={() => handleUpdateProductLocation()}
                   disabled={processing}
                 >
-                  {processing ? <LoadingButtonContent label="Saving..." /> : "Save Changes"}
+                  {processing ? (
+                    <LoadingButtonContent label="Saving..." />
+                  ) : (
+                    "Save Changes"
+                  )}
                   {!processing && <FontAwesomeIcon icon={faCheckCircle} />}
                 </button>
               )}

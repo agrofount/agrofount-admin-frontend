@@ -25,12 +25,7 @@ import {
   faVenus,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
-} from "@headlessui/react";
+import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { apiClient } from "../../lib/apiClient";
@@ -38,27 +33,27 @@ import { TableRowsSkeleton } from "../common/LoadingStates";
 import { getLeadSmsCount, getLeadSmsRecords } from "./leadSmsUtils";
 
 const STATUS_META = {
-  new:       { label: "New",       bg: "#dbeafe", text: "#1d4ed8" },
+  new: { label: "New", bg: "#dbeafe", text: "#1d4ed8" },
   contacted: { label: "Contacted", bg: "#fef3c7", text: "#d97706" },
   qualified: { label: "Qualified", bg: "#ede9fe", text: "#7c3aed" },
   converted: { label: "Converted", bg: "#dcf8e4", text: "#008f45" },
-  rejected:  { label: "Rejected",  bg: "#ffe4e6", text: "#dc2626" },
+  rejected: { label: "Rejected", bg: "#ffe4e6", text: "#dc2626" },
 };
 
 const STATUS_TRANSITIONS = {
-  new:       ["contacted", "qualified", "converted", "rejected"],
+  new: ["contacted", "qualified", "converted", "rejected"],
   contacted: ["qualified", "converted", "rejected"],
   qualified: ["converted", "rejected"],
   converted: [],
-  rejected:  ["new", "contacted"],
+  rejected: ["new", "contacted"],
 };
 
 const STATUS_LABELS = {
   contacted: "Mark Contacted",
   qualified: "Mark Qualified",
   converted: "Mark Converted",
-  rejected:  "Reject",
-  new:       "Reopen as New",
+  rejected: "Reject",
+  new: "Reopen as New",
 };
 
 const LEAD_SOURCE_OPTIONS = [
@@ -87,20 +82,35 @@ const formatDate = (val) => {
   if (!val) return ["—", ""];
   const d = new Date(val);
   return [
-    new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(d),
-    new Intl.DateTimeFormat("en-US",  { hour: "2-digit", minute: "2-digit" }).format(d),
+    new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(d),
+    new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(d),
   ];
 };
 
 const getInitials = (name = "") =>
-  name.split(/\s+/).slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase() || "?";
+  name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0] ?? "")
+    .join("")
+    .toUpperCase() || "?";
 
 const valueOrDash = (value) => value || "—";
 
 const StatCard = ({ label, value, icon, bg, color, sub }) => (
   <div className="rounded-xl border border-[#e5e7eb] bg-white px-4 py-4 shadow-[0_4px_16px_rgba(16,24,40,0.04)]">
     <div className="flex items-center gap-3">
-      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full" style={{ background: bg }}>
+      <div
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+        style={{ background: bg }}
+      >
         <FontAwesomeIcon icon={icon} style={{ color }} className="text-sm" />
       </div>
       <div className="min-w-0">
@@ -119,16 +129,30 @@ const NotifyModal = ({ lead, onClose, onSent }) => {
   const [sending, setSending] = useState(false);
 
   const handleSend = async () => {
-    if (!message.trim()) { toast.error("Message is required"); return; }
-    if (channel === "email" && !subject.trim()) { toast.error("Subject is required for email"); return; }
+    if (!message.trim()) {
+      toast.error("Message is required");
+      return;
+    }
+    if (channel === "email" && !subject.trim()) {
+      toast.error("Subject is required for email");
+      return;
+    }
     try {
       setSending(true);
-      await apiClient.post(`/leads/${lead.id}/notify`, { channel, message, subject: subject || undefined });
-      toast.success(`${channel === "sms" ? "SMS" : "Email"} sent to ${lead.name}`);
+      await apiClient.post(`/leads/${lead.id}/notify`, {
+        channel,
+        message,
+        subject: subject || undefined,
+      });
+      toast.success(
+        `${channel === "sms" ? "SMS" : "Email"} sent to ${lead.name}`,
+      );
       onSent();
       onClose();
     } catch (err) {
-      toast.error(err?.response?.data?.message || err.message || "Failed to send");
+      toast.error(
+        err?.response?.data?.message || err.message || "Failed to send",
+      );
     } finally {
       setSending(false);
     }
@@ -139,8 +163,14 @@ const NotifyModal = ({ lead, onClose, onSent }) => {
       <div className="fixed inset-0 z-50 bg-black/40" onClick={onClose} />
       <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-2xl">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-[#101828]">Notify {lead.name}</h3>
-          <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-md text-[#667085] hover:bg-[#f3f4f6]">
+          <h3 className="text-sm font-semibold text-[#101828]">
+            Notify {lead.name}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-8 w-8 place-items-center rounded-md text-[#667085] hover:bg-[#f3f4f6]"
+          >
             <FontAwesomeIcon icon={faTimes} />
           </button>
         </div>
@@ -153,7 +183,10 @@ const NotifyModal = ({ lead, onClose, onSent }) => {
               onClick={() => setChannel(ch)}
               className={`flex-1 rounded-md border py-2 text-xs font-semibold transition ${channel === ch ? "border-[#008f45] bg-[#f0fdf4] text-[#008f45]" : "border-[#e5e7eb] text-[#667085]"}`}
             >
-              <FontAwesomeIcon icon={ch === "sms" ? faComment : faEnvelope} className="mr-2" />
+              <FontAwesomeIcon
+                icon={ch === "sms" ? faComment : faEnvelope}
+                className="mr-2"
+              />
               {ch.toUpperCase()}
             </button>
           ))}
@@ -177,7 +210,13 @@ const NotifyModal = ({ lead, onClose, onSent }) => {
         />
 
         <div className="mt-4 flex justify-end gap-3">
-          <button type="button" onClick={onClose} className="h-9 rounded-md border border-[#d0d5dd] px-4 text-xs font-semibold text-[#344054]">Cancel</button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-9 rounded-md border border-[#d0d5dd] px-4 text-xs font-semibold text-[#344054]"
+          >
+            Cancel
+          </button>
           <button
             type="button"
             onClick={handleSend}
@@ -225,10 +264,18 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
         title: title.trim() || "Lead SMS campaign",
         message,
         search: filters.search || undefined,
-        statuses: filters.status && filters.status !== "all" ? [filters.status] : undefined,
-        sources: filters.source && filters.source !== "all" ? [filters.source] : undefined,
+        statuses:
+          filters.status && filters.status !== "all"
+            ? [filters.status]
+            : undefined,
+        sources:
+          filters.source && filters.source !== "all"
+            ? [filters.source]
+            : undefined,
         sourceIds: filters.sourceId ? [filters.sourceId] : undefined,
-        campaignNames: filters.campaignName ? [filters.campaignName] : undefined,
+        campaignNames: filters.campaignName
+          ? [filters.campaignName]
+          : undefined,
         campaignIds: filters.campaignId ? [filters.campaignId] : undefined,
         excludeConverted: excludeConverted || undefined,
         resend: resend || undefined,
@@ -237,7 +284,11 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
       onSent();
       onClose();
     } catch (err) {
-      toast.error(err?.response?.data?.message || err.message || "Failed to send bulk SMS");
+      toast.error(
+        err?.response?.data?.message ||
+          err.message ||
+          "Failed to send bulk SMS",
+      );
     } finally {
       setSending(false);
     }
@@ -245,8 +296,10 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
 
   const activeFilters = [
     filters.search && `Search: ${filters.search}`,
-    filters.status !== "all" && `Status: ${STATUS_META[filters.status]?.label ?? filters.status}`,
-    filters.source !== "all" && `Source: ${LEAD_SOURCE_OPTIONS.find((s) => s.key === filters.source)?.label ?? filters.source}`,
+    filters.status !== "all" &&
+      `Status: ${STATUS_META[filters.status]?.label ?? filters.status}`,
+    filters.source !== "all" &&
+      `Source: ${LEAD_SOURCE_OPTIONS.find((s) => s.key === filters.source)?.label ?? filters.source}`,
     filters.sourceId && `Source ID: ${filters.sourceId}`,
     filters.campaignName && `Campaign: ${filters.campaignName}`,
     filters.campaignId && `Campaign ID: ${filters.campaignId}`,
@@ -258,15 +311,25 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
       <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-[#101828]">Send Bulk SMS</h3>
+            <h3 className="text-sm font-semibold text-[#101828]">
+              Send Bulk SMS
+            </h3>
             <p className="mt-1 text-[11px] text-[#667085]">
-              Targets the current lead filters{totalItems ? `, currently ${totalItems.toLocaleString()} leads` : ""}.{" "}
+              Targets the current lead filters
+              {totalItems
+                ? `, currently ${totalItems.toLocaleString()} leads`
+                : ""}
+              .{" "}
               {resend
                 ? "Resend is on - leads who already received a previous campaign SMS will be messaged again."
                 : "Leads with a previous successful SMS will be skipped automatically; the number sent may be lower."}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-md text-[#667085] hover:bg-[#f3f4f6]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-8 w-8 place-items-center rounded-md text-[#667085] hover:bg-[#f3f4f6]"
+          >
             <FontAwesomeIcon icon={faTimes} />
           </button>
         </div>
@@ -274,7 +337,10 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
         {activeFilters.length > 0 && (
           <div className="mb-4 flex flex-wrap gap-1.5">
             {activeFilters.map((filter) => (
-              <span key={filter} className="rounded-full bg-[#f0fdf4] px-2.5 py-1 text-[10px] font-semibold text-[#006638]">
+              <span
+                key={filter}
+                className="rounded-full bg-[#f0fdf4] px-2.5 py-1 text-[10px] font-semibold text-[#006638]"
+              >
                 {filter}
               </span>
             ))}
@@ -282,7 +348,9 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
         )}
 
         <label className="mb-3 block">
-          <span className="mb-1 block text-[11px] font-semibold text-[#344054]">Campaign title</span>
+          <span className="mb-1 block text-[11px] font-semibold text-[#344054]">
+            Campaign title
+          </span>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -291,7 +359,9 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
         </label>
 
         <div className="mb-3">
-          <p className="mb-2 text-[11px] font-semibold text-[#344054]">Personalization</p>
+          <p className="mb-2 text-[11px] font-semibold text-[#344054]">
+            Personalization
+          </p>
           <div className="flex flex-wrap gap-1.5">
             {LEAD_SMS_TOKENS.map(({ token, label }) => (
               <button
@@ -326,7 +396,8 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
             <span>
               Exclude already-converted leads
               <span className="block text-[10px] font-normal text-[#98a2b3]">
-                Skip leads marked converted, regardless of the status filter above.
+                Skip leads marked converted, regardless of the status filter
+                above.
               </span>
             </span>
           </label>
@@ -340,14 +411,21 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
             <span>
               Resend to previously messaged leads
               <span className="block text-[10px] font-normal text-[#98a2b3]">
-                Normally off to avoid re-spamming leads - turn on to deliberately message leads again.
+                Normally off to avoid re-spamming leads - turn on to
+                deliberately message leads again.
               </span>
             </span>
           </label>
         </div>
 
         <div className="mt-4 flex justify-end gap-3">
-          <button type="button" onClick={onClose} className="h-9 rounded-md border border-[#d0d5dd] px-4 text-xs font-semibold text-[#344054]">Cancel</button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-9 rounded-md border border-[#d0d5dd] px-4 text-xs font-semibold text-[#344054]"
+          >
+            Cancel
+          </button>
           <button
             type="button"
             onClick={handleSend}
@@ -380,7 +458,9 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
       await apiClient.patch(`/leads/${lead.id}/status`, { status });
       onStatusChange();
     } catch (err) {
-      toast.error(err?.response?.data?.message || err.message || "Failed to update");
+      toast.error(
+        err?.response?.data?.message || err.message || "Failed to update",
+      );
     } finally {
       setUpdating(null);
     }
@@ -392,7 +472,11 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
       <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-sm flex-col bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-[#e5e7eb] px-5 py-4">
           <h2 className="text-sm font-semibold text-[#101828]">Lead Details</h2>
-          <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-md text-[#667085] hover:bg-[#f3f4f6]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-8 w-8 place-items-center rounded-md text-[#667085] hover:bg-[#f3f4f6]"
+          >
             <FontAwesomeIcon icon={faTimes} />
           </button>
         </div>
@@ -403,68 +487,125 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
               {getInitials(lead.name)}
             </span>
             <p className="text-sm font-semibold text-[#101828]">{lead.name}</p>
-            <span className="rounded-full px-3 py-1 text-[11px] font-semibold" style={{ background: sm.bg, color: sm.text }}>
+            <span
+              className="rounded-full px-3 py-1 text-[11px] font-semibold"
+              style={{ background: sm.bg, color: sm.text }}
+            >
               {sm.label}
             </span>
           </div>
 
           <div className="space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">Contact</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">
+              Contact
+            </p>
             <div className="flex gap-3 rounded-lg border border-[#e5e7eb] px-4 py-3">
-              <FontAwesomeIcon icon={faPhone} className="mt-0.5 w-4 shrink-0 text-[#008f45]" />
-              <div><p className="text-[10px] text-[#667085]">Phone</p><p className="text-xs font-medium text-[#101828]">{lead.phone}</p></div>
+              <FontAwesomeIcon
+                icon={faPhone}
+                className="mt-0.5 w-4 shrink-0 text-[#008f45]"
+              />
+              <div>
+                <p className="text-[10px] text-[#667085]">Phone</p>
+                <p className="text-xs font-medium text-[#101828]">
+                  {lead.phone}
+                </p>
+              </div>
             </div>
             {lead.email && (
               <div className="flex gap-3 rounded-lg border border-[#e5e7eb] px-4 py-3">
-                <FontAwesomeIcon icon={faEnvelope} className="mt-0.5 w-4 shrink-0 text-[#008f45]" />
-                <div><p className="text-[10px] text-[#667085]">Email</p><p className="text-xs font-medium text-[#101828] break-all">{lead.email}</p></div>
+                <FontAwesomeIcon
+                  icon={faEnvelope}
+                  className="mt-0.5 w-4 shrink-0 text-[#008f45]"
+                />
+                <div>
+                  <p className="text-[10px] text-[#667085]">Email</p>
+                  <p className="text-xs font-medium text-[#101828] break-all">
+                    {lead.email}
+                  </p>
+                </div>
               </div>
             )}
             {lead.state && (
               <div className="flex gap-3 rounded-lg border border-[#e5e7eb] px-4 py-3">
-                <FontAwesomeIcon icon={faLocationDot} className="mt-0.5 w-4 shrink-0 text-[#008f45]" />
-                <div><p className="text-[10px] text-[#667085]">State</p><p className="text-xs font-medium text-[#101828]">{lead.state}</p></div>
+                <FontAwesomeIcon
+                  icon={faLocationDot}
+                  className="mt-0.5 w-4 shrink-0 text-[#008f45]"
+                />
+                <div>
+                  <p className="text-[10px] text-[#667085]">State</p>
+                  <p className="text-xs font-medium text-[#101828]">
+                    {lead.state}
+                  </p>
+                </div>
               </div>
             )}
           </div>
 
           <div className="space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">Profile</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">
+              Profile
+            </p>
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
                 <p className="text-[10px] text-[#667085]">Gender</p>
                 <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-[#101828]">
-                  <FontAwesomeIcon icon={String(gender).toLowerCase() === "female" ? faVenus : faMars} className={String(gender).toLowerCase() === "female" ? "text-[#ef3f7a]" : "text-[#1f7ae0]"} />
+                  <FontAwesomeIcon
+                    icon={
+                      String(gender).toLowerCase() === "female"
+                        ? faVenus
+                        : faMars
+                    }
+                    className={
+                      String(gender).toLowerCase() === "female"
+                        ? "text-[#ef3f7a]"
+                        : "text-[#1f7ae0]"
+                    }
+                  />
                   {gender}
                 </p>
               </div>
               <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
                 <p className="text-[10px] text-[#667085]">Imported</p>
-                <p className="mt-1 text-xs font-medium text-[#101828]">{date}</p>
+                <p className="mt-1 text-xs font-medium text-[#101828]">
+                  {date}
+                </p>
                 <p className="text-[10px] text-[#667085]">{time}</p>
               </div>
             </div>
           </div>
 
-          {(lead.campaignName || lead.adName || lead.sourceLeadId || lead.campaignId || lead.formName || lead.sourceCreatedAt) && (
+          {(lead.campaignName ||
+            lead.adName ||
+            lead.sourceLeadId ||
+            lead.campaignId ||
+            lead.formName ||
+            lead.sourceCreatedAt) && (
             <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">Campaign</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">
+                Campaign
+              </p>
               {lead.campaignName && (
                 <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
                   <p className="text-[10px] text-[#667085]">Campaign</p>
-                  <p className="mt-1 text-xs font-medium text-[#101828]">{lead.campaignName}</p>
+                  <p className="mt-1 text-xs font-medium text-[#101828]">
+                    {lead.campaignName}
+                  </p>
                 </div>
               )}
               {lead.adName && (
                 <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
                   <p className="text-[10px] text-[#667085]">Ad</p>
-                  <p className="mt-1 text-xs font-medium text-[#101828]">{lead.adName}</p>
+                  <p className="mt-1 text-xs font-medium text-[#101828]">
+                    {lead.adName}
+                  </p>
                 </div>
               )}
               {lead.sourceCreatedAt && (
                 <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
                   <p className="text-[10px] text-[#667085]">Lead captured</p>
-                  <p className="mt-1 text-xs font-medium text-[#101828]">{srcDate}</p>
+                  <p className="mt-1 text-xs font-medium text-[#101828]">
+                    {srcDate}
+                  </p>
                 </div>
               )}
               {(lead.sourceLeadId || lead.campaignId || lead.formName) && (
@@ -472,19 +613,25 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
                   {lead.sourceLeadId && (
                     <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
                       <p className="text-[10px] text-[#667085]">Source ID</p>
-                      <p className="mt-1 break-all text-xs font-medium text-[#101828]">{lead.sourceLeadId}</p>
+                      <p className="mt-1 break-all text-xs font-medium text-[#101828]">
+                        {lead.sourceLeadId}
+                      </p>
                     </div>
                   )}
                   {lead.campaignId && (
                     <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
                       <p className="text-[10px] text-[#667085]">Campaign ID</p>
-                      <p className="mt-1 break-all text-xs font-medium text-[#101828]">{lead.campaignId}</p>
+                      <p className="mt-1 break-all text-xs font-medium text-[#101828]">
+                        {lead.campaignId}
+                      </p>
                     </div>
                   )}
                   {lead.formName && (
                     <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
                       <p className="text-[10px] text-[#667085]">Form</p>
-                      <p className="mt-1 text-xs font-medium text-[#101828]">{lead.formName}</p>
+                      <p className="mt-1 text-xs font-medium text-[#101828]">
+                        {lead.formName}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -494,24 +641,43 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
 
           {smsRecords.length > 0 && (
             <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">SMS Details</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">
+                SMS Details
+              </p>
               <div className="space-y-2">
                 {smsRecords.slice(0, 5).map((record) => {
-                  const recordDate = record.sentAt ? formatDate(record.sentAt)[0] : "—";
-                  const recordTime = record.sentAt ? formatDate(record.sentAt)[1] : "";
+                  const recordDate = record.sentAt
+                    ? formatDate(record.sentAt)[0]
+                    : "—";
+                  const recordTime = record.sentAt
+                    ? formatDate(record.sentAt)[1]
+                    : "";
                   return (
-                    <div key={record.id} className="rounded-lg border border-[#e5e7eb] px-4 py-3">
+                    <div
+                      key={record.id}
+                      className="rounded-lg border border-[#e5e7eb] px-4 py-3"
+                    >
                       <div className="flex items-center justify-between gap-2">
                         <span className="inline-flex rounded-full bg-[#dcf8e4] px-2 py-0.5 text-[10px] font-semibold text-[#008f45] uppercase">
                           {record.channel === "sms" ? "SMS" : "Email"}
                         </span>
-                        <span className="text-[10px] font-medium text-[#667085]">{String(record.status ?? "sent").replace(/_/g, " ")}</span>
+                        <span className="text-[10px] font-medium text-[#667085]">
+                          {String(record.status ?? "sent").replace(/_/g, " ")}
+                        </span>
                       </div>
-                      <p className="mt-2 text-xs text-[#344054]">{record.message || "No message content available"}</p>
+                      <p className="mt-2 text-xs text-[#344054]">
+                        {record.message || "No message content available"}
+                      </p>
                       {(recordDate !== "—" || record.provider) && (
                         <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-[#667085]">
-                          <span>{record.provider ? `via ${record.provider}` : "Sent"}</span>
-                          <span>{recordDate} {recordTime}</span>
+                          <span>
+                            {record.provider
+                              ? `via ${record.provider}`
+                              : "Sent"}
+                          </span>
+                          <span>
+                            {recordDate} {recordTime}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -523,16 +689,24 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
 
           {(lead.insights || lead.personalizationVariables) && (
             <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">Insights</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">
+                Insights
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
                   <p className="text-[10px] text-[#667085]">Stated interest</p>
-                  <p className="mt-1 text-xs font-medium text-[#101828]">{valueOrDash(lead.insights?.statedInterest)}</p>
+                  <p className="mt-1 text-xs font-medium text-[#101828]">
+                    {valueOrDash(lead.insights?.statedInterest)}
+                  </p>
                 </div>
                 <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
                   <p className="text-[10px] text-[#667085]">New farmer</p>
                   <p className="mt-1 text-xs font-medium text-[#101828]">
-                    {lead.insights?.isNewFarmer === true ? "Yes" : lead.insights?.isNewFarmer === false ? "No" : "—"}
+                    {lead.insights?.isNewFarmer === true
+                      ? "Yes"
+                      : lead.insights?.isNewFarmer === false
+                        ? "No"
+                        : "—"}
                   </p>
                 </div>
               </div>
@@ -540,11 +714,16 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
                 <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
                   <p className="text-[10px] text-[#667085]">SMS variables</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {Object.entries(lead.personalizationVariables).map(([key, value]) => (
-                      <span key={key} className="rounded-full bg-[#f3f4f6] px-2 py-1 text-[10px] font-semibold text-[#344054]">
-                        {key}: {valueOrDash(value)}
-                      </span>
-                    ))}
+                    {Object.entries(lead.personalizationVariables).map(
+                      ([key, value]) => (
+                        <span
+                          key={key}
+                          className="rounded-full bg-[#f3f4f6] px-2 py-1 text-[10px] font-semibold text-[#344054]"
+                        >
+                          {key}: {valueOrDash(value)}
+                        </span>
+                      ),
+                    )}
                   </div>
                 </div>
               )}
@@ -553,11 +732,18 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
 
           {lead.customFields && Object.keys(lead.customFields).length > 0 && (
             <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">Form Answers</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">
+                Form Answers
+              </p>
               {Object.entries(lead.customFields).map(([question, answer]) => (
-                <div key={question} className="rounded-lg border border-[#e5e7eb] px-4 py-3">
+                <div
+                  key={question}
+                  className="rounded-lg border border-[#e5e7eb] px-4 py-3"
+                >
                   <p className="text-[10px] text-[#667085]">{question}</p>
-                  <p className="mt-1 text-xs font-medium text-[#101828]">{answer}</p>
+                  <p className="mt-1 text-xs font-medium text-[#101828]">
+                    {answer}
+                  </p>
                 </div>
               ))}
             </div>
@@ -572,7 +758,9 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
 
           {transitions.length > 0 && (
             <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">Move to</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">
+                Move to
+              </p>
               {transitions.map((s) => (
                 <button
                   key={s}
@@ -582,7 +770,14 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
                   className="flex w-full items-center justify-between rounded-lg border border-[#e5e7eb] px-4 py-2.5 text-xs font-semibold text-[#344054] hover:bg-[#f9fafb] disabled:opacity-60"
                 >
                   <span>{STATUS_LABELS[s]}</span>
-                  {updating === s ? <span className="text-[#667085]">…</span> : <FontAwesomeIcon icon={faArrowRight} className="text-[#667085]" />}
+                  {updating === s ? (
+                    <span className="text-[#667085]">…</span>
+                  ) : (
+                    <FontAwesomeIcon
+                      icon={faArrowRight}
+                      className="text-[#667085]"
+                    />
+                  )}
                 </button>
               ))}
             </div>
@@ -602,7 +797,11 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
       </div>
 
       {notifyOpen && (
-        <NotifyModal lead={lead} onClose={() => setNotifyOpen(false)} onSent={onStatusChange} />
+        <NotifyModal
+          lead={lead}
+          onClose={() => setNotifyOpen(false)}
+          onSent={onStatusChange}
+        />
       )}
     </>
   );
@@ -663,7 +862,16 @@ const ListLeads = () => {
     } finally {
       if (requestId === leadsRequestId.current) setLoading(false);
     }
-  }, [page, pageSize, search, statusFilter, sourceFilter, sourceIdFilter, campaignNameFilter, campaignIdFilter]);
+  }, [
+    page,
+    pageSize,
+    search,
+    statusFilter,
+    sourceFilter,
+    sourceIdFilter,
+    campaignNameFilter,
+    campaignIdFilter,
+  ]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -677,8 +885,12 @@ const ListLeads = () => {
     }
   }, []);
 
-  useEffect(() => { fetchLeads(); }, [fetchLeads]);
-  useEffect(() => { fetchStats(); }, [fetchStats]);
+  useEffect(() => {
+    fetchLeads();
+  }, [fetchLeads]);
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   const handleSearchChange = (e) => {
     setSearchInput(e.target.value);
@@ -706,7 +918,9 @@ const ListLeads = () => {
       const res = await apiClient.get(`/leads/${lead.id}`);
       setDetailLead(res.data);
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to load lead details");
+      toast.error(
+        err?.response?.data?.message || "Failed to load lead details",
+      );
     }
   };
 
@@ -722,10 +936,12 @@ const ListLeads = () => {
       const { inserted, skipped, files: fileResults } = res.data;
       if (fileResults?.length > 1) {
         toast.success(
-          `Imported ${inserted} leads across ${fileResults.length} files (${skipped} skipped as duplicates)`
+          `Imported ${inserted} leads across ${fileResults.length} files (${skipped} skipped as duplicates)`,
         );
       } else {
-        toast.success(`Imported ${inserted} leads (${skipped} skipped as duplicates)`);
+        toast.success(
+          `Imported ${inserted} leads (${skipped} skipped as duplicates)`,
+        );
       }
       fetchLeads();
       fetchStats();
@@ -769,14 +985,40 @@ const ListLeads = () => {
     const rows = leads.data.map((l) => {
       const smsCount = getLeadSmsCount(l);
       return [
-        l.name, l.phone, l.email || "", l.gender || "", l.state || "",
-        l.status, smsCount, l.campaignName || "", l.adName || "", l.createdAt,
+        l.name,
+        l.phone,
+        l.email || "",
+        l.gender || "",
+        l.state || "",
+        l.status,
+        smsCount,
+        l.campaignName || "",
+        l.adName || "",
+        l.createdAt,
       ];
     });
-    const header = ["Name", "Phone", "Email", "Gender", "State", "Status", "SMS Count", "Campaign", "Ad", "Created"];
-    const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const header = [
+      "Name",
+      "Phone",
+      "Email",
+      "Gender",
+      "State",
+      "Status",
+      "SMS Count",
+      "Campaign",
+      "Ad",
+      "Created",
+    ];
+    const csv = [header, ...rows]
+      .map((r) =>
+        r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(","),
+      )
+      .join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    const a = document.createElement("a"); a.href = url; a.download = "leads.csv"; a.click();
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "leads.csv";
+    a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -784,8 +1026,12 @@ const ListLeads = () => {
   const currentPage = Number(leads.meta?.currentPage ?? page);
   const totalItems = Number(leads.meta?.totalItems ?? 0);
   const effectivePageSize = Number(leads.meta?.itemsPerPage ?? pageSize);
-  const firstItem = leads.data.length ? (currentPage - 1) * effectivePageSize + 1 : 0;
-  const lastItem = leads.data.length ? Math.min(firstItem + leads.data.length - 1, totalItems) : 0;
+  const firstItem = leads.data.length
+    ? (currentPage - 1) * effectivePageSize + 1
+    : 0;
+  const lastItem = leads.data.length
+    ? Math.min(firstItem + leads.data.length - 1, totalItems)
+    : 0;
   const currentFilters = {
     search: search.trim(),
     status: statusFilter,
@@ -802,21 +1048,62 @@ const ListLeads = () => {
     campaignIdFilter.trim(),
   ].filter(Boolean).length;
 
-  const statCards = stats ? [
-    { label: "Total Leads",    value: stats.total,          icon: faUsers,       bg: "#ede9fe", color: "#7c3aed" },
-    { label: "New",            value: stats.new,            icon: faUser,        bg: "#dbeafe", color: "#1d4ed8" },
-    { label: "Contacted",      value: stats.contacted,      icon: faPhone,       bg: "#fef3c7", color: "#d97706" },
-    { label: "Qualified",      value: stats.qualified,      icon: faBullseye,    bg: "#fce7f3", color: "#be185d" },
-    { label: "Converted",      value: stats.converted,      icon: faCircleCheck, bg: "#dcf8e4", color: "#008f45" },
-    { label: "Conversion Rate",value: `${stats.conversionRate}%`, icon: faTrophy, bg: "#fef3c7", color: "#b45309", sub: "of all imported leads" },
-  ] : [];
+  const statCards = stats
+    ? [
+        {
+          label: "Total Leads",
+          value: stats.total,
+          icon: faUsers,
+          bg: "#ede9fe",
+          color: "#7c3aed",
+        },
+        {
+          label: "New",
+          value: stats.new,
+          icon: faUser,
+          bg: "#dbeafe",
+          color: "#1d4ed8",
+        },
+        {
+          label: "Contacted",
+          value: stats.contacted,
+          icon: faPhone,
+          bg: "#fef3c7",
+          color: "#d97706",
+        },
+        {
+          label: "Qualified",
+          value: stats.qualified,
+          icon: faBullseye,
+          bg: "#fce7f3",
+          color: "#be185d",
+        },
+        {
+          label: "Converted",
+          value: stats.converted,
+          icon: faCircleCheck,
+          bg: "#dcf8e4",
+          color: "#008f45",
+        },
+        {
+          label: "Conversion Rate",
+          value: `${stats.conversionRate}%`,
+          icon: faTrophy,
+          bg: "#fef3c7",
+          color: "#b45309",
+          sub: "of all imported leads",
+        },
+      ]
+    : [];
 
   return (
     <div className="space-y-5 text-[#101828]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-lg font-semibold">Leads</h1>
-          <p className="mt-1 text-xs font-medium text-[#667085]">Import, manage and convert ad leads into Agrofount customers</p>
+          <p className="mt-1 text-xs font-medium text-[#667085]">
+            Import, manage and convert ad leads into Agrofount customers
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -857,13 +1144,18 @@ const ListLeads = () => {
 
       {statCards.length > 0 && (
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-          {statCards.map((c) => <StatCard key={c.label} {...c} />)}
+          {statCards.map((c) => (
+            <StatCard key={c.label} {...c} />
+          ))}
         </section>
       )}
       {statsLoading && !stats && (
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-xl bg-[#f3f4f6]" />
+            <div
+              key={i}
+              className="h-20 animate-pulse rounded-xl bg-[#f3f4f6]"
+            />
           ))}
         </section>
       )}
@@ -871,11 +1163,21 @@ const ListLeads = () => {
       <section className="rounded-xl border border-[#e5e7eb] bg-white p-4 shadow-[0_4px_16px_rgba(16,24,40,0.04)]">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-1.5">
-            {["all", "new", "contacted", "qualified", "converted", "rejected"].map((s) => (
+            {[
+              "all",
+              "new",
+              "contacted",
+              "qualified",
+              "converted",
+              "rejected",
+            ].map((s) => (
               <button
                 key={s}
                 type="button"
-                onClick={() => { setStatusFilter(s); setPage(1); }}
+                onClick={() => {
+                  setStatusFilter(s);
+                  setPage(1);
+                }}
                 className={`h-7 rounded-full px-3 text-[11px] font-semibold transition ${statusFilter === s ? "bg-[#008f45] text-white" : "border border-[#e5e7eb] text-[#667085] hover:bg-[#f3f4f6]"}`}
               >
                 {s === "all" ? "All" : STATUS_META[s]?.label}
@@ -884,7 +1186,10 @@ const ListLeads = () => {
           </div>
           <div className="flex gap-2">
             <label className="relative">
-              <FontAwesomeIcon icon={faMagnifyingGlass} className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#667085]" />
+              <FontAwesomeIcon
+                icon={faMagnifyingGlass}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#667085]"
+              />
               <input
                 value={searchInput}
                 onChange={handleSearchChange}
@@ -892,7 +1197,11 @@ const ListLeads = () => {
                 className="h-9 w-56 rounded-md border border-[#d0d5dd] bg-white pl-9 pr-3 text-xs outline-none focus:border-[#008f45]"
               />
             </label>
-            <button type="button" onClick={resetFilters} className="inline-flex h-9 items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-xs text-[#667085]">
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3 text-xs text-[#667085]"
+            >
               <FontAwesomeIcon icon={faRotateLeft} />
             </button>
             <button
@@ -909,43 +1218,68 @@ const ListLeads = () => {
         {filtersOpen && (
           <div className="mt-4 grid gap-3 rounded-lg border border-[#e5e7eb] bg-[#fbfcfd] p-3 sm:grid-cols-2 lg:grid-cols-4">
             <label>
-              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[#667085]">Lead Source</span>
+              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[#667085]">
+                Lead Source
+              </span>
               <select
                 value={sourceFilter}
-                onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
+                onChange={(e) => {
+                  setSourceFilter(e.target.value);
+                  setPage(1);
+                }}
                 className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-xs outline-none focus:border-[#008f45]"
               >
                 {LEAD_SOURCE_OPTIONS.map((source) => (
-                  <option key={source.key} value={source.key}>{source.label}</option>
+                  <option key={source.key} value={source.key}>
+                    {source.label}
+                  </option>
                 ))}
               </select>
             </label>
             <label>
-              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[#667085]">Source ID</span>
+              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[#667085]">
+                Source ID
+              </span>
               <div className="relative">
-                <FontAwesomeIcon icon={faHashtag} className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-[#98a2b3]" />
+                <FontAwesomeIcon
+                  icon={faHashtag}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-[#98a2b3]"
+                />
                 <input
                   value={sourceIdFilter}
-                  onChange={(e) => { setSourceIdFilter(e.target.value); setPage(1); }}
+                  onChange={(e) => {
+                    setSourceIdFilter(e.target.value);
+                    setPage(1);
+                  }}
                   placeholder="Meta lead ID"
                   className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white pl-8 pr-3 text-xs outline-none focus:border-[#008f45]"
                 />
               </div>
             </label>
             <label>
-              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[#667085]">Campaign Name</span>
+              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[#667085]">
+                Campaign Name
+              </span>
               <input
                 value={campaignNameFilter}
-                onChange={(e) => { setCampaignNameFilter(e.target.value); setPage(1); }}
+                onChange={(e) => {
+                  setCampaignNameFilter(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Campaign name"
                 className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-xs outline-none focus:border-[#008f45]"
               />
             </label>
             <label>
-              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[#667085]">Campaign ID</span>
+              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[#667085]">
+                Campaign ID
+              </span>
               <input
                 value={campaignIdFilter}
-                onChange={(e) => { setCampaignIdFilter(e.target.value); setPage(1); }}
+                onChange={(e) => {
+                  setCampaignIdFilter(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Exact campaign ID"
                 className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-xs outline-none focus:border-[#008f45]"
               />
@@ -968,11 +1302,16 @@ const ListLeads = () => {
             Rows per page
             <select
               value={pageSize}
-              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(1);
+              }}
               className="h-9 rounded-md border border-[#d0d5dd] bg-white px-3 text-xs outline-none focus:border-[#008f45]"
             >
               {PAGE_SIZE_OPTIONS.map((size) => (
-                <option key={size} value={size}>{size.toLocaleString()}</option>
+                <option key={size} value={size}>
+                  {size.toLocaleString()}
+                </option>
               ))}
             </select>
           </label>
@@ -983,7 +1322,19 @@ const ListLeads = () => {
             <table className="w-full min-w-[1100px] text-left">
               <thead className="border-b border-[#e5e7eb] bg-[#fbfcfd]">
                 <tr>
-                  {["Lead", "Phone", "State", "Gender", "Campaign / Ad", "Status", "SMS Count", "SMS Status", "Last SMS Sent", "Imported", "Actions"].map((h) => (
+                  {[
+                    "Lead",
+                    "Phone",
+                    "State",
+                    "Gender",
+                    "Campaign / Ad",
+                    "Status",
+                    "SMS Count",
+                    "SMS Status",
+                    "Last SMS Sent",
+                    "Imported",
+                    "Actions",
+                  ].map((h) => (
                     <th
                       key={h}
                       className={`whitespace-nowrap px-4 py-3 text-[9px] font-semibold uppercase tracking-wide text-[#667085] ${h === "Actions" ? "sticky right-0 bg-[#fbfcfd] text-right" : ""}`}
@@ -1001,9 +1352,14 @@ const ListLeads = () => {
                     <td colSpan="11">
                       <div className="flex h-52 flex-col items-center justify-center gap-3">
                         <div className="grid h-12 w-12 place-items-center rounded-full bg-[#f3f4f6]">
-                          <FontAwesomeIcon icon={faUsers} className="text-[#98a2b3]" />
+                          <FontAwesomeIcon
+                            icon={faUsers}
+                            className="text-[#98a2b3]"
+                          />
                         </div>
-                        <p className="text-xs text-[#98a2b3]">No leads found. Import a Meta CSV to get started.</p>
+                        <p className="text-xs text-[#98a2b3]">
+                          No leads found. Import a Meta CSV to get started.
+                        </p>
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
@@ -1032,43 +1388,82 @@ const ListLeads = () => {
                               {getInitials(lead.name)}
                             </span>
                             <div className="min-w-0 max-w-[180px]">
-                              <p className="truncate text-xs font-semibold text-[#101828]" title={lead.name}>{lead.name}</p>
-                              <p className="truncate text-[10px] text-[#667085]">{lead.source}</p>
+                              <p
+                                className="truncate text-xs font-semibold text-[#101828]"
+                                title={lead.name}
+                              >
+                                {lead.name}
+                              </p>
+                              <p className="truncate text-[10px] text-[#667085]">
+                                {lead.source}
+                              </p>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-[#475467]">
-                            <FontAwesomeIcon icon={faPhone} className="text-[#008f45]" />
+                            <FontAwesomeIcon
+                              icon={faPhone}
+                              className="text-[#008f45]"
+                            />
                             {lead.phone}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           {lead.state ? (
-                            <span className="flex max-w-[160px] items-center gap-1.5 text-xs text-[#475467]" title={lead.state}>
-                              <FontAwesomeIcon icon={faLocationDot} className="shrink-0 text-[#008f45]" />
+                            <span
+                              className="flex max-w-[160px] items-center gap-1.5 text-xs text-[#475467]"
+                              title={lead.state}
+                            >
+                              <FontAwesomeIcon
+                                icon={faLocationDot}
+                                className="shrink-0 text-[#008f45]"
+                              />
                               <span className="truncate">{lead.state}</span>
                             </span>
-                          ) : <span className="text-xs text-[#98a2b3]">—</span>}
+                          ) : (
+                            <span className="text-xs text-[#98a2b3]">—</span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-[#475467]">
                             <FontAwesomeIcon
-                              icon={String(gender).toLowerCase() === "female" ? faVenus : faMars}
-                              className={String(gender).toLowerCase() === "female" ? "text-[#ef3f7a]" : "text-[#1f7ae0]"}
+                              icon={
+                                String(gender).toLowerCase() === "female"
+                                  ? faVenus
+                                  : faMars
+                              }
+                              className={
+                                String(gender).toLowerCase() === "female"
+                                  ? "text-[#ef3f7a]"
+                                  : "text-[#1f7ae0]"
+                              }
                             />
                             {gender}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           <div className="max-w-[180px]">
-                            <p className="truncate text-xs text-[#344054]" title={lead.campaignName}>{lead.campaignName || "—"}</p>
-                            {lead.adName && <p className="truncate text-[10px] text-[#98a2b3]">{lead.adName}</p>}
+                            <p
+                              className="truncate text-xs text-[#344054]"
+                              title={lead.campaignName}
+                            >
+                              {lead.campaignName || "—"}
+                            </p>
+                            {lead.adName && (
+                              <p className="truncate text-[10px] text-[#98a2b3]">
+                                {lead.adName}
+                              </p>
+                            )}
                             {lead.campaignId && (
                               <button
                                 type="button"
                                 title={`Filter by campaign ID ${lead.campaignId}`}
-                                onClick={() => { setCampaignIdFilter(lead.campaignId); setFiltersOpen(true); setPage(1); }}
+                                onClick={() => {
+                                  setCampaignIdFilter(lead.campaignId);
+                                  setFiltersOpen(true);
+                                  setPage(1);
+                                }}
                                 className="mt-1 block max-w-full truncate text-[10px] text-[#008f45] underline"
                               >
                                 ID: {lead.campaignId}
@@ -1077,33 +1472,53 @@ const ListLeads = () => {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: sm.bg, color: sm.text }}>
+                          <span
+                            className="inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                            style={{ background: sm.bg, color: sm.text }}
+                          >
                             {sm.label}
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex min-w-[3rem] justify-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${smsCount > 0 ? "bg-[#dcf8e4] text-[#008f45]" : "bg-[#f3f4f6] text-[#667085]"}`}>
+                          <span
+                            className={`inline-flex min-w-[3rem] justify-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${smsCount > 0 ? "bg-[#dcf8e4] text-[#008f45]" : "bg-[#f3f4f6] text-[#667085]"}`}
+                          >
                             {smsCount.toLocaleString()}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            title={smsSent ? "Accepted by the SMS provider; delivery is not confirmed." : "No successful SMS send is recorded."}
+                            title={
+                              smsSent
+                                ? "Accepted by the SMS provider; delivery is not confirmed."
+                                : "No successful SMS send is recorded."
+                            }
                             className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${smsSent ? "bg-[#dcf8e4] text-[#008f45]" : "bg-[#f3f4f6] text-[#667085]"}`}
                           >
-                            {smsSent ? "Sent" : smsKnown ? "Not sent" : "Unavailable"}
+                            {smsSent
+                              ? "Sent"
+                              : smsKnown
+                                ? "Not sent"
+                                : "Unavailable"}
                           </span>
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-xs text-[#475467]">
                           <p>{smsDate}</p>
-                          <p className="text-[10px] text-[#667085]">{smsTime}</p>
+                          <p className="text-[10px] text-[#667085]">
+                            {smsTime}
+                          </p>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-start gap-1.5 whitespace-nowrap text-xs text-[#475467]">
-                            <FontAwesomeIcon icon={faCalendarDays} className="mt-0.5 text-[#667085]" />
+                            <FontAwesomeIcon
+                              icon={faCalendarDays}
+                              className="mt-0.5 text-[#667085]"
+                            />
                             <div>
                               <p>{date}</p>
-                              <p className="text-[10px] text-[#667085]">{time}</p>
+                              <p className="text-[10px] text-[#667085]">
+                                {time}
+                              </p>
                             </div>
                           </div>
                         </td>
@@ -1117,18 +1532,34 @@ const ListLeads = () => {
                             </MenuButton>
                             <MenuItems className="absolute right-0 z-20 mt-1 w-48 rounded-md border border-[#e5e7eb] bg-white py-1 shadow-lg focus:outline-none">
                               <MenuItem>
-                                <button type="button" onClick={() => openLeadDetails(lead)} className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]">
-                                  <FontAwesomeIcon icon={faUser} className="text-[#1f7ae0]" />
+                                <button
+                                  type="button"
+                                  onClick={() => openLeadDetails(lead)}
+                                  className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
+                                >
+                                  <FontAwesomeIcon
+                                    icon={faUser}
+                                    className="text-[#1f7ae0]"
+                                  />
                                   View Details
                                 </button>
                               </MenuItem>
                               <MenuItem>
-                                <button type="button" onClick={() => setNotifyTarget(lead)} className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]">
-                                  <FontAwesomeIcon icon={faComment} className="text-[#008f45]" />
+                                <button
+                                  type="button"
+                                  onClick={() => setNotifyTarget(lead)}
+                                  className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
+                                >
+                                  <FontAwesomeIcon
+                                    icon={faComment}
+                                    className="text-[#008f45]"
+                                  />
                                   Send Message
                                 </button>
                               </MenuItem>
-                              {transitions.length > 0 && <div className="my-1 border-t border-[#f3f4f6]" />}
+                              {transitions.length > 0 && (
+                                <div className="my-1 border-t border-[#f3f4f6]" />
+                              )}
                               {transitions.map((s) => (
                                 <MenuItem key={s}>
                                   <button
@@ -1136,14 +1567,29 @@ const ListLeads = () => {
                                     onClick={() => handleStatusChange(lead, s)}
                                     className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
                                   >
-                                    <FontAwesomeIcon icon={s === "rejected" ? faCircleXmark : faArrowRight} className={s === "rejected" ? "text-[#dc2626]" : "text-[#008f45]"} />
+                                    <FontAwesomeIcon
+                                      icon={
+                                        s === "rejected"
+                                          ? faCircleXmark
+                                          : faArrowRight
+                                      }
+                                      className={
+                                        s === "rejected"
+                                          ? "text-[#dc2626]"
+                                          : "text-[#008f45]"
+                                      }
+                                    />
                                     {STATUS_LABELS[s]}
                                   </button>
                                 </MenuItem>
                               ))}
                               <div className="my-1 border-t border-[#f3f4f6]" />
                               <MenuItem>
-                                <button type="button" onClick={() => handleDelete(lead)} className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#dc2626] hover:bg-[#fff5f5]">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(lead)}
+                                  className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#dc2626] hover:bg-[#fff5f5]"
+                                >
                                   <FontAwesomeIcon icon={faCircleXmark} />
                                   Remove Lead
                                 </button>
@@ -1162,7 +1608,9 @@ const ListLeads = () => {
 
         <div className="mt-4 flex flex-col gap-3 px-1 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-[#667085]">
-            {loading ? "Loading leads…" : `Showing ${firstItem} – ${lastItem} of ${totalItems} leads`}
+            {loading
+              ? "Loading leads…"
+              : `Showing ${firstItem} – ${lastItem} of ${totalItems} leads`}
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -1174,9 +1622,15 @@ const ListLeads = () => {
               <FontAwesomeIcon icon={faChevronLeft} />
             </button>
             {(() => {
-              const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+              const start = Math.max(
+                1,
+                Math.min(currentPage - 2, totalPages - 4),
+              );
               const end = Math.min(totalPages, start + 4);
-              return Array.from({ length: end - start + 1 }, (_, i) => start + i).map((p) => (
+              return Array.from(
+                { length: end - start + 1 },
+                (_, i) => start + i,
+              ).map((p) => (
                 <button
                   key={p}
                   type="button"
@@ -1203,14 +1657,21 @@ const ListLeads = () => {
       <LeadDetailDrawer
         lead={detailLead}
         onClose={() => setDetailLead(null)}
-        onStatusChange={() => { fetchLeads(); fetchStats(); setDetailLead(null); }}
+        onStatusChange={() => {
+          fetchLeads();
+          fetchStats();
+          setDetailLead(null);
+        }}
       />
 
       {notifyTarget && (
         <NotifyModal
           lead={notifyTarget}
           onClose={() => setNotifyTarget(null)}
-          onSent={() => { fetchLeads(); fetchStats(); }}
+          onSent={() => {
+            fetchLeads();
+            fetchStats();
+          }}
         />
       )}
 
@@ -1219,7 +1680,10 @@ const ListLeads = () => {
           filters={currentFilters}
           totalItems={totalItems}
           onClose={() => setBulkSmsOpen(false)}
-          onSent={() => { fetchLeads(); fetchStats(); }}
+          onSent={() => {
+            fetchLeads();
+            fetchStats();
+          }}
         />
       )}
     </div>

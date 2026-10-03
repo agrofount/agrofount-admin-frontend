@@ -31,6 +31,8 @@ import { ACTIONS, RESOURCES } from "../../constants/permissions";
 import { VoucherEditor } from "./VoucherEditor";
 import { VoucherBulkGenerateModal } from "./VoucherBulkGenerateModal";
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 250, 500];
+
 const money = (value) =>
   new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -208,6 +210,7 @@ export default function VoucherDashboard() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -224,7 +227,7 @@ export default function VoucherDashboard() {
     setLoading(true);
     setError("");
     const timer = setTimeout(async () => {
-      const params = { page, limit: 20, search: search.trim() || undefined };
+      const params = { page, limit: pageSize, search: search.trim() || undefined };
       const now = new Date();
       // The API only allows $gt/$lt on expiresAt, so the status bound and the
       // date range are merged into at most one lower and one upper bound.
@@ -269,7 +272,7 @@ export default function VoucherDashboard() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [page, search, status, dateFrom, dateTo, revision]);
+  }, [page, pageSize, search, status, dateFrom, dateTo, revision]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -658,9 +661,27 @@ export default function VoucherDashboard() {
 
         {!error && !loading && result.data.length > 0 && (
           <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e4e7ec] px-5 py-4 text-sm text-[#667085]">
-            <p>
-              Showing {(page - 1) * 20 + 1}–{Math.min(page * 20, result.meta.totalItems || 0)} of {result.meta.totalItems || 0} vouchers
-            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2">
+                <span>Rows per page</span>
+                <select
+                  aria-label="Rows per page"
+                  className="h-9 rounded-lg border border-[#d0d5dd] bg-white px-3 text-sm font-medium text-[#344054] outline-none focus:border-[#079447]"
+                  value={pageSize}
+                  onChange={(event) => {
+                    setPageSize(Number(event.target.value));
+                    setPage(1);
+                  }}
+                >
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              </label>
+              <p>
+                Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, result.meta.totalItems || 0)} of {result.meta.totalItems || 0} vouchers
+              </p>
+            </div>
             <nav aria-label="Voucher pagination" className="flex items-center gap-1.5">
               <button
                 type="button"

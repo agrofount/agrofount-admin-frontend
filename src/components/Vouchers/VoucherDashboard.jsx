@@ -80,7 +80,9 @@ const statusOf = (voucher) =>
     : voucher.status;
 
 const customerName = (user) =>
-  [user?.firstname, user?.lastname].filter(Boolean).join(" ") ||
+  [user?.firstname, user?.lastname].map((name) => name?.trim()).filter(Boolean).join(" ") ||
+  user?.username?.trim() ||
+  user?.profile?.businessName?.trim() ||
   "Customer unavailable";
 
 const customerInitial = (user) => {
@@ -286,7 +288,7 @@ export default function VoucherDashboard() {
   }, [revision]);
 
   const visibleIds = useMemo(
-    () => result.data.map((voucher) => voucher.id),
+    () => result.data.filter((voucher) => !voucher.used && !["redeemed", "disabled"].includes(voucher.status)).map((voucher) => voucher.id),
     [result.data]
   );
   const campaigns = useMemo(
@@ -306,19 +308,27 @@ export default function VoucherDashboard() {
 
   const disable = async () => {
     setSaving(true);
-    try {
-      await apiClient.patch(
-        `/voucher/admin/${encodeURIComponent(disableTarget.code)}`,
-        { status: "disabled" }
-      );
-      toast.success("Voucher disabled");
-      setDisableTarget(null);
-      setRevision((value) => value + 1);
-    } catch (err) {
-      toast.error(err.message || "Unable to disable voucher");
-    } finally {
-      setSaving(false);
+    const codes = disableTarget.codes ?? [disableTarget.code];
+    let succeeded = 0;
+    const failed = [];
+    for (const code of codes) {
+      try {
+        await apiClient.patch(`/voucher/admin/${encodeURIComponent(code)}`, { status: "disabled" });
+        succeeded++;
+      } catch {
+        failed.push(code);
+      }
     }
+    setSaving(false);
+    if (succeeded) toast.success(`${succeeded} voucher${succeeded === 1 ? "" : "s"} deactivated`);
+    if (failed.length) {
+      toast.error(`${failed.length} voucher(s) could not be deactivated. You can retry them.`);
+      setDisableTarget({ codes: failed });
+    } else {
+      setDisableTarget(null);
+    }
+    setSelected([]);
+    setRevision((value) => value + 1);
   };
 
   const totalPages = Math.max(1, result.meta.totalPages || 1);
@@ -482,6 +492,13 @@ export default function VoucherDashboard() {
         </div>
       </section>
 
+      {canUpdate && selected.length > 0 && !loading && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[#e4e7ec] bg-white p-4">
+          <span className="text-sm">{selected.length} voucher(s) selected on this page</span>
+          <button type="button" disabled={saving} onClick={() => setDisableTarget({ codes: result.data.filter((v) => selected.includes(v.id) && visibleIds.includes(v.id)).map((v) => v.code) })} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Deactivate selected</button>
+          <button type="button" disabled={saving} onClick={() => setSelected([])} className={buttonClass}>Clear selection</button>
+        </div>
+      )}
       <section className="overflow-hidden rounded-xl border border-[#e4e7ec] bg-white shadow-sm">
         {error ? (
           <div className="px-6 py-14 text-center">
@@ -506,7 +523,8 @@ export default function VoucherDashboard() {
                   <th className="w-14 px-5 py-4">
                     <input
                       type="checkbox"
-                      aria-label="Select all vouchers on this page"
+                      aria-label="Select all eligible vouchers on this page"
+                      disabled={!canUpdate || saving || !visibleIds.length}
                       checked={allVisibleSelected}
                       onChange={(event) =>
                         setSelected(
@@ -540,6 +558,7 @@ export default function VoucherDashboard() {
                         <input
                           type="checkbox"
                           aria-label={`Select voucher ${voucher.code}`}
+                          disabled={!canUpdate || saving || !visibleIds.includes(voucher.id)}
                           checked={selected.includes(voucher.id)}
                           onChange={(event) =>
                             setSelected((values) =>
@@ -718,11 +737,12 @@ export default function VoucherDashboard() {
         <div className="fixed inset-0 flex items-center justify-center overflow-y-auto p-4">
           <DialogPanel className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
             <DialogTitle className="text-lg font-semibold">
-              {disableTarget ? "Disable voucher?" : "Voucher details"}
+              {disableTarget ? "Deactivate selected vouchers?" : "Voucher details"}
             </DialogTitle>
             {disableTarget ? (
               <p className="my-4 text-sm text-[#475467]">
-                {disableTarget.code} will no longer be usable at checkout. You can reactivate it later.
+                {disableTarget.codes ? `${disableTarget.codes.length} selected vouchers` : disableTarget.code} will no longer be usable at checkout. You can reactivate unused vouchers later.
+                {disableTarget.codes && <span className="mt-2 block max-h-40 overflow-y-auto break-all text-xs">{disableTarget.codes.join(", ")}</span>}
               </p>
             ) : (
               detail && (
@@ -764,7 +784,7 @@ export default function VoucherDashboard() {
                   disabled={saving}
                   onClick={disable}
                 >
-                  {saving ? "Disabling…" : "Disable voucher"}
+                  {saving ? "Deactivating…" : "Confirm deactivation"}
                 </button>
               )}
             </div>

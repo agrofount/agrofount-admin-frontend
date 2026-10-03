@@ -35,6 +35,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { apiClient } from "../../lib/apiClient";
 import { TableRowsSkeleton } from "../common/LoadingStates";
+import { getLeadSmsCount, getLeadSmsRecords } from "./leadSmsUtils";
 
 const STATUS_META = {
   new:       { label: "New",       bg: "#dbeafe", text: "#1d4ed8" },
@@ -371,6 +372,7 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
   const gender = lead.gender || "N/A";
   const sm = STATUS_META[lead.status] ?? STATUS_META.new;
   const transitions = STATUS_TRANSITIONS[lead.status] ?? [];
+  const smsRecords = getLeadSmsRecords(lead);
 
   const doTransition = async (status) => {
     try {
@@ -487,6 +489,35 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {smsRecords.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">SMS Details</p>
+              <div className="space-y-2">
+                {smsRecords.slice(0, 5).map((record) => {
+                  const recordDate = record.sentAt ? formatDate(record.sentAt)[0] : "—";
+                  const recordTime = record.sentAt ? formatDate(record.sentAt)[1] : "";
+                  return (
+                    <div key={record.id} className="rounded-lg border border-[#e5e7eb] px-4 py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="inline-flex rounded-full bg-[#dcf8e4] px-2 py-0.5 text-[10px] font-semibold text-[#008f45] uppercase">
+                          {record.channel === "sms" ? "SMS" : "Email"}
+                        </span>
+                        <span className="text-[10px] font-medium text-[#667085]">{String(record.status ?? "sent").replace(/_/g, " ")}</span>
+                      </div>
+                      <p className="mt-2 text-xs text-[#344054]">{record.message || "No message content available"}</p>
+                      {(recordDate !== "—" || record.provider) && (
+                        <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-[#667085]">
+                          <span>{record.provider ? `via ${record.provider}` : "Sent"}</span>
+                          <span>{recordDate} {recordTime}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -735,11 +766,14 @@ const ListLeads = () => {
   };
 
   const exportCSV = () => {
-    const rows = leads.data.map((l) => [
-      l.name, l.phone, l.email || "", l.gender || "", l.state || "",
-      l.status, l.campaignName || "", l.adName || "", l.createdAt,
-    ]);
-    const header = ["Name", "Phone", "Email", "Gender", "State", "Status", "Campaign", "Ad", "Created"];
+    const rows = leads.data.map((l) => {
+      const smsCount = getLeadSmsCount(l);
+      return [
+        l.name, l.phone, l.email || "", l.gender || "", l.state || "",
+        l.status, smsCount, l.campaignName || "", l.adName || "", l.createdAt,
+      ];
+    });
+    const header = ["Name", "Phone", "Email", "Gender", "State", "Status", "SMS Count", "Campaign", "Ad", "Created"];
     const csv = [header, ...rows].map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const a = document.createElement("a"); a.href = url; a.download = "leads.csv"; a.click();
@@ -949,7 +983,7 @@ const ListLeads = () => {
             <table className="w-full min-w-[1100px] text-left">
               <thead className="border-b border-[#e5e7eb] bg-[#fbfcfd]">
                 <tr>
-                  {["Lead", "Phone", "State", "Gender", "Campaign / Ad", "Status", "SMS Status", "Last SMS Sent", "Imported", "Actions"].map((h) => (
+                  {["Lead", "Phone", "State", "Gender", "Campaign / Ad", "Status", "SMS Count", "SMS Status", "Last SMS Sent", "Imported", "Actions"].map((h) => (
                     <th
                       key={h}
                       className={`whitespace-nowrap px-4 py-3 text-[9px] font-semibold uppercase tracking-wide text-[#667085] ${h === "Actions" ? "sticky right-0 bg-[#fbfcfd] text-right" : ""}`}
@@ -961,10 +995,10 @@ const ListLeads = () => {
               </thead>
               <tbody className="divide-y divide-[#eef2f6]">
                 {loading ? (
-                  <TableRowsSkeleton rows={6} columns={10} />
+                  <TableRowsSkeleton rows={6} columns={11} />
                 ) : leads.data.length === 0 ? (
                   <tr>
-                    <td colSpan="10">
+                    <td colSpan="11">
                       <div className="flex h-52 flex-col items-center justify-center gap-3">
                         <div className="grid h-12 w-12 place-items-center rounded-full bg-[#f3f4f6]">
                           <FontAwesomeIcon icon={faUsers} className="text-[#98a2b3]" />
@@ -987,6 +1021,7 @@ const ListLeads = () => {
                     const [smsDate, smsTime] = formatDate(lead.lastSmsSentAt);
                     const smsSent = lead.smsStatus === "sent";
                     const smsKnown = smsSent || lead.smsStatus === "not_sent";
+                    const smsCount = getLeadSmsCount(lead);
                     const gender = lead.gender || "N/A";
                     const transitions = STATUS_TRANSITIONS[lead.status] ?? [];
                     return (
@@ -1044,6 +1079,11 @@ const ListLeads = () => {
                         <td className="px-4 py-3">
                           <span className="inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: sm.bg, color: sm.text }}>
                             {sm.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex min-w-[3rem] justify-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${smsCount > 0 ? "bg-[#dcf8e4] text-[#008f45]" : "bg-[#f3f4f6] text-[#667085]"}`}>
+                            {smsCount.toLocaleString()}
                           </span>
                         </td>
                         <td className="px-4 py-3">

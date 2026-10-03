@@ -50,9 +50,6 @@ const dateRangeOptions = ["Select date range", "Last 7 days", "Last 30 days", "T
 const getDisplayName = (user) =>
   user?.username || user?.fullName || `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Customer";
 
-const getCustomerCode = (user, index) =>
-  user?.code || user?.customerCode || `#CUS-${String(user?.serial || index + 1).padStart(6, "0")}`;
-
 const getInitials = (name) =>
   name
     .split(/[^\w]+/)
@@ -145,7 +142,6 @@ const CustomerDetailDrawer = ({ user, onClose }) => {
             </span>
             <div>
               <p className="text-sm font-semibold text-[#101828]">{name}</p>
-              <p className="mt-0.5 text-[11px] text-[#667085]">{getCustomerCode(user, 0)}</p>
             </div>
             <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold ${user.isVerified ? "bg-[#dcf8e4] text-[#008f45]" : "bg-[#ffe4e6] text-[#ef3340]"}`}>
               <FontAwesomeIcon icon={faShieldHalved} className="text-[10px]" />
@@ -384,7 +380,7 @@ const ListUsers = () => {
 
   const exportCustomers = () => {
     const header = ["Customer", "Email", "Gender", "Phone", "Location", "Verification", "Joined"];
-    const rows = filteredUsers.map((user, index) => [
+    const rows = filteredUsers.map((user) => [
       getDisplayName(user),
       user.email || "N/A",
       user.gender || "N/A",
@@ -392,7 +388,6 @@ const ListUsers = () => {
       getLocation(user),
       user.isVerified ? "Verified" : "Not Verified",
       user.createdAt || "",
-      getCustomerCode(user, index),
     ]);
     const csv = [header, ...rows]
       .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
@@ -567,7 +562,6 @@ const ListUsers = () => {
                             </span>
                             <div>
                               <p className="text-xs font-semibold text-[#101828]">{name}</p>
-                              <p className="mt-0.5 text-[11px] text-[#667085]">{getCustomerCode(user, index)}</p>
                             </div>
                           </div>
                         </td>

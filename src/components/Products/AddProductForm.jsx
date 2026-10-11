@@ -21,6 +21,7 @@ import { IMAGE_MIME_TYPES, validateImageFiles } from "../../lib/uploadValidation
 import { UploadLoadingList } from "../common/LoadingStates";
 
 const brands = [
+  { id: "agrofount", name: "Agrofount" },
   { id: "chikun", name: "Chikun" },
   { id: "ultima", name: "Ultima" },
   { id: "olam", name: "Olam" },

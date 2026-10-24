@@ -151,6 +151,7 @@ const adminRoutes = [
   { path: "/blogs/add", element: <AddBlogPost /> },
   { path: "/blogs/:slug/edit", element: <EditBlogPost /> },
   { path: "/carts", element: <ListCarts /> },
+  { path: "/carts/:userId", element: <ListCarts /> },
   { path: "/suppliers", element: <SuppliersOverview /> },
   { path: "/facility/requests", element: <CreditFacilityRequests /> },
   {

@@ -58,7 +58,8 @@ export const routePermissions = {
   "/cities": { resource: RESOURCES.CITIES, action: ACTIONS.READ },
   "/cities/add": { resource: RESOURCES.CITIES, action: ACTIONS.CREATE },
   "/cities/:cityId/edit": { resource: RESOURCES.CITIES, action: ACTIONS.UPDATE },
-  "/carts": { resource: RESOURCES.CARTS, action: ACTIONS.READ },
+  "/carts": { resource: RESOURCES.CARTS, action: ACTIONS.MANAGE },
+  "/carts/:userId": { resource: RESOURCES.CARTS, action: ACTIONS.MANAGE },
   "/suppliers": { resource: RESOURCES.SUPPLIERS, action: ACTIONS.READ },
   "/facility/requests": {
     resource: RESOURCES.CREDIT_FACILITY,

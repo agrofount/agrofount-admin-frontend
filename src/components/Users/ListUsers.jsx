@@ -37,6 +37,8 @@ import {
 import { ExclamationTriangleIcon } from "@heroicons/react/16/solid";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { ACTIONS, RESOURCES } from "../../constants/permissions";
+import { usePermission } from "../Hooks/usePermission";
 import { toast } from "react-toastify";
 import { assets } from "../../assets/assets";
 import { apiClient } from "../../lib/apiClient";
@@ -115,7 +117,77 @@ const MetricCard = ({ label, value, note, icon, tone = "green", down = false }) 
   );
 };
 
+const orderStatusStyles = {
+  pending: "bg-[#fff4e5] text-[#b54708]",
+  confirmed: "bg-[#e3f6ea] text-[#008f45]",
+  shipped: "bg-[#e7f0ff] text-[#1f7ae0]",
+  delivered: "bg-[#dcf8e4] text-[#008f45]",
+  cancelled: "bg-[#ffe4e6] text-[#ef3340]",
+  returned: "bg-[#eef2f6] text-[#667085]",
+};
+
+const CustomerOrderHistory = ({ userId }) => {
+  const [orders, setOrders] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setError("");
+    try {
+      const response = await apiClient.get("/order/admin/all", {
+        params: { "filter.userId": `$eq:${userId}`, page: 1, limit: 5, sortBy: "createdAt:DESC" },
+      });
+      setOrders(Array.isArray(response.data?.data) ? response.data.data : []);
+      setTotal(Number(response.data?.meta?.totalItems ?? 0));
+    } catch (requestError) {
+      setError(requestError.message || "Could not load order history.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">Order history{total ? ` (${total})` : ""}</p>
+        {total > 0 && <Link to={`/orders?userId=${encodeURIComponent(userId)}`} className="text-[11px] font-semibold text-[#008f45] hover:underline">View all orders</Link>}
+      </div>
+      {isLoading ? (
+        <p role="status" className="text-xs text-[#667085]">Loading orders…</p>
+      ) : error ? (
+        <p role="alert" className="text-xs text-[#ef3340]">{error} <button type="button" onClick={load} className="font-semibold underline">Try again</button></p>
+      ) : orders.length === 0 ? (
+        <p className="rounded-lg border border-[#e5e7eb] px-4 py-3 text-xs text-[#667085]">This customer has no orders yet.</p>
+      ) : (
+        <ul className="divide-y divide-[#f2f4f7] rounded-lg border border-[#e5e7eb]">
+          {orders.map((order) => (
+            <li key={order.id}>
+              <Link to={`/orders/${order.id}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[#f9fafb]">
+                <span className="min-w-0">
+                  <span className="block truncate text-xs font-semibold text-[#101828]">{order.code || order.id}</span>
+                  <span className="block text-[11px] text-[#667085]">{order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-NG", { dateStyle: "medium" }) : "—"}</span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block text-xs font-semibold text-[#101828]">{new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }).format(Number(order.totalPrice || 0))}</span>
+                  <span className={`mt-0.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${orderStatusStyles[order.status] || "bg-[#eef2f6] text-[#667085]"}`}>{order.status || "pending"}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 const CustomerDetailDrawer = ({ user, onClose }) => {
+  const { hasPermission, isAdmin } = usePermission();
+  const canReadOrders = isAdmin || hasPermission(RESOURCES.ORDERS, ACTIONS.READ);
+
   if (!user) return null;
 
   const name = getDisplayName(user);
@@ -200,6 +272,8 @@ const CustomerDetailDrawer = ({ user, onClose }) => {
               </div>
             )}
           </div>
+
+          {user.id && canReadOrders && <CustomerOrderHistory userId={user.id} />}
 
           {user.id && (
             <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">

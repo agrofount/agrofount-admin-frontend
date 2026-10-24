@@ -14,6 +14,7 @@ import {
   faLandmark,
   faListCheck,
   faBell,
+  faCartShopping,
   faNewspaper,
   faPlus,
   faReceipt,
@@ -86,6 +87,7 @@ const SideBar = () => {
         hasPermission(RESOURCES.PRODUCTS, ACTIONS.READ) ||
         hasPermission(RESOURCES.PRODUCT_LOCATIONS, ACTIONS.READ),
       orders: isAdmin || hasPermission(RESOURCES.ORDERS, ACTIONS.READ),
+      carts: isAdmin || hasPermission(RESOURCES.CARTS, ACTIONS.MANAGE),
       users: isAdmin || hasPermission(RESOURCES.USERS, ACTIONS.READ),
       payments: isAdmin || hasPermission(RESOURCES.PAYMENTS, ACTIONS.READ),
       reports: isAdmin || hasPermission(RESOURCES.REPORTS, ACTIONS.READ),
@@ -169,6 +171,7 @@ const SideBar = () => {
               <NavLink to="/" icon={faHouse} label="Dashboard" onClick={closeOnMobile} collapsed={collapsed} />
             )}
             {can.orders && <NavLink to="/orders" icon={faReceipt} label="Orders" onClick={closeOnMobile} collapsed={collapsed} />}
+            {can.carts && <NavLink to="/carts" icon={faCartShopping} label="Carts" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.products && <NavLink to="/list-products" icon={faStore} label="Products" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.products && <NavLink to="/seller-interests" icon={faHandshake} label="Seller Interests" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.users && <NavLink to="/users" icon={faUsers} label="Customers" onClick={closeOnMobile} collapsed={collapsed} />}

@@ -16,7 +16,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { assets } from "../../assets/assets";
 import { ShopContext } from "../../context/ShopContext";
 import { apiClient } from "../../lib/apiClient";
@@ -150,6 +150,8 @@ const getPageNumbers = (currentPage, totalPages) => {
 };
 
 export const ListOrders = () => {
+  const [searchParams] = useSearchParams();
+  const customerId = searchParams.get("userId") || "";
   const [isLoading, setIsLoading] = useState(false);
   const [orders, setOrders] = useState([]);
   const [pageLimit] = useState(10);
@@ -182,6 +184,7 @@ export const ListOrders = () => {
             ? { "filter.status": `$eq:${statusFilter.toLowerCase()}` }
             : {}),
           ...(stateValue ? { state: stateValue } : {}),
+          ...(customerId ? { "filter.userId": `$eq:${customerId}` } : {}),
         },
         paramsSerializer: { indexes: null },
       });
@@ -195,7 +198,7 @@ export const ListOrders = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [orderPage, pageLimit, searchValue, sortBy, sortOrder, statusFilter, stateValue]);
+  }, [orderPage, pageLimit, searchValue, sortBy, sortOrder, statusFilter, stateValue, customerId]);
 
   const handlePageChange = (page) => {
     if (page < 1 || page > Number(meta.totalPages || 1)) return;
@@ -367,6 +370,12 @@ export const ListOrders = () => {
         <div>
           <h1 className="text-lg font-semibold text-[#101828]">Orders</h1>
           <p className="mt-1 text-xs font-medium text-[#667085]">View and manage all customer orders in one place.</p>
+          {customerId && (
+            <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#e3f6ea] px-3 py-1 text-xs font-semibold text-[#008f45]">
+              Showing orders for {(() => { const u = orders[0]?.user; return [u?.firstname, u?.lastname].filter(Boolean).join(" ") || u?.username || "one customer"; })()}
+              <Link to="/orders" className="underline">Clear</Link>
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 text-xs text-[#667085]">

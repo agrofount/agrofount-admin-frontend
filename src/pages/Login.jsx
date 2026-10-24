@@ -339,7 +339,7 @@ const Login = () => {
 
       <div className="relative mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-2xl items-center justify-center">
         <form
-          className="w-full max-w-[470px] rounded-2xl border border-[#edf1ee] bg-white/95 px-6 py-7 shadow-[0_18px_48px_rgba(16,35,63,0.1)] backdrop-blur sm:px-10"
+          className="w-full max-w-[470px] rounded-2xl border border-[#edf1ee] bg-white/95 px-6 pt-4 pb-7 shadow-[0_18px_48px_rgba(16,35,63,0.1)] backdrop-blur sm:px-10"
           onSubmit={handleSubmit}
         >
           <div className="flex flex-col items-center text-center">

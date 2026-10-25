@@ -10,16 +10,21 @@ import {
 } from "@headlessui/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/16/solid";
 import { apiClient } from "../../lib/apiClient";
+import { ACTIONS, RESOURCES } from "../../constants/permissions";
+import { usePermission } from "../Hooks/usePermission";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCopy,
-  faEllipsisVertical,
   faCalendar,
   faClock,
 } from "@fortawesome/free-solid-svg-icons";
 
+// `published` and `isActive` are separate flags: a draft is not published,
+// an inactive post is published but switched off.
 const getPostStatus = (item) => {
-  if (item.status) return item.status.toLowerCase();
+  const status = item.status?.toLowerCase();
+  if (status === "draft" || status === "scheduled") return status;
+  if (item.published === false) return "draft";
   return item.isActive ? "published" : "inactive";
 };
 
@@ -29,6 +34,12 @@ const STATUS_CONFIG = {
     badge: "bg-green-50 text-green-700 border border-green-200",
     statusText: "text-green-700",
     label: "Published",
+  },
+  scheduled: {
+    dot: "bg-blue-500",
+    badge: "bg-blue-50 text-blue-700 border border-blue-200",
+    statusText: "text-blue-700",
+    label: "Scheduled",
   },
   draft: {
     dot: "bg-amber-400",
@@ -46,14 +57,49 @@ const STATUS_CONFIG = {
 
 const BlogPostItemTable = ({ item, setItemDeleted }) => {
   const [open, setOpen] = useState(false);
+  const [post, setPost] = useState(item);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const { hasPermission, isAdmin } = usePermission();
+  const canPublish = isAdmin || hasPermission(RESOURCES.BLOG_POSTS, ACTIONS.PUBLISH);
 
-  const status = getPostStatus(item);
+  const status = getPostStatus(post);
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.inactive;
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(item.id).then(() => {
       toast.success("Post ID copied");
     });
+  };
+
+  const runAction = async (action) => {
+    setSaving(true);
+    try {
+      const response =
+        action === "activate" ? await apiClient.patch(`/posts/${post.slug}/active`, { isActive: true })
+        : action === "deactivate" ? await apiClient.patch(`/posts/${post.slug}/active`, { isActive: false })
+        : action === "publish" ? await apiClient.patch(`/posts/${post.slug}/publish`)
+        : await apiClient.patch(`/posts/${post.slug}/unpublish`);
+      const updated = response.data?.post ?? response.data?.data ?? response.data;
+      if (updated && typeof updated === "object" && "isActive" in updated) setPost((current) => ({ ...current, ...updated, comments: current.comments }));
+      else setPost((current) => ({
+        ...current,
+        ...(action === "activate" ? { isActive: true } : action === "deactivate" ? { isActive: false } : action === "publish" ? { published: true } : { published: false }),
+      }));
+      toast.success(
+        { activate: "Post activated", deactivate: "Post deactivated", publish: "Post published", unpublish: "Post unpublished" }[action],
+      );
+    } catch (error) {
+      toast.error(error.message || "Could not update this post.");
+    } finally {
+      setSaving(false);
+      setPendingAction(null);
+    }
+  };
+
+  const requestAction = (action) => {
+    if (action === "deactivate" || action === "unpublish") setPendingAction(action);
+    else runAction(action);
   };
 
   const handleDelete = async () => {
@@ -159,13 +205,53 @@ const BlogPostItemTable = ({ item, setItemDeleted }) => {
           >
             <img src={assets.delete_icon} alt="Delete" className="w-5 h-5" />
           </button>
-          <button
-            className="text-gray-400 hover:text-gray-600 cursor-pointer"
-            title="More options"
-          >
-            <FontAwesomeIcon icon={faEllipsisVertical} />
-          </button>
+          {canPublish && (
+            <>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={Boolean(post.isActive)}
+                aria-label={post.isActive ? "Deactivate post" : "Activate post"}
+                title={post.isActive ? "Deactivate post" : "Activate post"}
+                disabled={saving}
+                onClick={() => requestAction(post.isActive ? "deactivate" : "activate")}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:cursor-wait disabled:opacity-60 ${post.isActive ? "bg-green-600" : "bg-gray-300"}`}
+              >
+                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${post.isActive ? "translate-x-4" : "translate-x-0.5"}`} />
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => requestAction(post.published === false ? "publish" : "unpublish")}
+                className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-wait disabled:opacity-60"
+              >
+                {post.published === false ? (status === "scheduled" ? "Publish now" : "Publish") : "Unpublish"}
+              </button>
+            </>
+          )}
         </div>
+
+        <Dialog open={pendingAction !== null} onClose={() => !saving && setPendingAction(null)} className="relative z-10">
+          <DialogBackdrop className="fixed inset-0 bg-gray-500/75" />
+          <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <DialogPanel className="w-full max-w-md rounded-lg bg-white p-6 text-left shadow-xl">
+                <DialogTitle as="h3" className="text-base font-semibold text-gray-900">
+                  {pendingAction === "unpublish" ? "Unpublish post" : "Deactivate post"}
+                </DialogTitle>
+                <p className="mt-2 text-sm text-gray-500">
+                  {pendingAction === "unpublish"
+                    ? `"${post.title}" will go back to draft and no longer appear on the public blog.`
+                    : `"${post.title}" will be marked inactive. You can activate it again at any time.`}
+                </p>
+                <div className="mt-5 flex justify-end gap-3">
+                  <button type="button" data-autofocus disabled={saving} onClick={() => setPendingAction(null)} className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset hover:bg-gray-50">Cancel</button>
+                  <button type="button" disabled={saving} onClick={() => runAction(pendingAction)} className="rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:cursor-wait disabled:opacity-60">{saving ? "Saving…" : pendingAction === "unpublish" ? "Unpublish" : "Deactivate"}</button>
+                </div>
+              </DialogPanel>
+            </div>
+          </div>
+        </Dialog>
 
         <Dialog open={open} onClose={setOpen} className="relative z-10">
           <DialogBackdrop

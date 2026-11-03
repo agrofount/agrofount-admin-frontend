@@ -1,6 +1,6 @@
 import SearchBar from "./SearchBar";
 import { assets } from "../assets/assets";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ShopContext } from "../context/ShopContext";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -12,6 +12,7 @@ import {
   faMessage,
 } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "react-toastify";
+import { io } from "socket.io-client";
 import { apiClient } from "../lib/apiClient";
 
 const formatMessageTime = (value) => {
@@ -32,6 +33,39 @@ const isConversationMessage = (message) => {
     type.includes("chat") ||
     type.includes("conversation")
   );
+};
+
+const messageKind = (message) =>
+  isConversationMessage(message) ? "conversation" : "notification";
+
+const MARK_SEEN_DELAY_MS = 3000;
+const MARK_SEEN_MAX_IDS = 500;
+
+// Mounted only while a panel is open (PopoverPanel unmounts on close), so the
+// timer starts on open and is cancelled if the panel closes first.
+const MarkSeenOnOpen = ({ items, kind, onMarkSeenByIds }) => {
+  const itemsRef = useRef(items);
+  const handlerRef = useRef(onMarkSeenByIds);
+  useEffect(() => {
+    itemsRef.current = items;
+    handlerRef.current = onMarkSeenByIds;
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // The message panel can fall back to showing every message, so only
+      // send ids of this panel's own kind.
+      const ids = itemsRef.current
+        .filter((item) => !item.seen && messageKind(item) === kind)
+        .map((item) => item.id)
+        .slice(0, MARK_SEEN_MAX_IDS);
+      // Never send an empty list: the backend would mark every unseen message.
+      if (ids.length) handlerRef.current(ids, kind);
+    }, MARK_SEEN_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [kind]);
+
+  return null;
 };
 
 const NotificationPanel = ({
@@ -101,16 +135,36 @@ const NotificationPanel = ({
 );
 
 function Navbar() {
-  const { user: profileData = {}, logout, toggleSidebar, token, socket } = useContext(ShopContext);
+  const { user: profileData = {}, logout, toggleSidebar, token, web_socket_url } = useContext(ShopContext);
   const [messages, setMessages] = useState([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [unseenCounts, setUnseenCounts] = useState({ notification: 0, conversation: 0 });
   const displayName =
     profileData.username ||
     `${profileData.lastname || ""} ${profileData.firstname || ""}`.trim() ||
     "Administrator";
 
+  const fetchUnseenCount = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const [notification, conversation] = await Promise.all(
+        ["notification", "conversation"].map((kind) =>
+          apiClient.get("/message/unseen/count", { params: { kind } })
+        )
+      );
+      setUnseenCounts({
+        notification: Number(notification.data?.unseen) || 0,
+        conversation: Number(conversation.data?.unseen) || 0,
+      });
+    } catch {
+      // Badge is best-effort; keep the last known count.
+    }
+  }, [token]);
+
   const fetchMessages = useCallback(async () => {
     if (!token) return;
+    fetchUnseenCount();
 
     try {
       setMessagesLoading(true);
@@ -127,15 +181,21 @@ function Navbar() {
     } finally {
       setMessagesLoading(false);
     }
-  }, [token]);
+  }, [fetchUnseenCount, token]);
 
   useEffect(() => {
     fetchMessages();
   }, [fetchMessages]);
 
+  // Notifications live on their own namespace, separate from the shared
+  // socket that carries upload progress.
   useEffect(() => {
-    if (!socket) return undefined;
+    if (!token || !web_socket_url) return undefined;
 
+    const socket = io(`${web_socket_url.replace(/\/$/, "")}/notifications`, {
+      auth: { token },
+      transports: ["websocket"],
+    });
     const refresh = () => fetchMessages();
     socket.on("notification", refresh);
     socket.on("message", refresh);
@@ -143,8 +203,18 @@ function Navbar() {
     return () => {
       socket.off("notification", refresh);
       socket.off("message", refresh);
+      socket.disconnect();
     };
-  }, [fetchMessages, socket]);
+  }, [fetchMessages, token, web_socket_url]);
+
+  // Fallback for a dropped socket: catch up when the admin returns to the tab.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") fetchMessages();
+    };
+    document.addEventListener("visibilitychange", refresh);
+    return () => document.removeEventListener("visibilitychange", refresh);
+  }, [fetchMessages]);
 
   const { notificationItems, messageItems } = useMemo(() => {
     const conversations = messages.filter(isConversationMessage);
@@ -155,8 +225,27 @@ function Navbar() {
     };
   }, [messages]);
 
-  const unreadNotifications = notificationItems.filter((item) => !item.seen).length;
-  const unreadMessages = messageItems.filter((item) => !item.seen).length;
+  // Server-side unseen counts drive the badges (not limited to the 20 loaded
+  // messages).
+  const unreadNotifications = unseenCounts.notification;
+  const unreadMessages = unseenCounts.conversation;
+
+  const markSeenByIds = async (ids, kind) => {
+    try {
+      await apiClient.patch("/message/seen", { ids, kind });
+      const seenIds = new Set(ids);
+      setMessages((current) =>
+        current.map((message) =>
+          seenIds.has(message.id) && messageKind(message) === kind
+            ? { ...message, seen: true }
+            : message
+        )
+      );
+      fetchUnseenCount();
+    } catch {
+      // Background action: stay quiet and leave messages unread for next open.
+    }
+  };
 
   const markSeen = async (item) => {
     if (!item || item.seen) return;
@@ -168,6 +257,7 @@ function Navbar() {
           message.id === item.id ? { ...message, seen: true } : message
         )
       );
+      fetchUnseenCount();
     } catch (error) {
       toast.error(error.message || "Unable to update message.");
     }
@@ -187,6 +277,7 @@ function Navbar() {
           unreadIds.has(message.id) ? { ...message, seen: true } : message
         )
       );
+      fetchUnseenCount();
     } catch (error) {
       toast.error(error.message || "Unable to mark messages as read.");
     }
@@ -223,6 +314,7 @@ function Navbar() {
             )}
           </PopoverButton>
           <PopoverPanel transition anchor="bottom end" className="z-50 mt-2">
+            <MarkSeenOnOpen items={notificationItems} kind="notification" onMarkSeenByIds={markSeenByIds} />
             <NotificationPanel
               title="Notifications"
               emptyText="No notifications yet"
@@ -248,6 +340,7 @@ function Navbar() {
             )}
           </PopoverButton>
           <PopoverPanel transition anchor="bottom end" className="z-50 mt-2">
+            <MarkSeenOnOpen items={messageItems} kind="conversation" onMarkSeenByIds={markSeenByIds} />
             <NotificationPanel
               title="Messages"
               emptyText="No messages yet"

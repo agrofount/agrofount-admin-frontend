@@ -64,6 +64,24 @@ const getInitials = (name) =>
 const getLocation = (user) =>
   user?.state?.name || user?.state || user?.city?.name || user?.city || user?.location || "N/A";
 
+// Customers who signed up with email plus a contact number have no `phone`;
+// `contactPhone` was typed at sign-up and never confirmed by OTP.
+const getDisplayPhone = (user) => {
+  const phone = String(user?.phone ?? "").trim();
+  if (phone) return { number: phone, unverified: false };
+  const contactPhone = String(user?.contactPhone ?? "").trim();
+  return { number: contactPhone, unverified: Boolean(contactPhone) };
+};
+
+const UnverifiedPhoneTag = () => (
+  <span
+    className="rounded-full bg-[#fff4e5] px-2 py-0.5 text-[10px] font-semibold text-[#b54708]"
+    title="Typed at sign-up and not confirmed by OTP"
+  >
+    unverified
+  </span>
+);
+
 const formatPhoneForWhatsApp = (phone) => {
   let digits = phone.replace(/[^\d]/g, "");
   digits = digits.replace(/^0+/, "");
@@ -234,7 +252,10 @@ const CustomerDetailDrawer = ({ user, onClose }) => {
               <FontAwesomeIcon icon={faPhone} className="w-4 shrink-0 text-[#008f45]" />
               <div>
                 <p className="text-[10px] text-[#667085]">Phone</p>
-                <p className="text-xs font-medium text-[#101828]">{user.phone || "N/A"}</p>
+                <p className="flex items-center gap-2 text-xs font-medium text-[#101828]">
+                  {getDisplayPhone(user).number || "N/A"}
+                  {getDisplayPhone(user).unverified && <UnverifiedPhoneTag />}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border border-[#e5e7eb] px-4 py-3">
@@ -458,7 +479,9 @@ const ListUsers = () => {
       getDisplayName(user),
       user.email || "N/A",
       user.gender || "N/A",
-      user.phone || "N/A",
+      getDisplayPhone(user).number
+        ? `${getDisplayPhone(user).number}${getDisplayPhone(user).unverified ? " (unverified)" : ""}`
+        : "N/A",
       getLocation(user),
       user.isVerified ? "Verified" : "Not Verified",
       user.createdAt || "",
@@ -653,10 +676,11 @@ const ListUsers = () => {
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center gap-2 text-xs text-[#475467]">
                             <FontAwesomeIcon icon={faPhone} className="text-[#008f45]" />
-                            {user.phone || "N/A"}
-                            {user.phone && (
+                            {getDisplayPhone(user).number || "N/A"}
+                            {getDisplayPhone(user).unverified && <UnverifiedPhoneTag />}
+                            {getDisplayPhone(user).number && (
                               <a
-                                href={`https://wa.me/${formatPhoneForWhatsApp(user.phone)}`}
+                                href={`https://wa.me/${formatPhoneForWhatsApp(getDisplayPhone(user).number)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 title="Message on WhatsApp"

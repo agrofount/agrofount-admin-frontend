@@ -1,3 +1,9 @@
+import {
+  faEllipsisVertical,
+  faPenToSquare,
+  faTrashCan,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -5,11 +11,30 @@ import {
   DialogBackdrop,
   DialogPanel,
   DialogTitle,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuItems,
 } from "@headlessui/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/16/solid";
 import { toast } from "react-toastify";
-import { assets } from "../../assets/assets";
 import { apiClient } from "../../lib/apiClient";
+
+const ROLE_CHIPS = [
+  "bg-[#ede9fe] text-[#5925dc]",
+  "bg-[#d1f4f0] text-[#0e7466]",
+  "bg-[#dbeafe] text-[#1d4ed8]",
+];
+const AVATAR_COLORS = ["#4f7cc9", "#5b6fd6", "#3f8f8a", "#7a5af8", "#c26a3d"];
+
+const getInitials = (name = "") =>
+  name.slice(0, 2).toUpperCase() || "?";
+
+const avatarColor = (name = "") =>
+  AVATAR_COLORS[
+    [...name].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) %
+      AVATAR_COLORS.length
+  ];
 
 const UserTableItem = ({ user, setItemDeleted }) => {
   const [open, setOpen] = useState(false);
@@ -29,53 +54,110 @@ const UserTableItem = ({ user, setItemDeleted }) => {
   };
 
   return (
-    <tr className="hover:bg-[#F7F7F7]" key={user.id}>
-      <td className="px-2 py-5 whitespace-nowrap text-sm text-gray-500 max-w-[110px] overflow-hidden text-ellipsis">
-        <p className="py-1 truncate">{user.username}</p>
-      </td>
-      <td className="px-2 py-5 whitespace-nowrap text-sm text-gray-500 max-w-[150px] overflow-hidden text-ellipsis">
-        <div className="flex flex-row items-start gap-4">
-          <p className="py-1 truncate">{user.email}</p>
+    <tr className="hover:bg-[#fafafa]" key={user.id}>
+      <td className="px-4 py-3 whitespace-nowrap">
+        <div className="flex items-center gap-3">
+          <span
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
+            style={{ background: avatarColor(user.username) }}
+          >
+            {getInitials(user.username)}
+          </span>
+          <p className="max-w-[140px] truncate text-sm font-medium text-[#101828]">
+            {user.username}
+          </p>
         </div>
       </td>
-
-      <td className="px-2 py-5 whitespace-nowrap text-sm text-gray-500 max-w-[150px] overflow-hidden text-ellipsis">
-        <p className="py-1 truncate">{user.phone}</p>
+      <td className="px-4 py-3 whitespace-nowrap text-sm text-[#475467]">
+        <p className="max-w-[220px] truncate">{user.email}</p>
       </td>
-
-      <td className="px-2 py-5 whitespace-nowrap text-sm text-gray-500">
-        <p className="py-1">{new Date(user.createdAt).toDateString()}</p>
+      <td className="px-4 py-3 whitespace-nowrap text-sm text-[#475467]">
+        {user.phone || "—"}
       </td>
-
-      <td className="px-2 py-5 whitespace-nowrap text-sm text-gray-500 max-w-[200px]">
-        <p className="py-1 flex flex-wrap gap-1">
-          {user.roles?.map((role) => (
-            <span
-              key={role.id}
-              className="bg-gray-500 py-1 px-4 rounded-full text-white mr-2"
-            >
-              {role.name}
+      <td className="px-4 py-3 whitespace-nowrap text-sm text-[#475467]">
+        {new Date(user.createdAt).toDateString()}
+      </td>
+      <td className="px-4 py-3 text-sm">
+        <div className="flex max-w-[260px] flex-wrap gap-1.5">
+          {user.roles?.length ? (
+            user.roles.map((role, i) => (
+              <span
+                key={role.id}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${ROLE_CHIPS[i % ROLE_CHIPS.length]}`}
+              >
+                {role.name}
+              </span>
+            ))
+          ) : (
+            <span className="rounded-full bg-[#f2f4f7] px-3 py-1 text-xs text-[#98a2b3]">
+              —
             </span>
-          ))}
-        </p>
+          )}
+        </div>
       </td>
-      <td className="px-2 py-5 whitespace-nowrap text-sm text-gray-500">
-        <p
-          className={`py-1 ${
-            user.isVerified ? "bg-[#61BF75]" : "bg-[#F96767]"
-          } rounded-full text-white text-sm text-center`}
+      <td className="px-4 py-3 whitespace-nowrap">
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
+            user.isVerified
+              ? "bg-[#d1fadf] text-[#027a48]"
+              : "bg-[#fee4e2] text-[#b42318]"
+          }`}
         >
-          {user.isVerified ? "Active" : "InActive"}
-        </p>
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              user.isVerified ? "bg-[#12b76a]" : "bg-[#f04438]"
+            }`}
+          />
+          {user.isVerified ? "Active" : "Inactive"}
+        </span>
       </td>
-      <td className="px-4 py-5 whitespace-nowrap text-sm text-gray-500">
-        <div className="flex flex-row gap-3 items-center">
-          <Link to={`/admins/${user.id}/edit`}>
-            <img src={assets.edit_icon} alt="" />
+      <td className="px-4 py-3 whitespace-nowrap">
+        <div className="flex flex-row items-center gap-3">
+          <Link
+            to={`/admins/${user.id}/edit`}
+            title="Edit admin"
+            className="text-[#12b76a] hover:text-[#027a48]"
+          >
+            <FontAwesomeIcon icon={faPenToSquare} />
           </Link>
-          <div onClick={() => setOpen(true)} className="cursor-pointer">
-            <img src={assets.delete_icon} alt="" />
-          </div>
+          <button
+            type="button"
+            title="Delete admin"
+            onClick={() => setOpen(true)}
+            className="text-[#f04438] hover:text-[#b42318]"
+          >
+            <FontAwesomeIcon icon={faTrashCan} />
+          </button>
+          <Menu>
+            <MenuButton
+              aria-label="More actions"
+              className="grid h-7 w-7 place-items-center rounded-md text-[#667085] hover:bg-[#f2f4f7]"
+            >
+              <FontAwesomeIcon icon={faEllipsisVertical} />
+            </MenuButton>
+            <MenuItems
+              anchor="bottom end"
+              className="z-20 w-40 rounded-lg border border-[#e5e7eb] bg-white py-1 text-sm shadow-lg"
+            >
+              <MenuItem>
+                <Link
+                  to={`/admins/${user.id}/edit`}
+                  className="block px-4 py-2 text-[#344054] data-[focus]:bg-[#f2f4f7]"
+                >
+                  Edit admin
+                </Link>
+              </MenuItem>
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={() => setOpen(true)}
+                  className="block w-full px-4 py-2 text-left text-[#b42318] data-[focus]:bg-[#fef3f2]"
+                >
+                  Delete admin
+                </button>
+              </MenuItem>
+            </MenuItems>
+          </Menu>
 
           <Dialog open={open} onClose={setOpen} className="relative z-10">
             <DialogBackdrop
@@ -102,13 +184,13 @@ const UserTableItem = ({ user, setItemDeleted }) => {
                           as="h3"
                           className="text-base font-semibold text-gray-900"
                         >
-                          Delete Country
+                          Delete Admin
                         </DialogTitle>
                         <div className="mt-2">
                           <p className="text-sm text-gray-500">
-                            Are you sure you want to delete your {user.username}
-                            ? product location data will be permanently removed.
-                            This action cannot be undone.
+                            Are you sure you want to delete {user.username}? This
+                            admin will lose access and the account will be
+                            permanently removed. This action cannot be undone.
                           </p>
                         </div>
                       </div>

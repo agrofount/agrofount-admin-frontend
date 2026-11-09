@@ -10,6 +10,7 @@ import { Switch } from "@headlessui/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { apiClient } from "../../lib/apiClient";
+import AdminAccessPanel from "./AdminAccessPanel";
 
 // Matches the backend InviteAdminDto minimum.
 const MIN_PASSWORD_LENGTH = 12;
@@ -463,6 +464,9 @@ const AdminForm = () => {
           </button>
         </div>
       </div>
+      {adminId && (
+        <AdminAccessPanel admin={adminData} onChanged={fetchAdminData} />
+      )}
     </form>
   );
 };

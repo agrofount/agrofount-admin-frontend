@@ -19,6 +19,7 @@ import {
 import { ExclamationTriangleIcon } from "@heroicons/react/16/solid";
 import { toast } from "react-toastify";
 import { apiClient } from "../../lib/apiClient";
+import { ADMIN_STATUS_META, getAdminStatus } from "./adminStatus";
 
 const ROLE_CHIPS = [
   "bg-[#ede9fe] text-[#5925dc]",
@@ -43,6 +44,7 @@ const UserTableItem = ({
   canDelete = false,
 }) => {
   const [open, setOpen] = useState(false);
+  const statusMeta = ADMIN_STATUS_META[getAdminStatus(user)];
 
   const handleDelete = async () => {
     try {
@@ -102,18 +104,10 @@ const UserTableItem = ({
       </td>
       <td className="px-4 py-3 whitespace-nowrap">
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
-            user.isVerified
-              ? "bg-[#d1fadf] text-[#027a48]"
-              : "bg-[#fee4e2] text-[#b42318]"
-          }`}
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${statusMeta.pill}`}
         >
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              user.isVerified ? "bg-[#12b76a]" : "bg-[#f04438]"
-            }`}
-          />
-          {user.isVerified ? "Active" : "Inactive"}
+          <span className={`h-1.5 w-1.5 rounded-full ${statusMeta.dot}`} />
+          {statusMeta.label}
         </span>
       </td>
       {(canUpdate || canDelete) && (

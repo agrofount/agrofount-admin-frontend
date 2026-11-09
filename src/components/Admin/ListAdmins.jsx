@@ -19,6 +19,7 @@ import { apiClient } from "../../lib/apiClient";
 import { usePermission } from "../Hooks/usePermission";
 import TableSkeleton from "../skeleton/TableSkeleton";
 import AdminItemTable from "./AdminItemTable";
+import { getAdminStatus } from "./adminStatus";
 
 const PAGE_SIZE = 10;
 // Admin accounts are few, so load them in one request and filter locally.
@@ -95,7 +96,7 @@ const ListAdmins = () => {
 
   const all = useMemo(() => admins.data || [], [admins.data]);
   const totalAdmins = admins.meta?.totalItems ?? all.length;
-  const activeCount = all.filter((a) => a.isVerified).length;
+  const activeCount = all.filter((a) => getAdminStatus(a) === "active").length;
   const inactiveCount = all.length - activeCount;
   const lastLogin = useMemo(() => {
     const times = all
@@ -115,8 +116,8 @@ const ListAdmins = () => {
   const filtered = useMemo(() => {
     const q = searchValue.trim().toLowerCase();
     return all.filter((a) => {
-      if (statusFilter === "active" && !a.isVerified) return false;
-      if (statusFilter === "inactive" && a.isVerified) return false;
+      if (statusFilter !== "all" && getAdminStatus(a) !== statusFilter)
+        return false;
       if (roleFilter !== "all" && !a.roles?.some((r) => r.name === roleFilter))
         return false;
       if (!q) return true;
@@ -256,7 +257,8 @@ const ListAdmins = () => {
           >
             <option value="all">All Statuses</option>
             <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="deactivated">Deactivated</option>
+            <option value="unverified">Unverified</option>
           </select>
           <select
             value={roleFilter}

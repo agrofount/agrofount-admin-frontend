@@ -39,6 +39,18 @@ const formatExpiry = (seconds, active) => {
   return `${Math.max(1, minutes)}m`;
 };
 
+// Backend has not shipped these fields yet; read likely names and show "-" when absent.
+const formatCartDate = (entry) => {
+  const raw = entry?.updatedAt ?? entry?.createdAt ?? entry?.date;
+  const time = raw ? new Date(raw).getTime() : NaN;
+  return Number.isNaN(time) ? "-" : new Date(time).toLocaleDateString("en-NG", { dateStyle: "medium" });
+};
+
+const formatLocation = (user) => {
+  const place = (value) => (typeof value === "string" ? value : value?.name);
+  return [place(user?.city), place(user?.state)].filter(Boolean).join(", ") || "-";
+};
+
 // Cart items come keyed by productLocationId, then by unit of measure.
 const flattenCartItems = (items) =>
   Object.entries(items && typeof items === "object" && !Array.isArray(items) ? items : {}).flatMap(([productLocationId, units]) =>
@@ -510,8 +522,8 @@ const ListCarts = () => {
           <div className="px-5 py-14 text-center"><FontAwesomeIcon icon={faShoppingCart} className="text-2xl text-[#98a2b3]" /><p className="mt-3 text-sm font-medium text-[#475467]">{search ? "No matching carts" : "No carts found"}</p><p className="mt-1 text-xs text-[#98a2b3]">{search ? "Try another customer name or contact detail." : "Customer carts will appear here when available."}</p></div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] border-separate border-spacing-y-2 text-left">
-              <thead><tr className="bg-[#f2f4f7]">{["Customer", "Contact", "Status", "Items", "Expiry", "Actions"].map((heading, index, all) => <th key={heading} className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-[#475467] ${index === 0 ? "rounded-l-xl" : ""} ${index === all.length - 1 ? "rounded-r-xl" : ""}`}>{heading}</th>)}</tr></thead>
+            <table className="w-full min-w-[1100px] border-separate border-spacing-y-2 text-left">
+              <thead><tr className="bg-[#f2f4f7]">{["Customer", "Contact", "Date", "User Location", "Status", "Items", "Expiry", "Actions"].map((heading, index, all) => <th key={heading} className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-[#475467] ${index === 0 ? "rounded-l-xl" : ""} ${index === all.length - 1 ? "rounded-r-xl" : ""}`}>{heading}</th>)}</tr></thead>
               <tbody>
                 {filteredCarts.map((entry, index) => {
                   const customer = entry.user || {};
@@ -529,6 +541,8 @@ const ListCarts = () => {
                       <div className="flex items-center gap-2"><FontAwesomeIcon icon={faEnvelope} className="w-4 text-[#667085]" />{customer.email || "—"}</div>
                       <div className="mt-1.5 flex items-center gap-2"><FontAwesomeIcon icon={faPhone} className="w-4 text-[#667085]" />{customer.phone || "—"}</div>
                     </td>
+                    <td className={`${cell} text-[13px] text-[#475467]`}>{formatCartDate(entry)}</td>
+                    <td className={`${cell} text-[13px] text-[#475467]`}>{formatLocation(customer)}</td>
                     <td className={cell}><StatusBadge active={Boolean(entry.active)} /></td>
                     <td className={`${cell} text-[13px] font-semibold text-[#101828]`}><span className="inline-flex items-center gap-2"><FontAwesomeIcon icon={faCube} className="text-[#667085]" />{Number(entry.itemCount ?? 0).toLocaleString("en-NG")}</span></td>
                     <td className={`${cell} text-[13px] font-semibold text-[#101828]`}><span className="inline-flex items-center gap-2"><FontAwesomeIcon icon={faClock} className="text-[#667085]" />{formatExpiry(entry.expiresInSeconds, entry.active)}</span></td>

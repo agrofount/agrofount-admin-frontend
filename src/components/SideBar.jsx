@@ -23,6 +23,7 @@ import {
   faStore,
   faTruckFast,
   faUserPlus,
+  faUserShield,
   faUsers,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
@@ -114,6 +115,7 @@ const SideBar = () => {
         isAdmin ||
         hasPermission(RESOURCES.USERS, ACTIONS.READ) ||
         hasPermission(RESOURCES.ROLES, ACTIONS.READ),
+      admins: isAdmin || hasPermission(RESOURCES.ADMINS, ACTIONS.READ),
     }),
     [hasPermission, isAdmin]
   );
@@ -214,6 +216,7 @@ const SideBar = () => {
 
           <Section title="Settings" collapsed={collapsed}>
             {can.roles && <NavLink to="/roles" icon={faUsers} label="Users & Roles" onClick={closeOnMobile} collapsed={collapsed} />}
+            {can.admins && <NavLink to="/admins" icon={faUserShield} label="Admins" onClick={closeOnMobile} collapsed={collapsed} />}
             <NavLink to="/settings" icon={faGear} label="Settings" onClick={closeOnMobile} collapsed={collapsed} />
             <NavLink to="/help-center" icon={faCircleQuestion} label="Help Center" onClick={closeOnMobile} collapsed={collapsed} />
           </Section>

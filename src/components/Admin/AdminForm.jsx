@@ -11,6 +11,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { apiClient } from "../../lib/apiClient";
 
+// Matches the backend InviteAdminDto minimum.
+const MIN_PASSWORD_LENGTH = 12;
+
 const AdminForm = () => {
   const [firstname, setFirstName] = useState("");
   const [lastname, setLastName] = useState("");
@@ -97,6 +100,19 @@ const AdminForm = () => {
       return;
     }
 
+    if (!adminId) {
+      if (password.length < MIN_PASSWORD_LENGTH) {
+        toast.error(
+          `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+        );
+        return;
+      }
+      if (password !== confirmPassword) {
+        toast.error("Passwords do not match");
+        return;
+      }
+    }
+
     const activeRoles = selectedRoles
       .filter((role) => role.isActive)
       .map((role) => role.id);
@@ -108,7 +124,7 @@ const AdminForm = () => {
       email,
       phone,
       roleIds: activeRoles,
-      ...(adminId ? {} : { password }),
+      ...(adminId ? {} : { password, confirmPassword }),
     };
 
     // console.log("this is the admin payload: ", payload);
@@ -318,7 +334,8 @@ const AdminForm = () => {
                     <input
                       type={showPassword ? "text" : "password"}
                       className="border rounded-lg px-3 py-3 mb-5 text-sm w-full outline-none border-gray-500"
-                      placeholder="Password"
+                      placeholder="Password (min. 12 characters)"
+                      minLength={MIN_PASSWORD_LENGTH}
                       onChange={handlePasswordChange}
                       value={
                         password !== undefined ? password : adminData.password

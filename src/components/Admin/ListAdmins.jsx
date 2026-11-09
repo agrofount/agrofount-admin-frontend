@@ -14,7 +14,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ShopContext } from "../../context/ShopContext";
+import { ACTIONS, RESOURCES } from "../../constants/permissions";
 import { apiClient } from "../../lib/apiClient";
+import { usePermission } from "../Hooks/usePermission";
 import TableSkeleton from "../skeleton/TableSkeleton";
 import AdminItemTable from "./AdminItemTable";
 
@@ -63,6 +65,10 @@ const ListAdmins = () => {
   const [itemDeleted, setItemDeleted] = useState(false);
 
   const { token, navigate } = useContext(ShopContext);
+  const { hasPermission } = usePermission();
+  const canCreate = hasPermission(RESOURCES.ADMINS, ACTIONS.CREATE);
+  const canUpdate = hasPermission(RESOURCES.ADMINS, ACTIONS.UPDATE);
+  const canDelete = hasPermission(RESOURCES.ADMINS, ACTIONS.DELETE);
 
   const fetchAdmins = useCallback(async () => {
     try {
@@ -155,6 +161,8 @@ const ListAdmins = () => {
             user={user}
             key={user.id}
             setItemDeleted={setItemDeleted}
+            canUpdate={canUpdate}
+            canDelete={canDelete}
           />
         ))}
       </tbody>
@@ -180,13 +188,15 @@ const ListAdmins = () => {
             </p>
           </div>
         </div>
-        <Link
-          to="/admins/add"
-          className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#008f45] px-5 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(0,143,69,0.25)] hover:bg-[#007a3a]"
-        >
-          <FontAwesomeIcon icon={faPlus} />
-          Add New Admin
-        </Link>
+        {canCreate && (
+          <Link
+            to="/admins/add"
+            className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#008f45] px-5 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(0,143,69,0.25)] hover:bg-[#007a3a]"
+          >
+            <FontAwesomeIcon icon={faPlus} />
+            Add New Admin
+          </Link>
+        )}
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -284,7 +294,7 @@ const ListAdmins = () => {
                 <th className={th}>Created At</th>
                 <th className={th}>Roles</th>
                 <th className={th}>Status</th>
-                <th className={th}>Action</th>
+                {(canUpdate || canDelete) && <th className={th}>Action</th>}
               </tr>
             </thead>
             {tableContent}

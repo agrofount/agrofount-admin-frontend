@@ -28,7 +28,7 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useContext, useMemo, useState } from "react";
+import { Children, useContext, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { assets } from "../assets/assets";
 import { ACTIONS, RESOURCES } from "../constants/permissions";
@@ -66,14 +66,18 @@ const NavLink = ({ to, icon, label, badge, end = false, onClick, collapsed = fal
   );
 };
 
-const Section = ({ title, children, collapsed = false }) => (
+const Section = ({ title, children, collapsed = false }) => {
+  // Hide the whole group (heading included) when none of its items are visible.
+  if (Children.toArray(children).length === 0) return null;
+  return (
   <div className={collapsed ? "mt-3" : "mt-4"}>
     <p className={`mb-2 px-3 text-[10px] font-semibold uppercase tracking-wide text-white/75 ${collapsed ? "sr-only" : ""}`}>
       {title}
     </p>
     <div className="space-y-1">{children}</div>
   </div>
-);
+  );
+};
 
 const SideBar = () => {
   const { sidebarVisible, closeSidebar } = useContext(ShopContext);
@@ -83,10 +87,9 @@ const SideBar = () => {
   const can = useMemo(
     () => ({
       dashboard: isAdmin || hasPermission(RESOURCES.DASHBOARD, ACTIONS.READ),
-      products:
-        isAdmin ||
-        hasPermission(RESOURCES.PRODUCTS, ACTIONS.READ) ||
-        hasPermission(RESOURCES.PRODUCT_LOCATIONS, ACTIONS.READ),
+      products: isAdmin || hasPermission(RESOURCES.PRODUCTS, ACTIONS.READ),
+      sellerInterests:
+        isAdmin || hasPermission(RESOURCES.PRODUCT_LOCATIONS, ACTIONS.READ),
       orders: isAdmin || hasPermission(RESOURCES.ORDERS, ACTIONS.READ),
       carts: isAdmin || hasPermission(RESOURCES.CARTS, ACTIONS.MANAGE),
       users: isAdmin || hasPermission(RESOURCES.USERS, ACTIONS.READ),
@@ -100,21 +103,17 @@ const SideBar = () => {
         isAdmin ||
         hasPermission(RESOURCES.CREDIT_FACILITY, ACTIONS.READ) ||
         hasPermission(RESOURCES.CREDIT_FACILITY, ACTIONS.MANAGE),
-      supply:
-        isAdmin ||
-        hasPermission(RESOURCES.SUPPLY_CHAIN, ACTIONS.READ) ||
-        hasPermission(RESOURCES.DRIVERS, ACTIONS.READ),
+      drivers: isAdmin || hasPermission(RESOURCES.DRIVERS, ACTIONS.READ),
+      shipments: isAdmin || hasPermission(RESOURCES.SHIPMENTS, ACTIONS.READ),
       leads: isAdmin || hasPermission(RESOURCES.LEADS, ACTIONS.READ),
       careers: isAdmin || hasPermission(RESOURCES.CAREERS, ACTIONS.READ),
-      aiAnalytics:
-        isAdmin ||
-        hasPermission(RESOURCES.ANALYTICS, ACTIONS.READ) ||
-        hasPermission(RESOURCES.AI_CHAT, ACTIONS.READ),
+      createJob: isAdmin || hasPermission(RESOURCES.CAREERS, ACTIONS.CREATE),
+      aiAnalytics: isAdmin || hasPermission(RESOURCES.ANALYTICS, ACTIONS.READ),
       blog: isAdmin || hasPermission(RESOURCES.BLOG_POSTS, ACTIONS.READ),
-      roles:
-        isAdmin ||
-        hasPermission(RESOURCES.USERS, ACTIONS.READ) ||
-        hasPermission(RESOURCES.ROLES, ACTIONS.READ),
+      notifications:
+        isAdmin || hasPermission(RESOURCES.NOTIFICATIONS, ACTIONS.READ),
+      settings: isAdmin || hasPermission(RESOURCES.SETTINGS, ACTIONS.READ),
+      roles: isAdmin || hasPermission(RESOURCES.ROLES, ACTIONS.READ),
       admins: isAdmin || hasPermission(RESOURCES.ADMINS, ACTIONS.READ),
     }),
     [hasPermission, isAdmin]
@@ -175,7 +174,7 @@ const SideBar = () => {
             {can.orders && <NavLink to="/orders" icon={faReceipt} label="Orders" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.carts && <NavLink to="/carts" icon={faCartShopping} label="Carts" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.products && <NavLink to="/list-products" icon={faStore} label="Products" onClick={closeOnMobile} collapsed={collapsed} />}
-            {can.products && <NavLink to="/seller-interests" icon={faHandshake} label="Seller Interests" onClick={closeOnMobile} collapsed={collapsed} />}
+            {can.sellerInterests && <NavLink to="/seller-interests" icon={faHandshake} label="Seller Interests" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.users && <NavLink to="/users" icon={faUsers} label="Customers" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.leads && <NavLink to="/leads" icon={faUserPlus} label="Leads" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.payments && <NavLink to="/payments" icon={faBriefcase} label="Payments" onClick={closeOnMobile} collapsed={collapsed} />}
@@ -184,20 +183,22 @@ const SideBar = () => {
             {can.reports && <NavLink to="/reports" icon={faChartSimple} label="Reports" onClick={closeOnMobile} collapsed={collapsed} />}
           </Section>
 
+          {(can.reports || can.aiAnalytics) && (
           <Section title="Reports" collapsed={collapsed}>
-            <NavLink to="/sales-reports" icon={faChartLine} label="Sales Reports" onClick={closeOnMobile} collapsed={collapsed} />
-            <NavLink to="/customer-reports" icon={faUsers} label="Customer Reports" onClick={closeOnMobile} collapsed={collapsed} />
-            <NavLink to="/inventory-reports" icon={faBox} label="Inventory Reports" onClick={closeOnMobile} collapsed={collapsed} />
-            <NavLink to="/career-reports" icon={faBriefcase} label="Career Reports" onClick={closeOnMobile} collapsed={collapsed} />
+            {can.reports && <NavLink to="/sales-reports" icon={faChartLine} label="Sales Reports" onClick={closeOnMobile} collapsed={collapsed} />}
+            {can.reports && <NavLink to="/customer-reports" icon={faUsers} label="Customer Reports" onClick={closeOnMobile} collapsed={collapsed} />}
+            {can.reports && <NavLink to="/inventory-reports" icon={faBox} label="Inventory Reports" onClick={closeOnMobile} collapsed={collapsed} />}
+            {can.reports && <NavLink to="/career-reports" icon={faBriefcase} label="Career Reports" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.aiAnalytics && <NavLink to="/ayo-ai" icon={faRobot} label="Ayo AI Analytics" badge="New" end onClick={closeOnMobile} collapsed={collapsed} />}
             {can.aiAnalytics && <NavLink to="/ayo-ai/knowledge" icon={faBookOpen} label="Ayo Knowledge Base" badge="New" onClick={closeOnMobile} collapsed={collapsed} />}
           </Section>
+          )}
 
           <Section title="Inventory & Operations" collapsed={collapsed}>
             {can.logisticsPricing && <NavLink to="/logistics-pricing" icon={faTruckFast} label="Delivery Pricing" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.suppliers && <NavLink to="/suppliers" icon={faBriefcase} label="Suppliers" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.creditFacility && <NavLink to="/facility/requests" icon={faLandmark} label="Credit Facility" onClick={closeOnMobile} collapsed={collapsed} />}
-            {can.supply && <NavLink to="/supply-chain/drivers" icon={faTruckFast} label="Supply Chain" onClick={closeOnMobile} collapsed={collapsed} />}
+            {(can.drivers || can.shipments) && <NavLink to={can.drivers ? "/supply-chain/drivers" : "/supply-chain/shipments"} icon={faTruckFast} label="Supply Chain" onClick={closeOnMobile} collapsed={collapsed} />}
           </Section>
 
           {can.careers && (
@@ -205,19 +206,19 @@ const SideBar = () => {
               <NavLink to="/careers" icon={faBriefcase} label="Careers Overview" badge="New" end onClick={closeOnMobile} collapsed={collapsed} />
               <NavLink to="/careers/jobs" icon={faListCheck} label="Job Openings" onClick={closeOnMobile} collapsed={collapsed} />
               <NavLink to="/careers/applications" icon={faUsers} label="Applications" onClick={closeOnMobile} collapsed={collapsed} />
-              <NavLink to="/careers/create" icon={faPlus} label="Create Job" onClick={closeOnMobile} collapsed={collapsed} />
+              {can.createJob && <NavLink to="/careers/create" icon={faPlus} label="Create Job" onClick={closeOnMobile} collapsed={collapsed} />}
             </Section>
           )}
 
           <Section title="Content" collapsed={collapsed}>
             {can.blog && <NavLink to="/blogs" icon={faNewspaper} label="Blog" onClick={closeOnMobile} collapsed={collapsed} />}
-            <NavLink to="/notifications" icon={faBell} label="Notifications" onClick={closeOnMobile} collapsed={collapsed} />
+            {can.notifications && <NavLink to="/notifications" icon={faBell} label="Notifications" onClick={closeOnMobile} collapsed={collapsed} />}
           </Section>
 
           <Section title="Settings" collapsed={collapsed}>
             {can.roles && <NavLink to="/roles" icon={faUsers} label="Users & Roles" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.admins && <NavLink to="/admins" icon={faUserShield} label="Admins" onClick={closeOnMobile} collapsed={collapsed} />}
-            <NavLink to="/settings" icon={faGear} label="Settings" onClick={closeOnMobile} collapsed={collapsed} />
+            {can.settings && <NavLink to="/settings" icon={faGear} label="Settings" onClick={closeOnMobile} collapsed={collapsed} />}
             <NavLink to="/help-center" icon={faCircleQuestion} label="Help Center" onClick={closeOnMobile} collapsed={collapsed} />
           </Section>
         </nav>

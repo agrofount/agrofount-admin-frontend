@@ -36,7 +36,12 @@ const avatarColor = (name = "") =>
       AVATAR_COLORS.length
   ];
 
-const UserTableItem = ({ user, setItemDeleted }) => {
+const UserTableItem = ({
+  user,
+  setItemDeleted,
+  canUpdate = false,
+  canDelete = false,
+}) => {
   const [open, setOpen] = useState(false);
 
   const handleDelete = async () => {
@@ -111,23 +116,28 @@ const UserTableItem = ({ user, setItemDeleted }) => {
           {user.isVerified ? "Active" : "Inactive"}
         </span>
       </td>
+      {(canUpdate || canDelete) && (
       <td className="px-4 py-3 whitespace-nowrap">
         <div className="flex flex-row items-center gap-3">
-          <Link
-            to={`/admins/${user.id}/edit`}
-            title="Edit admin"
-            className="text-[#12b76a] hover:text-[#027a48]"
-          >
-            <FontAwesomeIcon icon={faPenToSquare} />
-          </Link>
-          <button
-            type="button"
-            title="Delete admin"
-            onClick={() => setOpen(true)}
-            className="text-[#f04438] hover:text-[#b42318]"
-          >
-            <FontAwesomeIcon icon={faTrashCan} />
-          </button>
+          {canUpdate && (
+            <Link
+              to={`/admins/${user.id}/edit`}
+              title="Edit admin"
+              className="text-[#12b76a] hover:text-[#027a48]"
+            >
+              <FontAwesomeIcon icon={faPenToSquare} />
+            </Link>
+          )}
+          {canDelete && (
+            <button
+              type="button"
+              title="Delete admin"
+              onClick={() => setOpen(true)}
+              className="text-[#f04438] hover:text-[#b42318]"
+            >
+              <FontAwesomeIcon icon={faTrashCan} />
+            </button>
+          )}
           <Menu>
             <MenuButton
               aria-label="More actions"
@@ -139,23 +149,27 @@ const UserTableItem = ({ user, setItemDeleted }) => {
               anchor="bottom end"
               className="z-20 w-40 rounded-lg border border-[#e5e7eb] bg-white py-1 text-sm shadow-lg"
             >
-              <MenuItem>
-                <Link
-                  to={`/admins/${user.id}/edit`}
-                  className="block px-4 py-2 text-[#344054] data-[focus]:bg-[#f2f4f7]"
-                >
-                  Edit admin
-                </Link>
-              </MenuItem>
-              <MenuItem>
-                <button
-                  type="button"
-                  onClick={() => setOpen(true)}
-                  className="block w-full px-4 py-2 text-left text-[#b42318] data-[focus]:bg-[#fef3f2]"
-                >
-                  Delete admin
-                </button>
-              </MenuItem>
+              {canUpdate && (
+                <MenuItem>
+                  <Link
+                    to={`/admins/${user.id}/edit`}
+                    className="block px-4 py-2 text-[#344054] data-[focus]:bg-[#f2f4f7]"
+                  >
+                    Edit admin
+                  </Link>
+                </MenuItem>
+              )}
+              {canDelete && (
+                <MenuItem>
+                  <button
+                    type="button"
+                    onClick={() => setOpen(true)}
+                    className="block w-full px-4 py-2 text-left text-[#b42318] data-[focus]:bg-[#fef3f2]"
+                  >
+                    Delete admin
+                  </button>
+                </MenuItem>
+              )}
             </MenuItems>
           </Menu>
 
@@ -219,6 +233,7 @@ const UserTableItem = ({ user, setItemDeleted }) => {
           </Dialog>
         </div>
       </td>
+      )}
     </tr>
   );
 };

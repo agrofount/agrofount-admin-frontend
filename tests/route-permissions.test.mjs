@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 // Routes that every signed-in admin may open.
-const OPEN_ROUTES = new Set(["/help-center"]);
+const OPEN_ROUTES = new Set(["/", "/help-center"]);
 
 test("every admin route has a permission rule or is explicitly open", () => {
   const app = readFileSync("src/App.jsx", "utf8");

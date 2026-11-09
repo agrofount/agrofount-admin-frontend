@@ -4,7 +4,6 @@ export const routePermissions = {
   "/vouchers": { resource: RESOURCES.VOUCHERS, action: ACTIONS.READ },
   "/complaints": { resource: RESOURCES.COMPLAINTS, action: ACTIONS.READ },
   "/logistics-pricing": { resource: RESOURCES.LOGISTICS_PRICING, action: ACTIONS.READ },
-  "/": { resource: RESOURCES.DASHBOARD, action: ACTIONS.READ },
   "/add-products": { resource: RESOURCES.PRODUCTS, action: ACTIONS.CREATE },
   "/list-products": { resource: RESOURCES.PRODUCTS, action: ACTIONS.READ },
   "/list-products/:slug": {

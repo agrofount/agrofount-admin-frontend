@@ -86,7 +86,6 @@ const SideBar = () => {
 
   const can = useMemo(
     () => ({
-      dashboard: isAdmin || hasPermission(RESOURCES.DASHBOARD, ACTIONS.READ),
       products: isAdmin || hasPermission(RESOURCES.PRODUCTS, ACTIONS.READ),
       sellerInterests:
         isAdmin || hasPermission(RESOURCES.PRODUCT_LOCATIONS, ACTIONS.READ),
@@ -168,9 +167,7 @@ const SideBar = () => {
 
         <nav className={`min-h-0 flex-1 overflow-y-auto ${collapsed ? "pr-0" : "pr-1"}`}>
           <Section title="Main" collapsed={collapsed}>
-            {can.dashboard && (
-              <NavLink to="/" icon={faHouse} label="Dashboard" onClick={closeOnMobile} collapsed={collapsed} />
-            )}
+            <NavLink to="/" icon={faHouse} label="Dashboard" onClick={closeOnMobile} collapsed={collapsed} />
             {can.orders && <NavLink to="/orders" icon={faReceipt} label="Orders" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.carts && <NavLink to="/carts" icon={faCartShopping} label="Carts" onClick={closeOnMobile} collapsed={collapsed} />}
             {can.products && <NavLink to="/list-products" icon={faStore} label="Products" onClick={closeOnMobile} collapsed={collapsed} />}

@@ -14,7 +14,6 @@ import {
   faPlus,
   faRotateLeft,
   faShieldHalved,
-  faTimes,
   faTrashCan,
   faUser,
   faUserCheck,
@@ -37,75 +36,24 @@ import {
 import { ExclamationTriangleIcon } from "@heroicons/react/16/solid";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ACTIONS, RESOURCES } from "../../constants/permissions";
-import { usePermission } from "../Hooks/usePermission";
 import { toast } from "react-toastify";
 import { assets } from "../../assets/assets";
 import { apiClient } from "../../lib/apiClient";
 import { TableRowsSkeleton } from "../common/LoadingStates";
+import {
+  formatJoinedDate,
+  formatPhoneForWhatsApp,
+  getDisplayName,
+  getDisplayPhone,
+  getInitials,
+  getLocation,
+} from "./customerUtils";
+import UnverifiedPhoneTag from "./UnverifiedPhoneTag";
 
 const pageSizeOptions = [10, 20, 50, 100, 250, 500];
 const verificationOptions = ["All Status", "Verified", "Not Verified"];
 const genderOptions = ["All Gender", "Male", "Female", "Other"];
 const dateRangeOptions = ["Select date range", "Last 7 days", "Last 30 days", "This month"];
-
-const getDisplayName = (user) =>
-  user?.username || user?.fullName || `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Customer";
-
-const getInitials = (name) =>
-  name
-    .split(/[^\w]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase() || "C";
-
-const getLocation = (user) =>
-  user?.state?.name || user?.state || user?.city?.name || user?.city || user?.location || "N/A";
-
-// Customers who signed up with email plus a contact number have no `phone`;
-// `contactPhone` was typed at sign-up and never confirmed by OTP.
-const getDisplayPhone = (user) => {
-  const phone = String(user?.phone ?? "").trim();
-  if (phone) return { number: phone, unverified: false };
-  const contactPhone = String(user?.contactPhone ?? "").trim();
-  return { number: contactPhone, unverified: Boolean(contactPhone) };
-};
-
-const UnverifiedPhoneTag = () => (
-  <span
-    className="rounded-full bg-[#fff4e5] px-2 py-0.5 text-[10px] font-semibold text-[#b54708]"
-    title="Typed at sign-up and not confirmed by OTP"
-  >
-    unverified
-  </span>
-);
-
-const formatPhoneForWhatsApp = (phone) => {
-  let digits = phone.replace(/[^\d]/g, "");
-  digits = digits.replace(/^0+/, "");
-  if (!digits.startsWith("234")) {
-    digits = "234" + digits;
-  }
-  return digits;
-};
-
-const formatJoinedDate = (value) => {
-  if (!value) return ["N/A", ""];
-  const date = new Date(value);
-  return [
-    new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "2-digit",
-      year: "numeric",
-    }).format(date),
-    new Intl.DateTimeFormat("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date),
-  ];
-};
 
 const MetricCard = ({ label, value, note, icon, tone = "green", down = false }) => {
   const toneClass =
@@ -135,189 +83,6 @@ const MetricCard = ({ label, value, note, icon, tone = "green", down = false }) 
   );
 };
 
-const orderStatusStyles = {
-  pending: "bg-[#fff4e5] text-[#b54708]",
-  confirmed: "bg-[#e3f6ea] text-[#008f45]",
-  shipped: "bg-[#e7f0ff] text-[#1f7ae0]",
-  delivered: "bg-[#dcf8e4] text-[#008f45]",
-  cancelled: "bg-[#ffe4e6] text-[#ef3340]",
-  returned: "bg-[#eef2f6] text-[#667085]",
-};
-
-const CustomerOrderHistory = ({ userId }) => {
-  const [orders, setOrders] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError("");
-    try {
-      const response = await apiClient.get("/order/admin/all", {
-        params: { "filter.userId": `$eq:${userId}`, page: 1, limit: 5, sortBy: "createdAt:DESC" },
-      });
-      setOrders(Array.isArray(response.data?.data) ? response.data.data : []);
-      setTotal(Number(response.data?.meta?.totalItems ?? 0));
-    } catch (requestError) {
-      setError(requestError.message || "Could not load order history.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => { load(); }, [load]);
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">Order history{total ? ` (${total})` : ""}</p>
-        {total > 0 && <Link to={`/orders?userId=${encodeURIComponent(userId)}`} className="text-[11px] font-semibold text-[#008f45] hover:underline">View all orders</Link>}
-      </div>
-      {isLoading ? (
-        <p role="status" className="text-xs text-[#667085]">Loading orders…</p>
-      ) : error ? (
-        <p role="alert" className="text-xs text-[#ef3340]">{error} <button type="button" onClick={load} className="font-semibold underline">Try again</button></p>
-      ) : orders.length === 0 ? (
-        <p className="rounded-lg border border-[#e5e7eb] px-4 py-3 text-xs text-[#667085]">This customer has no orders yet.</p>
-      ) : (
-        <ul className="divide-y divide-[#f2f4f7] rounded-lg border border-[#e5e7eb]">
-          {orders.map((order) => (
-            <li key={order.id}>
-              <Link to={`/orders/${order.id}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[#f9fafb]">
-                <span className="min-w-0">
-                  <span className="block truncate text-xs font-semibold text-[#101828]">{order.code || order.id}</span>
-                  <span className="block text-[11px] text-[#667085]">{order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-NG", { dateStyle: "medium" }) : "—"}</span>
-                </span>
-                <span className="shrink-0 text-right">
-                  <span className="block text-xs font-semibold text-[#101828]">{new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }).format(Number(order.totalPrice || 0))}</span>
-                  <span className={`mt-0.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${orderStatusStyles[order.status] || "bg-[#eef2f6] text-[#667085]"}`}>{order.status || "pending"}</span>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-};
-
-const CustomerDetailDrawer = ({ user, onClose }) => {
-  const { hasPermission, isAdmin } = usePermission();
-  const canReadOrders = isAdmin || hasPermission(RESOURCES.ORDERS, ACTIONS.READ);
-
-  if (!user) return null;
-
-  const name = getDisplayName(user);
-  const initials = getInitials(name);
-  const location = getLocation(user);
-  const [joinedDate, joinedTime] = formatJoinedDate(user.createdAt);
-  const gender = user.gender || "N/A";
-
-  return (
-    <>
-      <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
-      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-sm flex-col bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-[#e5e7eb] px-5 py-4">
-          <h2 className="text-sm font-semibold text-[#101828]">Customer Details</h2>
-          <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-md text-[#667085] hover:bg-[#f3f4f6]">
-            <FontAwesomeIcon icon={faTimes} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] p-5 text-center">
-            <span className="grid h-16 w-16 place-items-center rounded-full bg-[#dcf8e4] text-xl font-bold text-[#008f45]">
-              {initials}
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-[#101828]">{name}</p>
-            </div>
-            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold ${user.isVerified ? "bg-[#dcf8e4] text-[#008f45]" : "bg-[#ffe4e6] text-[#ef3340]"}`}>
-              <FontAwesomeIcon icon={faShieldHalved} className="text-[10px]" />
-              {user.isVerified ? "Verified" : "Not Verified"}
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">Contact</p>
-            <div className="flex items-center gap-3 rounded-lg border border-[#e5e7eb] px-4 py-3">
-              <FontAwesomeIcon icon={faEnvelope} className="w-4 shrink-0 text-[#008f45]" />
-              <div>
-                <p className="text-[10px] text-[#667085]">Email</p>
-                <p className="text-xs font-medium text-[#101828] break-all">{user.email || "N/A"}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border border-[#e5e7eb] px-4 py-3">
-              <FontAwesomeIcon icon={faPhone} className="w-4 shrink-0 text-[#008f45]" />
-              <div>
-                <p className="text-[10px] text-[#667085]">Phone</p>
-                <p className="flex items-center gap-2 text-xs font-medium text-[#101828]">
-                  {getDisplayPhone(user).number || "N/A"}
-                  {getDisplayPhone(user).unverified && <UnverifiedPhoneTag />}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border border-[#e5e7eb] px-4 py-3">
-              <FontAwesomeIcon icon={faLocationDot} className="w-4 shrink-0 text-[#008f45]" />
-              <div>
-                <p className="text-[10px] text-[#667085]">Location</p>
-                <p className="text-xs font-medium text-[#101828]">{location}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">Profile</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
-                <p className="text-[10px] text-[#667085]">Gender</p>
-                <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-[#101828]">
-                  <FontAwesomeIcon
-                    icon={String(gender).toLowerCase() === "female" ? faVenus : faMars}
-                    className={String(gender).toLowerCase() === "female" ? "text-[#ef3f7a]" : "text-[#1f7ae0]"}
-                  />
-                  {gender}
-                </p>
-              </div>
-              <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
-                <p className="text-[10px] text-[#667085]">Joined</p>
-                <p className="mt-1 text-xs font-medium text-[#101828]">{joinedDate}</p>
-                <p className="text-[10px] text-[#667085]">{joinedTime}</p>
-              </div>
-            </div>
-            {user.businessType && (
-              <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
-                <p className="text-[10px] text-[#667085]">Business Type</p>
-                <p className="mt-1 text-xs font-medium text-[#101828]">{user.businessType}</p>
-              </div>
-            )}
-          </div>
-
-          {user.id && canReadOrders && <CustomerOrderHistory userId={user.id} />}
-
-          {user.id && (
-            <div className="rounded-lg border border-[#e5e7eb] px-4 py-3">
-              <p className="text-[10px] text-[#667085]">Customer ID</p>
-              <p className="mt-1 font-mono text-[10px] text-[#475467] break-all">{user.id}</p>
-            </div>
-          )}
-        </div>
-
-        <div className="border-t border-[#e5e7eb] px-5 py-4">
-          <Link
-            to={`/users/${user.id}/edit`}
-            className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-[#008f45] text-xs font-semibold text-white"
-          >
-            <FontAwesomeIcon icon={faPenToSquare} />
-            Edit Customer
-          </Link>
-        </div>
-      </div>
-    </>
-  );
-};
-
 const ListUsers = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [users, setUsers] = useState({ data: [], meta: {} });
@@ -332,7 +97,6 @@ const ListUsers = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
-  const [detailUser, setDetailUser] = useState(null);
 
   const searchTimeout = useRef();
 
@@ -658,7 +422,12 @@ const ListUsers = () => {
                               {getInitials(name)}
                             </span>
                             <div>
-                              <p className="text-xs font-semibold text-[#101828]">{name}</p>
+                              <Link
+                                to={`/users/${user.id}`}
+                                className="text-xs font-semibold text-[#101828] hover:text-[#008f45] hover:underline"
+                              >
+                                {name}
+                              </Link>
                             </div>
                           </div>
                         </td>
@@ -717,14 +486,13 @@ const ListUsers = () => {
                             </MenuButton>
                             <MenuItems className="absolute right-0 z-20 mt-1 w-44 rounded-md border border-[#e5e7eb] bg-white py-1 shadow-lg focus:outline-none">
                               <MenuItem>
-                                <button
-                                  type="button"
-                                  onClick={() => setDetailUser(user)}
+                                <Link
+                                  to={`/users/${user.id}`}
                                   className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
                                 >
                                   <FontAwesomeIcon icon={faEye} className="text-[#1f7ae0]" />
                                   View Details
-                                </button>
+                                </Link>
                               </MenuItem>
                               <MenuItem>
                                 <Link
@@ -812,8 +580,6 @@ const ListUsers = () => {
           </div>
         </div>
       </section>
-
-      <CustomerDetailDrawer user={detailUser} onClose={() => setDetailUser(null)} />
 
       <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} className="relative z-50">
         <DialogBackdrop className="fixed inset-0 bg-black/30" />

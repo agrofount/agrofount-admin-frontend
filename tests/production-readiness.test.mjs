@@ -85,16 +85,28 @@ test("MFA setup verify sends only challengeId and code", async () => {
   assert.match(login, /setToken\(responseData\.token, responseData\.refreshToken\)/);
 });
 
-test("admin JWT principal claims grant frontend admin access", () => {
+test("admin JWT principal claims alone do not grant frontend admin access", () => {
   const adminPrincipal = {
-    email: "dayo.akinbami@agrofount.com",
-    id: "2d34083e-2bbe-49fc-b973-5248bddfe3a2",
     userType: "system",
     principalType: "admin",
   };
 
-  assert.equal(isSuperUser(adminPrincipal), true);
-  assert.equal(hasPermissionFor(adminPrincipal, "orders", "read"), true);
+  assert.equal(isSuperUser(adminPrincipal), false);
+  assert.equal(hasPermissionFor(adminPrincipal, "orders", "read"), false);
+});
+
+test("restricted admin roles only grant their own permissions", () => {
+  const user = {
+    principalType: "admin",
+    userType: "system",
+    roles: [
+      { name: "Support", permissions: [{ resource: "orders", actions: ["read"] }] },
+    ],
+  };
+
+  assert.equal(hasPermissionFor(user, "orders", "read"), true);
+  assert.equal(hasPermissionFor(user, "orders", "delete"), false);
+  assert.equal(hasPermissionFor(user, "leads", "read"), false);
 });
 
 test("backend admin profile roles grant frontend admin access", () => {

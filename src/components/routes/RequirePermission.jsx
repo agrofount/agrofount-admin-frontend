@@ -8,7 +8,8 @@ const RequirePermission = ({ resource, action }) => {
   const { user, authLoading } = useContext(ShopContext);
   const location = useLocation();
 
-  if (authLoading && !user) {
+  // Roles arrive with the profile; wait for it before deciding.
+  if (authLoading) {
     return <PageSkeletonLoader />;
   }
 

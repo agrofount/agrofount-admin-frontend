@@ -15,17 +15,15 @@ export const getUserPermissions = (user) =>
       })) || [],
   );
 
-export const isSystemAdmin = (user) =>
-  String(user?.principalType || "").toLowerCase() === "admin" &&
-  String(user?.userType || "").toLowerCase() === "system";
-
 const normalizeRoleName = (role) =>
   String(role?.name || role || "")
     .toLowerCase()
     .replace(/[\s_-]/g, "");
 
+// Only an assigned admin/superadmin role bypasses permission checks. JWT
+// principal claims (principalType/userType) are shared by every admin account,
+// so they must not grant blanket access.
 export const isSuperUser = (user) =>
-  isSystemAdmin(user) ||
   normalizeRoles(user).some((role) =>
     ["admin", "superadmin"].includes(normalizeRoleName(role)),
   );

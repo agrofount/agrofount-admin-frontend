@@ -27,8 +27,24 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { apiClient } from "../../lib/apiClient";
+import { ACTIONS, RESOURCES } from "../../constants/permissions";
+import { usePermission } from "../Hooks/usePermission";
+import LeadNotes from "./LeadNotes";
+import {
+  CUSTOMER_STAGE_META,
+  OWNER_LOCK_MESSAGE,
+  bulkClaimLeads,
+  claimLead,
+  getErrorMessage,
+  getErrorStatus,
+  getUserId,
+  isLockedForUser,
+  isOwnedByUser,
+  releaseLead,
+} from "./leadOwnership";
 import { TableRowsSkeleton } from "../common/LoadingStates";
 import { getLeadSmsCount, getLeadSmsRecords } from "./leadSmsUtils";
 
@@ -440,16 +456,34 @@ const BulkSmsModal = ({ filters, totalItems, onClose, onSent }) => {
   );
 };
 
-const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
+const LeadDetailDrawer = ({
+  lead,
+  onClose,
+  onStatusChange,
+  onLeadUpdated,
+  perms,
+}) => {
   const [updating, setUpdating] = useState(null);
   const [notifyOpen, setNotifyOpen] = useState(false);
+  const [tab, setTab] = useState("details");
+  const [ownerBusy, setOwnerBusy] = useState(false);
+  const leadId = lead?.id;
+  useEffect(() => {
+    setTab("details");
+  }, [leadId]);
 
   if (!lead) return null;
   const [date, time] = formatDate(lead.createdAt);
   const [srcDate] = formatDate(lead.sourceCreatedAt);
   const gender = lead.gender || "N/A";
   const sm = STATUS_META[lead.status] ?? STATUS_META.new;
-  const transitions = STATUS_TRANSITIONS[lead.status] ?? [];
+  const locked = isLockedForUser(lead, perms.user, perms.isAdmin);
+  const canChangeStatus = perms.canUpdate && !locked;
+  const transitions = canChangeStatus ? (STATUS_TRANSITIONS[lead.status] ?? []) : [];
+  const stage = CUSTOMER_STAGE_META[lead.customerStage];
+  const canRelease =
+    perms.canAssign && lead.ownerId && (isOwnedByUser(lead, perms.user) || perms.isAdmin);
+  const canClaim = perms.canAssign && !lead.ownerId;
   const smsRecords = getLeadSmsRecords(lead);
 
   const doTransition = async (status) => {
@@ -463,6 +497,28 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
       );
     } finally {
       setUpdating(null);
+    }
+  };
+
+  const doOwnership = async (action) => {
+    try {
+      setOwnerBusy(true);
+      const res = await (action === "claim"
+        ? claimLead(lead.id)
+        : releaseLead(lead.id));
+      toast.success(action === "claim" ? "Lead claimed" : "Lead released");
+      onLeadUpdated(res.data);
+    } catch (err) {
+      const status = getErrorStatus(err);
+      if (status === 409 || status === 403) {
+        // Expected states: someone else owns the lead, or not allowed to release.
+        toast.info(getErrorMessage(err, OWNER_LOCK_MESSAGE));
+        onLeadUpdated(null);
+      } else {
+        toast.error(getErrorMessage(err, "Failed to update ownership"));
+      }
+    } finally {
+      setOwnerBusy(false);
     }
   };
 
@@ -493,8 +549,50 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
             >
               {sm.label}
             </span>
+            {stage && (
+              <span
+                title="Customer stage: lead, registered (has an account) or paying (completed a payment)"
+                className="rounded-full px-3 py-1 text-[11px] font-semibold"
+                style={{ background: stage.bg, color: stage.text }}
+              >
+                {stage.label}
+              </span>
+            )}
+            <p className="text-[11px] text-[#667085]">
+              {lead.owner?.name
+                ? `Owner: ${lead.owner.name}${isOwnedByUser(lead, perms.user) ? " (you)" : ""}`
+                : "Unassigned"}
+            </p>
           </div>
 
+          <div className="flex gap-1 rounded-lg bg-[#f3f4f6] p-1">
+            {[
+              ["details", "Details"],
+              ["notes", "Notes"],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(key)}
+                className={`h-8 flex-1 rounded-md text-xs font-semibold ${tab === key ? "bg-white text-[#101828] shadow-sm" : "text-[#667085]"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {tab === "notes" && (
+            <LeadNotes
+              leadId={lead.id}
+              canWrite={perms.canUpdate && !locked}
+              lockedReason={locked ? OWNER_LOCK_MESSAGE : null}
+              currentUserId={getUserId(perms.user)}
+              isAdmin={perms.isAdmin}
+            />
+          )}
+
+          {tab === "details" && (
+          <>
           <div className="space-y-2">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">
               Contact
@@ -782,13 +880,37 @@ const LeadDetailDrawer = ({ lead, onClose, onStatusChange }) => {
               ))}
             </div>
           )}
+          </>
+          )}
         </div>
 
         <div className="border-t border-[#e5e7eb] px-5 py-4 flex gap-2">
+          {canClaim && (
+            <button
+              type="button"
+              disabled={ownerBusy}
+              onClick={() => doOwnership("claim")}
+              className="flex flex-1 h-9 items-center justify-center rounded-md bg-[#008f45] text-xs font-semibold text-white disabled:opacity-60"
+            >
+              {ownerBusy ? "Claiming…" : "Claim lead"}
+            </button>
+          )}
+          {canRelease && (
+            <button
+              type="button"
+              disabled={ownerBusy}
+              onClick={() => doOwnership("release")}
+              className="flex flex-1 h-9 items-center justify-center rounded-md border border-[#d0d5dd] text-xs font-semibold text-[#344054] disabled:opacity-60"
+            >
+              {ownerBusy ? "Releasing…" : "Release lead"}
+            </button>
+          )}
           <button
             type="button"
+            disabled={!perms.canSend || locked}
+            title={locked ? OWNER_LOCK_MESSAGE : undefined}
             onClick={() => setNotifyOpen(true)}
-            className="flex flex-1 h-9 items-center justify-center gap-2 rounded-md border border-[#008f45] text-xs font-semibold text-[#008f45] hover:bg-[#f0fdf4]"
+            className="flex flex-1 h-9 items-center justify-center gap-2 rounded-md border border-[#008f45] text-xs font-semibold text-[#008f45] hover:bg-[#f0fdf4] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <FontAwesomeIcon icon={faComment} />
             Send Message
@@ -829,6 +951,18 @@ const ListLeads = () => {
   const [detailLead, setDetailLead] = useState(null);
   const [notifyTarget, setNotifyTarget] = useState(null);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [ownerFilter, setOwnerFilter] = useState("all");
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [claimingBulk, setClaimingBulk] = useState(false);
+  const { hasPermission, isAdmin, user } = usePermission();
+  const perms = {
+    user,
+    isAdmin,
+    canUpdate: hasPermission(RESOURCES.LEADS, ACTIONS.UPDATE),
+    canAssign: hasPermission(RESOURCES.LEADS, ACTIONS.ASSIGN),
+    canSend: hasPermission(RESOURCES.LEADS, ACTIONS.SEND),
+    canViewReports: hasPermission(RESOURCES.LEADS, ACTIONS.VIEW_REPORTS),
+  };
   const fileInputRef = useRef();
   const searchTimeout = useRef();
   const leadsRequestId = useRef(0);
@@ -847,6 +981,7 @@ const ListLeads = () => {
           sourceId: sourceIdFilter.trim() || undefined,
           campaignName: campaignNameFilter.trim() || undefined,
           campaignId: campaignIdFilter.trim() || undefined,
+          ownerId: ownerFilter !== "all" ? ownerFilter : undefined,
         },
       });
       if (requestId !== leadsRequestId.current) return;
@@ -871,6 +1006,7 @@ const ListLeads = () => {
     sourceIdFilter,
     campaignNameFilter,
     campaignIdFilter,
+    ownerFilter,
   ]);
 
   const fetchStats = useCallback(async () => {
@@ -888,6 +1024,9 @@ const ListLeads = () => {
   useEffect(() => {
     fetchLeads();
   }, [fetchLeads]);
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [page, pageSize, search, statusFilter, sourceFilter, sourceIdFilter, campaignNameFilter, campaignIdFilter, ownerFilter]);
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
@@ -907,6 +1046,7 @@ const ListLeads = () => {
     setSourceIdFilter("");
     setCampaignNameFilter("");
     setCampaignIdFilter("");
+    setOwnerFilter("all");
     setSearchInput("");
     setSearch("");
     setPage(1);
@@ -966,6 +1106,69 @@ const ListLeads = () => {
       setActionLoadingId(null);
     }
   };
+
+  const handleClaim = async (lead) => {
+    try {
+      setActionLoadingId(lead.id);
+      await claimLead(lead.id);
+      toast.success("Lead claimed");
+    } catch (err) {
+      const status = getErrorStatus(err);
+      if (status === 409) {
+        toast.info(getErrorMessage(err, OWNER_LOCK_MESSAGE));
+      } else {
+        toast.error(getErrorMessage(err, "Failed to claim lead"));
+      }
+    } finally {
+      setActionLoadingId(null);
+      fetchLeads();
+    }
+  };
+
+  const handleRelease = async (lead) => {
+    try {
+      setActionLoadingId(lead.id);
+      await releaseLead(lead.id);
+      toast.success("Lead released");
+    } catch (err) {
+      const status = getErrorStatus(err);
+      if (status === 403) {
+        toast.info(getErrorMessage(err, "Only the owner can release this lead."));
+      } else {
+        toast.error(getErrorMessage(err, "Failed to release lead"));
+      }
+    } finally {
+      setActionLoadingId(null);
+      fetchLeads();
+    }
+  };
+
+  const handleBulkClaim = async () => {
+    if (!selectedIds.length) return;
+    try {
+      setClaimingBulk(true);
+      const res = await bulkClaimLeads(selectedIds);
+      const claimed = res.data?.claimed?.length ?? 0;
+      const skipped = res.data?.skipped?.length ?? 0;
+      if (claimed) toast.success(`Claimed ${claimed} lead${claimed === 1 ? "" : "s"}`);
+      if (skipped) {
+        toast.info(
+          `${skipped} lead${skipped === 1 ? " was" : "s were"} skipped (already owned, removed or not found)`,
+        );
+      }
+      setSelectedIds([]);
+      fetchLeads();
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to claim leads"));
+    } finally {
+      setClaimingBulk(false);
+    }
+  };
+
+  const toggleSelected = (id) =>
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
 
   const handleDelete = async (lead) => {
     try {
@@ -1106,6 +1309,14 @@ const ListLeads = () => {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link
+            to="/leads/performance"
+            className="inline-flex h-9 items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-4 text-xs font-semibold text-[#344054] shadow-sm"
+          >
+            <FontAwesomeIcon icon={faTrophy} />
+            Performance
+          </Link>
+          {perms.canSend && (
           <button
             type="button"
             onClick={() => setBulkSmsOpen(true)}
@@ -1114,6 +1325,7 @@ const ListLeads = () => {
             <FontAwesomeIcon icon={faComment} />
             Bulk SMS
           </button>
+          )}
           <button
             type="button"
             onClick={exportCSV}
@@ -1161,6 +1373,37 @@ const ListLeads = () => {
       )}
 
       <section className="rounded-xl border border-[#e5e7eb] bg-white p-4 shadow-[0_4px_16px_rgba(16,24,40,0.04)]">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div className="flex gap-1 rounded-lg bg-[#f3f4f6] p-1">
+            {[
+              ["me", "My leads"],
+              ["unassigned", "Unassigned"],
+              ["all", "All"],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => {
+                  setOwnerFilter(key);
+                  setPage(1);
+                }}
+                className={`h-7 rounded-md px-3 text-[11px] font-semibold ${ownerFilter === key ? "bg-white text-[#101828] shadow-sm" : "text-[#667085]"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {perms.canAssign && selectedIds.length > 0 && (
+            <button
+              type="button"
+              disabled={claimingBulk}
+              onClick={handleBulkClaim}
+              className="h-8 rounded-md bg-[#008f45] px-4 text-xs font-semibold text-white disabled:opacity-60"
+            >
+              {claimingBulk ? "Claiming…" : `Claim selected (${selectedIds.length})`}
+            </button>
+          )}
+        </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-1.5">
             {[
@@ -1284,6 +1527,7 @@ const ListLeads = () => {
                 className="h-9 w-full rounded-md border border-[#d0d5dd] bg-white px-3 text-xs outline-none focus:border-[#008f45]"
               />
             </label>
+            {perms.canSend && (
             <div className="flex items-end">
               <button
                 type="button"
@@ -1294,6 +1538,7 @@ const ListLeads = () => {
                 SMS Filtered Leads
               </button>
             </div>
+            )}
           </div>
         )}
 
@@ -1322,13 +1567,33 @@ const ListLeads = () => {
             <table className="w-full min-w-[1100px] text-left">
               <thead className="border-b border-[#e5e7eb] bg-[#fbfcfd]">
                 <tr>
+                  <th className="w-10 px-4 py-3">
+                    {perms.canAssign && (
+                      <input
+                        type="checkbox"
+                        aria-label="Select all leads on this page"
+                        checked={
+                          leads.data.length > 0 &&
+                          leads.data.every((l) => selectedIds.includes(l.id))
+                        }
+                        onChange={(e) =>
+                          setSelectedIds(
+                            e.target.checked ? leads.data.map((l) => l.id) : [],
+                          )
+                        }
+                        className="h-3.5 w-3.5 rounded border-[#cbd5e1]"
+                      />
+                    )}
+                  </th>
                   {[
                     "Lead",
+                    "Owner",
                     "Phone",
                     "State",
                     "Gender",
                     "Campaign / Ad",
                     "Status",
+                    "Stage",
                     "SMS Count",
                     "SMS Status",
                     "Last SMS Sent",
@@ -1346,10 +1611,10 @@ const ListLeads = () => {
               </thead>
               <tbody className="divide-y divide-[#eef2f6]">
                 {loading ? (
-                  <TableRowsSkeleton rows={6} columns={11} />
+                  <TableRowsSkeleton rows={6} columns={14} />
                 ) : leads.data.length === 0 ? (
                   <tr>
-                    <td colSpan="11">
+                    <td colSpan="14">
                       <div className="flex h-52 flex-col items-center justify-center gap-3">
                         <div className="grid h-12 w-12 place-items-center rounded-full bg-[#f3f4f6]">
                           <FontAwesomeIcon
@@ -1379,9 +1644,29 @@ const ListLeads = () => {
                     const smsKnown = smsSent || lead.smsStatus === "not_sent";
                     const smsCount = getLeadSmsCount(lead);
                     const gender = lead.gender || "N/A";
-                    const transitions = STATUS_TRANSITIONS[lead.status] ?? [];
+                    const locked = isLockedForUser(lead, perms.user, perms.isAdmin);
+                    const transitions =
+                      perms.canUpdate && !locked
+                        ? (STATUS_TRANSITIONS[lead.status] ?? [])
+                        : [];
+                    const stage = CUSTOMER_STAGE_META[lead.customerStage];
+                    const canRelease =
+                      perms.canAssign &&
+                      lead.ownerId &&
+                      (isOwnedByUser(lead, perms.user) || perms.isAdmin);
                     return (
                       <tr key={lead.id} className="group hover:bg-[#f9fafb]">
+                        <td className="px-4 py-3">
+                          {perms.canAssign && (
+                            <input
+                              type="checkbox"
+                              aria-label={`Select ${lead.name}`}
+                              checked={selectedIds.includes(lead.id)}
+                              onChange={() => toggleSelected(lead.id)}
+                              className="h-3.5 w-3.5 rounded border-[#cbd5e1]"
+                            />
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
                             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#dcf8e4] text-xs font-bold text-[#008f45]">
@@ -1399,6 +1684,23 @@ const ListLeads = () => {
                               </p>
                             </div>
                           </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {lead.owner?.name ? (
+                            <span
+                              className="inline-flex max-w-[140px] items-center gap-1.5 text-xs text-[#344054]"
+                              title={lead.owner.name}
+                            >
+                              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#ede9fe] text-[10px] font-bold text-[#7c3aed]">
+                                {getInitials(lead.owner.name)}
+                              </span>
+                              <span className="truncate">
+                                {isOwnedByUser(lead, perms.user) ? "You" : lead.owner.name}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-xs text-[#98a2b3]">Unassigned</span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-[#475467]">
@@ -1480,6 +1782,18 @@ const ListLeads = () => {
                           </span>
                         </td>
                         <td className="px-4 py-3">
+                          {stage ? (
+                            <span
+                              className="inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                              style={{ background: stage.bg, color: stage.text }}
+                            >
+                              {stage.label}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-[#98a2b3]">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
                           <span
                             className={`inline-flex min-w-[3rem] justify-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${smsCount > 0 ? "bg-[#dcf8e4] text-[#008f45]" : "bg-[#f3f4f6] text-[#667085]"}`}
                           >
@@ -1544,6 +1858,31 @@ const ListLeads = () => {
                                   View Details
                                 </button>
                               </MenuItem>
+                              {perms.canAssign && !lead.ownerId && (
+                                <MenuItem>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleClaim(lead)}
+                                    className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
+                                  >
+                                    <FontAwesomeIcon icon={faUser} className="text-[#7c3aed]" />
+                                    Claim Lead
+                                  </button>
+                                </MenuItem>
+                              )}
+                              {canRelease && (
+                                <MenuItem>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRelease(lead)}
+                                    className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-medium text-[#344054] hover:bg-[#f9fafb]"
+                                  >
+                                    <FontAwesomeIcon icon={faRotateLeft} className="text-[#d97706]" />
+                                    Release Lead
+                                  </button>
+                                </MenuItem>
+                              )}
+                              {perms.canSend && !locked && (
                               <MenuItem>
                                 <button
                                   type="button"
@@ -1557,6 +1896,7 @@ const ListLeads = () => {
                                   Send Message
                                 </button>
                               </MenuItem>
+                              )}
                               {transitions.length > 0 && (
                                 <div className="my-1 border-t border-[#f3f4f6]" />
                               )}
@@ -1657,10 +1997,20 @@ const ListLeads = () => {
       <LeadDetailDrawer
         lead={detailLead}
         onClose={() => setDetailLead(null)}
+        perms={perms}
         onStatusChange={() => {
           fetchLeads();
           fetchStats();
           setDetailLead(null);
+        }}
+        onLeadUpdated={async (updated) => {
+          fetchLeads();
+          try {
+            const res = await apiClient.get(`/leads/${detailLead.id}`);
+            setDetailLead(res.data);
+          } catch {
+            if (updated) setDetailLead((prev) => ({ ...prev, ...updated }));
+          }
         }}
       />
 

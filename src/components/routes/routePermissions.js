@@ -96,6 +96,7 @@ export const routePermissions = {
   },
   "/settings": { resource: RESOURCES.SETTINGS, action: ACTIONS.READ },
   "/leads": { resource: RESOURCES.LEADS, action: ACTIONS.READ },
+  "/leads/performance": { resource: RESOURCES.LEADS, action: ACTIONS.READ },
   "/reports": { resource: RESOURCES.REPORTS, action: ACTIONS.READ },
   "/reports/create": { resource: RESOURCES.REPORTS, action: ACTIONS.READ },
   "/reports/preview": { resource: RESOURCES.REPORTS, action: ACTIONS.READ },

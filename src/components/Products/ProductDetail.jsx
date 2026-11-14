@@ -12,6 +12,7 @@ import {
   faLocationDot,
 } from "@fortawesome/free-solid-svg-icons";
 import { apiClient } from "../../lib/apiClient";
+import { formatCommissionRate } from "../../lib/productLocation";
 import { sanitizeHtml } from "../../lib/sanitizeHtml";
 import { usePermission } from "../Hooks/usePermission";
 import { ACTIONS, RESOURCES } from "../../constants/permissions";
@@ -243,6 +244,10 @@ const ProductDetail = () => {
                       <p className="text-white bg-[#61BF75]  w-1/5 text-center rounded-full">
                         {productData.moq}
                       </p>
+                    </div>
+                    <div className="my-2">
+                      <p className="font-semibold">Referral commission</p>
+                      <p>{formatCommissionRate(productData.commissionRate)}</p>
                     </div>
                     <div className="my-2">
                       <p className="font-semibold">Available Dates</p>

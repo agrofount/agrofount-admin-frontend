@@ -32,6 +32,9 @@ import { apiClient } from "../../lib/apiClient";
 import {
   attachMoqToUom,
   getProductLocationMoq,
+  commissionRateToInput,
+  parseCommissionRateInput,
+  DEFAULT_COMMISSION_RATE,
 } from "../../lib/productLocation";
 import {
   FormSkeletonLoader,
@@ -100,6 +103,7 @@ const ProductUpdate = () => {
   const [locations, setLocations] = useState([]);
   const [availableDates, setAvailableDates] = useState([]);
   const [moq, setMoq] = useState(5);
+  const [commissionRate, setCommissionRate] = useState("");
 
   const [uomSections, setUomSections] = useState([]);
 
@@ -212,6 +216,7 @@ const ProductUpdate = () => {
       if (response.data) {
         setProductLocationData(response.data);
         setAvailableDates(response.data.availableDates);
+        setCommissionRate(commissionRateToInput(response.data.commissionRate));
         const nextMoq = getProductLocationMoq(response.data);
         if (nextMoq !== undefined) {
           setMoq(nextMoq);
@@ -229,6 +234,12 @@ const ProductUpdate = () => {
   }, [slug]);
 
   const handleUpdateProductLocation = async () => {
+    const { value: commissionRateValue, error: commissionRateError } =
+      parseCommissionRateInput(commissionRate);
+    if (commissionRateError) {
+      toast.error(commissionRateError);
+      return;
+    }
     try {
       setProcessing(true);
       const cleanUom = (uomSections || productLocationData.uom).map(
@@ -242,6 +253,8 @@ const ProductUpdate = () => {
         price: Number(price) || Number(productLocationData?.price),
         uom: attachMoqToUom(cleanUom, normalizedMoq),
         ...(normalizedMoq !== undefined ? { moq: normalizedMoq } : {}),
+        // null resets to the platform default; a number (including 0) sets it.
+        commissionRate: commissionRateValue,
         availableDates,
         countryId: country_id,
         stateId: selectedLocation?.id || productLocationData?.location_id,
@@ -536,6 +549,23 @@ const ProductUpdate = () => {
                   />
                   <p className="mt-2 text-xs font-medium text-[#667085]">
                     Minimum quantity a customer can order.
+                  </p>
+                </div>
+                <div>
+                  <FieldLabel>Referral commission (%)</FieldLabel>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.01}
+                    onKeyDown={handleKeyDown}
+                    placeholder={`Default ${DEFAULT_COMMISSION_RATE}%`}
+                    value={commissionRate}
+                    onChange={(e) => setCommissionRate(e.target.value)}
+                    className={inputClass}
+                  />
+                  <p className="mt-2 text-xs font-medium text-[#667085]">
+                    Percent of line value earned as referral bonus. Leave empty to reset to the platform default ({DEFAULT_COMMISSION_RATE}%). Enter 0 for no referral bonus. Changes apply to future payments only.
                   </p>
                 </div>
                 <div>

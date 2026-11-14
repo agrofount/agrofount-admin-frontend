@@ -27,7 +27,7 @@ import {
 } from "@headlessui/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/16/solid";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { assets } from "../../assets/assets";
 import { ShopContext } from "../../context/ShopContext";
@@ -169,9 +169,19 @@ const ProductRow = ({ productLocation, currency, onDelete }) => {
   const slug = productLocation.productSlug || productLocation.slug || productLocation.id;
   const quantity = Number(productLocation.moq ?? productLocation.quantity ?? productLocation.stock ?? 0);
   const available = productLocation.isAvailable !== false;
+  const navigateTo = useNavigate();
+
+  const handleRowClick = (event) => {
+    // Let links, buttons and the checkbox keep their own behaviour.
+    if (event.target.closest("a, button, input, label")) return;
+    navigateTo(`/list-products/${slug}`);
+  };
 
   return (
-    <tr className="border-b border-[#eef2f6] text-[12px] last:border-0 hover:bg-[#fbfcfd]">
+    <tr
+      className="cursor-pointer border-b border-[#eef2f6] text-[12px] last:border-0 hover:bg-[#fbfcfd]"
+      onClick={handleRowClick}
+    >
       <td className="px-3 py-3">
         <input type="checkbox" aria-label={`Select ${getProductName(productLocation)}`} className="h-3.5 w-3.5 rounded border-[#cbd5e1]" />
       </td>

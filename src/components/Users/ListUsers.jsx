@@ -35,7 +35,7 @@ import {
 } from "@headlessui/react";
 import { ExclamationTriangleIcon } from "@heroicons/react/16/solid";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { assets } from "../../assets/assets";
 import { apiClient } from "../../lib/apiClient";
@@ -84,6 +84,13 @@ const MetricCard = ({ label, value, note, icon, tone = "green", down = false }) 
 };
 
 const ListUsers = () => {
+  const navigate = useNavigate();
+  const handleRowClick = (event, user) => {
+    if (!user.id) return;
+    // Let links, buttons and the action menu keep their own behaviour.
+    if (event.target.closest("a, button, [role='menu'], [role='menuitem']")) return;
+    navigate(`/users/${user.id}`);
+  };
   const [isLoading, setIsLoading] = useState(false);
   const [users, setUsers] = useState({ data: [], meta: {} });
   const [pageLimit, setPageLimit] = useState(10);
@@ -415,7 +422,11 @@ const ListUsers = () => {
                     const [date, time] = formatJoinedDate(user.createdAt);
                     const gender = user.gender || "N/A";
                     return (
-                      <tr key={user.id || user.email || index} className="hover:bg-[#f9fafb]">
+                      <tr
+                        key={user.id || user.email || index}
+                        className="cursor-pointer hover:bg-[#f9fafb]"
+                        onClick={(event) => handleRowClick(event, user)}
+                      >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#dcf8e4] text-xs font-semibold text-[#008f45]">

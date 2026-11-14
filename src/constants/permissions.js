@@ -119,6 +119,7 @@ export const ACTIONS = {
 
   // Communication Actions
   SEND: "send", // Send notifications/emails
+  ASSIGN: "assign", // Claim/release ownership (leads)
   SEND_PRICE_UPDATE: "send_price_update",
   BROADCAST: "broadcast", // Broadcast to all users
 

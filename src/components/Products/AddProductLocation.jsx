@@ -35,6 +35,8 @@ import { apiClient } from "../../lib/apiClient";
 import {
   attachMoqToUom,
   normalizeProductLocationMoq,
+  parseCommissionRateInput,
+  DEFAULT_COMMISSION_RATE,
 } from "../../lib/productLocation";
 import {
   FormSkeletonLoader,
@@ -138,6 +140,7 @@ const AddProducts = () => {
   const [availableFrom, setAvailableFrom] = useState("");
   const [availableTo, setAvailableTo] = useState("");
   const [moq, setMoq] = useState("");
+  const [commissionRate, setCommissionRate] = useState("");
   const [uomSections, setUomSections] = useState([
     {
       id: 1,
@@ -316,6 +319,13 @@ const AddProducts = () => {
       }
     }
 
+    const { value: commissionRateValue, error: commissionRateError } =
+      parseCommissionRateInput(commissionRate);
+    if (commissionRateError) {
+      toast.error(commissionRateError);
+      return;
+    }
+
     const normalizedMoq = normalizeProductLocationMoq(moq);
     const payload = {
       countryId: country_id,
@@ -327,6 +337,10 @@ const AddProducts = () => {
         normalizedMoq,
       ),
       ...(normalizedMoq !== undefined ? { moq: normalizedMoq } : {}),
+      // Omit to use the platform default.
+      ...(commissionRateValue !== null
+        ? { commissionRate: commissionRateValue }
+        : {}),
       availableDates: availableFrom ? [availableFrom] : [],
     };
 
@@ -665,6 +679,22 @@ const AddProducts = () => {
               />
               <p className="mt-2 text-xs font-medium text-[#667085]">
                 Minimum quantity a customer can order.
+              </p>
+            </div>
+            <div>
+              <FieldLabel>Referral commission (%)</FieldLabel>
+              <TextInput
+                type="number"
+                min={0}
+                max={100}
+                step={0.01}
+                value={commissionRate}
+                onKeyDown={handleKeyDown}
+                onChange={(event) => setCommissionRate(event.target.value)}
+                placeholder={`Default ${DEFAULT_COMMISSION_RATE}%`}
+              />
+              <p className="mt-2 text-xs font-medium text-[#667085]">
+                Percent of line value earned as referral bonus. Leave empty for the platform default ({DEFAULT_COMMISSION_RATE}%). Enter 0 for no referral bonus. Changes apply to future payments only.
               </p>
             </div>
             <div className="space-y-4">

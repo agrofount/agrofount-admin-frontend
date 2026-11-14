@@ -50,6 +50,7 @@ const ListCities = lazy(() => import("./components/Cities/ListCities"));
 const AddCity = lazy(() => import("./components/Cities/AddCity"));
 const EditCity = lazy(() => import("./components/Cities/EditCity"));
 const ListUsers = lazy(() => import("./components/Users/ListUsers"));
+const CustomerDetail = lazy(() => import("./components/Users/CustomerDetail"));
 const ListAdmins = lazy(() => import("./components/Admin/ListAdmins"));
 const InviteAdmin = lazy(() => import("./components/Admin/InviteAdmin"));
 const ListRoles = lazy(() => import("./components/Roles/ListRoles"));
@@ -144,6 +145,7 @@ const adminRoutes = [
   { path: "/admins/add", element: <InviteAdmin /> },
   { path: "/admins/:adminId/edit", element: <EditAdmin /> },
   { path: "/users", element: <ListUsers /> },
+  { path: "/users/:userId", element: <CustomerDetail /> },
   { path: "/roles", element: <ListRoles /> },
   { path: "/roles/add", element: <AddRole /> },
   { path: "/roles/:roleId/edit", element: <EditRole /> },

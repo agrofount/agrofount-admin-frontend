@@ -30,6 +30,7 @@ export const routePermissions = {
   },
   "/payments": { resource: RESOURCES.PAYMENTS, action: ACTIONS.READ },
   "/users": { resource: RESOURCES.USERS, action: ACTIONS.READ },
+  "/users/:userId": { resource: RESOURCES.USERS, action: ACTIONS.READ },
   "/admins": { resource: RESOURCES.ADMINS, action: ACTIONS.READ },
   "/admins/add": { resource: RESOURCES.ADMINS, action: ACTIONS.CREATE },
   "/admins/:adminId/edit": {

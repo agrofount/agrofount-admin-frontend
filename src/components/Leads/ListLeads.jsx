@@ -27,7 +27,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { apiClient } from "../../lib/apiClient";
 import { ACTIONS, RESOURCES } from "../../constants/permissions";
@@ -951,7 +951,11 @@ const ListLeads = () => {
   const [detailLead, setDetailLead] = useState(null);
   const [notifyTarget, setNotifyTarget] = useState(null);
   const [actionLoadingId, setActionLoadingId] = useState(null);
-  const [ownerFilter, setOwnerFilter] = useState("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Deep link from the leaderboard: /leads?ownerId=<id>&ownerName=<name>.
+  const linkedOwnerId = searchParams.get("ownerId");
+  const linkedOwnerName = searchParams.get("ownerName");
+  const [ownerFilter, setOwnerFilter] = useState(linkedOwnerId || "all");
   const [selectedIds, setSelectedIds] = useState([]);
   const [claimingBulk, setClaimingBulk] = useState(false);
   const { hasPermission, isAdmin, user } = usePermission();
@@ -1386,6 +1390,7 @@ const ListLeads = () => {
                 onClick={() => {
                   setOwnerFilter(key);
                   setPage(1);
+                  if (linkedOwnerId) setSearchParams({}, { replace: true });
                 }}
                 className={`h-7 rounded-md px-3 text-[11px] font-semibold ${ownerFilter === key ? "bg-white text-[#101828] shadow-sm" : "text-[#667085]"}`}
               >
@@ -1393,6 +1398,22 @@ const ListLeads = () => {
               </button>
             ))}
           </div>
+          {linkedOwnerId && ownerFilter === linkedOwnerId && (
+            <span className="flex h-7 items-center gap-2 rounded-md bg-[#dcf8e4] px-3 text-[11px] font-semibold text-[#008f45]">
+              Owner: {linkedOwnerName || "selected admin"}
+              <button
+                type="button"
+                aria-label="Clear owner filter"
+                onClick={() => {
+                  setOwnerFilter("all");
+                  setPage(1);
+                  setSearchParams({}, { replace: true });
+                }}
+              >
+                ×
+              </button>
+            </span>
+          )}
           {perms.canAssign && selectedIds.length > 0 && (
             <button
               type="button"

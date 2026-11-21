@@ -199,7 +199,7 @@ const LeadPerformance = () => {
       {canViewReports && (
         <section className="rounded-xl border border-[#e5e7eb] bg-white p-4">
           <h2 className="text-sm font-semibold">Leaderboard</h2>
-          <p className="mt-1 text-xs text-[#667085]">All owners, best paying first.</p>
+          <p className="mt-1 text-xs text-[#667085]">All owners, best paying first. Select an admin to see their leads; open a lead to read its notes.</p>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[1000px] text-left text-xs">
               <thead className="border-b border-[#e5e7eb] text-[10px] uppercase tracking-wide text-[#667085]">
@@ -231,7 +231,19 @@ const LeadPerformance = () => {
                 ) : (
                   board.map((row, i) => (
                     <tr key={row.owner?.id || i}>
-                      <td className="px-3 py-2 font-semibold">{i + 1}. {row.owner?.name || "Unknown"}</td>
+                      <td className="px-3 py-2 font-semibold">
+                        {row.owner?.id ? (
+                          <Link
+                            to={`/leads?ownerId=${encodeURIComponent(row.owner.id)}&ownerName=${encodeURIComponent(row.owner.name || "")}`}
+                            title="View this admin's leads and notes"
+                            className="hover:text-[#008f45] hover:underline"
+                          >
+                            {i + 1}. {row.owner.name || "Unknown"}
+                          </Link>
+                        ) : (
+                          `${i + 1}. Unknown`
+                        )}
+                      </td>
                       <td className="px-3 py-2">{toNumber(row.assigned)}</td>
                       <td className="px-3 py-2">{toNumber(row.contacted)}</td>
                       <td className="px-3 py-2">{toNumber(row.registered)}</td>

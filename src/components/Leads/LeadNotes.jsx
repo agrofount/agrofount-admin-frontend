@@ -22,6 +22,8 @@ const formatWhen = (value) =>
     : "";
 
 // canWrite: update permission and not locked by another owner.
+const READ_ONLY_MESSAGE = "You can read these notes but not add to them.";
+
 const LeadNotes = ({ leadId, canWrite, lockedReason, currentUserId, isAdmin }) => {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -103,9 +105,9 @@ const LeadNotes = ({ leadId, canWrite, lockedReason, currentUserId, isAdmin }) =
           </div>
         </div>
       ) : (
-        lockedReason && (
+        (
           <p className="rounded-md bg-[#f9fafb] px-3 py-2 text-[11px] text-[#667085]">
-            {lockedReason}
+            {lockedReason || READ_ONLY_MESSAGE}
           </p>
         )
       )}

@@ -201,7 +201,7 @@ const LeadPerformance = () => {
           <h2 className="text-sm font-semibold">Leaderboard</h2>
           <p className="mt-1 text-xs text-[#667085]">All owners, best paying first.</p>
           <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-xs">
+            <table className="w-full min-w-[1000px] text-left text-xs">
               <thead className="border-b border-[#e5e7eb] text-[10px] uppercase tracking-wide text-[#667085]">
                 <tr>
                   {[
@@ -211,7 +211,10 @@ const LeadPerformance = () => {
                     ["Registered", TIPS.registered],
                     ["Paying", TIPS.paying],
                     ["Revenue", TIPS.revenue],
+                    ["Reg. rate", TIPS.registrationRate],
                     ["Paying rate", TIPS.payingRate],
+                    ["Reg. to paying", TIPS.registeredToPayingRate],
+                    ["Avg. days to register", TIPS.avgDaysToRegister],
                     ["Avg. days to pay", TIPS.avgDaysToFirstPayment],
                   ].map(([h, tip]) => (
                     <th key={h} title={tip} className="px-3 py-2 font-semibold">{h}</th>
@@ -221,7 +224,7 @@ const LeadPerformance = () => {
               <tbody className="divide-y divide-[#eef2f6]">
                 {board.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="px-3 py-6 text-center text-[#98a2b3]">
+                    <td colSpan="11" className="px-3 py-6 text-center text-[#98a2b3]">
                       No owned leads in this period.
                     </td>
                   </tr>
@@ -234,7 +237,10 @@ const LeadPerformance = () => {
                       <td className="px-3 py-2">{toNumber(row.registered)}</td>
                       <td className="px-3 py-2">{toNumber(row.paying)}</td>
                       <td className="px-3 py-2">{ngn(row.revenue)}</td>
+                      <td className="px-3 py-2">{pct(row.registrationRate)}</td>
                       <td className="px-3 py-2">{pct(row.payingRate)}</td>
+                      <td className="px-3 py-2">{pct(row.registeredToPayingRate)}</td>
+                      <td className="px-3 py-2">{days(row.avgDaysToRegister)}</td>
                       <td className="px-3 py-2">{days(row.avgDaysToFirstPayment)}</td>
                     </tr>
                   ))

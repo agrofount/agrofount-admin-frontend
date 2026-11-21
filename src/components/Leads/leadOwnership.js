@@ -52,6 +52,48 @@ export const fetchAdminPerformance = (adminId, params) =>
 export const fetchNotesFeed = (params) =>
   apiClient.get("/leads/notes", { params });
 
+export const createLead = (body) => apiClient.post("/leads", body);
+export const fetchLeadActivities = (id, params) =>
+  apiClient.get(`/leads/${id}/activities`, { params });
+export const addLeadActivity = (id, body) =>
+  apiClient.post(`/leads/${id}/activities`, body);
+export const reassignLead = (id, body) =>
+  apiClient.post(`/leads/${id}/reassign`, body);
+export const fetchOwnerHistory = (id) =>
+  apiClient.get(`/leads/${id}/owner-history`);
+export const fetchActiveAdmins = () =>
+  apiClient.get("/admin", { params: { page: 1, limit: 200 } });
+
+export const LEAD_CREATE_SOURCES = [
+  ["manual", "Manual"], ["field_visit", "Field visit"], ["referral", "Referral"],
+  ["cs_social", "Customer support / social"], ["whatsapp", "WhatsApp"],
+  ["phone_call", "Phone call"], ["ayo_web_chat", "Ayo web chat"],
+  ["event_market", "Event / market"], ["partner", "Partner"],
+  ["website", "Website"], ["meta", "Meta"], ["other", "Other"],
+];
+export const BUYER_TYPES = [
+  ["smallholder", "Smallholder"], ["commercial_farm", "Commercial farm"],
+  ["cooperative", "Cooperative"], ["agro_dealer", "Agro dealer"],
+  ["institution", "Institution"],
+];
+export const PRODUCT_INTERESTS = [
+  ["day_old_chicks", "Day-old chicks"], ["feed", "Feed"],
+  ["medication_vaccines", "Medication and vaccines"],
+  ["other_inputs", "Other inputs"], ["mixed", "Mixed"],
+];
+export const LEAD_STAGES = [
+  ["new", "New"], ["contacted", "Contacted"], ["visited", "Visited"],
+  ["quoted", "Quoted"], ["ordered_paid", "Ordered and paid"], ["lost", "Lost"],
+];
+
+export const formatWhen = (value) =>
+  value
+    ? new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      }).format(new Date(value))
+    : "";
+
 export const toNumber = (value, fallback = 0) => {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;

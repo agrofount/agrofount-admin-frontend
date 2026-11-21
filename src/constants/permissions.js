@@ -120,6 +120,7 @@ export const ACTIONS = {
   // Communication Actions
   SEND: "send", // Send notifications/emails
   ASSIGN: "assign", // Claim/release ownership (leads)
+  REASSIGN: "reassign", // Move a lead to another owner (leads)
   SEND_PRICE_UPDATE: "send_price_update",
   BROADCAST: "broadcast", // Broadcast to all users
 
@@ -547,6 +548,19 @@ function getDefaultActionsForResource(resource) {
     case RESOURCES.REPORTS:
     case RESOURCES.ANALYTICS:
       return [ACTIONS.READ, ACTIONS.EXPORT, ACTIONS.VIEW_REPORTS];
+
+    case RESOURCES.LEADS:
+      return [
+        ACTIONS.CREATE,
+        ACTIONS.READ,
+        ACTIONS.UPDATE,
+        ACTIONS.DELETE,
+        ACTIONS.ASSIGN,
+        ACTIONS.REASSIGN,
+        ACTIONS.SEND,
+        ACTIONS.IMPORT,
+        ACTIONS.VIEW_REPORTS,
+      ];
 
     case RESOURCES.SETTINGS:
       return [

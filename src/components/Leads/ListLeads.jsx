@@ -33,7 +33,13 @@ import { apiClient } from "../../lib/apiClient";
 import { ACTIONS, RESOURCES } from "../../constants/permissions";
 import { usePermission } from "../Hooks/usePermission";
 import LeadNotes from "./LeadNotes";
+import LeadActivities from "./LeadActivities";
+import LeadOwnerHistory from "./LeadOwnerHistory";
+import ReassignLead from "./ReassignLead";
+import CreateLeadModal from "./CreateLeadModal";
 import {
+  BUYER_TYPES,
+  LEAD_STAGES,
   CUSTOMER_STAGE_META,
   OWNER_LOCK_MESSAGE,
   bulkClaimLeads,
@@ -569,6 +575,8 @@ const LeadDetailDrawer = ({
             {[
               ["details", "Details"],
               ["notes", "Notes"],
+              ["activity", "Activity"],
+              ["owners", "Owners"],
             ].map(([key, label]) => (
               <button
                 key={key}
@@ -580,6 +588,19 @@ const LeadDetailDrawer = ({
               </button>
             ))}
           </div>
+
+          {tab === "activity" && (
+            <LeadActivities
+              leadId={lead.id}
+              canWrite={perms.canUpdate && !locked}
+              lockedReason={locked ? OWNER_LOCK_MESSAGE : null}
+              onLogged={() => onLeadUpdated(null)}
+            />
+          )}
+
+          {tab === "owners" && (
+            <LeadOwnerHistory leadId={lead.id} refreshKey={lead.ownerId} />
+          )}
 
           {tab === "notes" && (
             <LeadNotes
@@ -905,6 +926,9 @@ const LeadDetailDrawer = ({
               {ownerBusy ? "Releasing…" : "Release lead"}
             </button>
           )}
+          {perms.canReassign && (
+            <ReassignLead lead={lead} onDone={(updated) => onLeadUpdated(updated)} />
+          )}
           <button
             type="button"
             disabled={!perms.canSend || locked}
@@ -943,6 +967,11 @@ const ListLeads = () => {
   const [searchInput, setSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
+  const [stageFilter, setStageFilter] = useState("all");
+  const [buyerTypeFilter, setBuyerTypeFilter] = useState("all");
+  const [overdueOnly, setOverdueOnly] = useState(false);
+  const [slaBreachedOnly, setSlaBreachedOnly] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [sourceIdFilter, setSourceIdFilter] = useState("");
   const [campaignNameFilter, setCampaignNameFilter] = useState("");
   const [campaignIdFilter, setCampaignIdFilter] = useState("");
@@ -964,6 +993,8 @@ const ListLeads = () => {
     isAdmin,
     canUpdate: hasPermission(RESOURCES.LEADS, ACTIONS.UPDATE),
     canAssign: hasPermission(RESOURCES.LEADS, ACTIONS.ASSIGN),
+    canReassign: hasPermission(RESOURCES.LEADS, ACTIONS.REASSIGN),
+    canCreate: hasPermission(RESOURCES.LEADS, ACTIONS.CREATE),
     canSend: hasPermission(RESOURCES.LEADS, ACTIONS.SEND),
     canViewReports: hasPermission(RESOURCES.LEADS, ACTIONS.VIEW_REPORTS),
   };
@@ -986,6 +1017,10 @@ const ListLeads = () => {
           campaignName: campaignNameFilter.trim() || undefined,
           campaignId: campaignIdFilter.trim() || undefined,
           ownerId: ownerFilter !== "all" ? ownerFilter : undefined,
+          stage: stageFilter !== "all" ? stageFilter : undefined,
+          buyerType: buyerTypeFilter !== "all" ? buyerTypeFilter : undefined,
+          overdue: overdueOnly ? true : undefined,
+          slaBreached: slaBreachedOnly ? true : undefined,
         },
       });
       if (requestId !== leadsRequestId.current) return;
@@ -1011,6 +1046,10 @@ const ListLeads = () => {
     campaignNameFilter,
     campaignIdFilter,
     ownerFilter,
+    stageFilter,
+    buyerTypeFilter,
+    overdueOnly,
+    slaBreachedOnly,
   ]);
 
   const fetchStats = useCallback(async () => {
@@ -1030,7 +1069,7 @@ const ListLeads = () => {
   }, [fetchLeads]);
   useEffect(() => {
     setSelectedIds([]);
-  }, [page, pageSize, search, statusFilter, sourceFilter, sourceIdFilter, campaignNameFilter, campaignIdFilter, ownerFilter]);
+  }, [page, pageSize, search, statusFilter, sourceFilter, sourceIdFilter, campaignNameFilter, campaignIdFilter, ownerFilter, stageFilter, buyerTypeFilter, overdueOnly, slaBreachedOnly]);
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
@@ -1338,6 +1377,15 @@ const ListLeads = () => {
             <FontAwesomeIcon icon={faDownload} />
             Export
           </button>
+          {perms.canCreate && (
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              className="inline-flex h-9 items-center rounded-md border border-[#008f45] px-4 text-xs font-semibold text-[#008f45]"
+            >
+              Add lead
+            </button>
+          )}
           <button
             type="button"
             disabled={uploading}
@@ -1398,6 +1446,37 @@ const ListLeads = () => {
               </button>
             ))}
           </div>
+          <select
+            value={stageFilter}
+            onChange={(e) => { setStageFilter(e.target.value); setPage(1); }}
+            className="h-7 rounded-md border border-[#e5e7eb] bg-white px-2 text-[11px] text-[#344054]"
+            aria-label="Filter by stage"
+          >
+            <option value="all">All stages</option>
+            {LEAD_STAGES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+          </select>
+          <select
+            value={buyerTypeFilter}
+            onChange={(e) => { setBuyerTypeFilter(e.target.value); setPage(1); }}
+            className="h-7 rounded-md border border-[#e5e7eb] bg-white px-2 text-[11px] text-[#344054]"
+            aria-label="Filter by buyer type"
+          >
+            <option value="all">All buyer types</option>
+            {BUYER_TYPES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+          </select>
+          {[
+            ["Overdue follow-up", overdueOnly, setOverdueOnly],
+            ["SLA breached", slaBreachedOnly, setSlaBreachedOnly],
+          ].map(([text, on, setOn]) => (
+            <button
+              key={text}
+              type="button"
+              onClick={() => { setOn(!on); setPage(1); }}
+              className={`h-7 rounded-full px-3 text-[11px] font-semibold ${on ? "bg-[#dc2626] text-white" : "border border-[#e5e7eb] text-[#667085] hover:bg-[#f3f4f6]"}`}
+            >
+              {text}
+            </button>
+          ))}
           {linkedOwnerId && ownerFilter === linkedOwnerId && (
             <span className="flex h-7 items-center gap-2 rounded-md bg-[#dcf8e4] px-3 text-[11px] font-semibold text-[#008f45]">
               Owner: {linkedOwnerName || "selected admin"}
@@ -2034,6 +2113,17 @@ const ListLeads = () => {
           }
         }}
       />
+
+      {createOpen && (
+        <CreateLeadModal
+          canAssign={perms.canAssign}
+          onClose={() => setCreateOpen(false)}
+          onCreated={() => {
+            fetchLeads();
+            fetchStats();
+          }}
+        />
+      )}
 
       {notifyTarget && (
         <NotifyModal

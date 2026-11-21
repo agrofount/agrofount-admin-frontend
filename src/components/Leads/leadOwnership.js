@@ -53,6 +53,8 @@ export const fetchNotesFeed = (params) =>
   apiClient.get("/leads/notes", { params });
 
 export const createLead = (body) => apiClient.post("/leads", body);
+export const updateLeadProfile = (id, body) =>
+  apiClient.patch(`/leads/${id}`, body);
 export const fetchLeadActivities = (id, params) =>
   apiClient.get(`/leads/${id}/activities`, { params });
 export const addLeadActivity = (id, body) =>

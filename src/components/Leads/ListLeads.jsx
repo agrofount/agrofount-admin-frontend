@@ -36,6 +36,7 @@ import LeadNotes from "./LeadNotes";
 import LeadActivities from "./LeadActivities";
 import LeadOwnerHistory from "./LeadOwnerHistory";
 import ReassignLead from "./ReassignLead";
+import EditLeadProfile from "./EditLeadProfile";
 import CreateLeadModal from "./CreateLeadModal";
 import {
   BUYER_TYPES,
@@ -614,6 +615,11 @@ const LeadDetailDrawer = ({
 
           {tab === "details" && (
           <>
+          {canChangeStatus && (
+            <div className="flex justify-end">
+              <EditLeadProfile lead={lead} onSaved={(updated) => onLeadUpdated(updated)} />
+            </div>
+          )}
           <div className="space-y-2">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[#98a2b3]">
               Contact

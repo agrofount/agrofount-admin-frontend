@@ -87,6 +87,7 @@ const CreateJob = lazy(() => import("./components/Careers/CreateJob"));
 const Notifications = lazy(() => import("./components/Notifications/Notifications"));
 const ListLeads = lazy(() => import("./components/Leads/ListLeads"));
 const LeadPerformance = lazy(() => import("./components/Leads/LeadPerformance"));
+const LeadNotesFeed = lazy(() => import("./components/Leads/LeadNotesFeed"));
 const SellerInterestsList = lazy(() =>
   import("./components/SellerInterests/SellerInterestsList")
 );
@@ -175,6 +176,7 @@ const adminRoutes = [
   { path: "/careers/create", element: <CreateJob /> },
   { path: "/leads", element: <ListLeads /> },
   { path: "/leads/performance", element: <LeadPerformance /> },
+  { path: "/leads/notes", element: <LeadNotesFeed /> },
   { path: "/notifications", element: <Notifications /> },
   { path: "/ayo-ai", element: <AyoAIAnalytics /> },
   { path: "/ayo-ai/knowledge", element: <AyoKnowledgeBase /> },

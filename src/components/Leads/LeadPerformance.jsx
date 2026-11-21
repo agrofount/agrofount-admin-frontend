@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { ACTIONS, RESOURCES } from "../../constants/permissions";
 import { usePermission } from "../Hooks/usePermission";
 import {
+  fetchAdminPerformance,
   fetchLeaderboard,
   fetchMyPerformance,
   getErrorMessage,
@@ -114,6 +115,83 @@ const Funnel = ({ data }) => {
           </div>
         </div>
       ))}
+    </div>
+  );
+};
+
+const STAGE_LABELS = [
+  ["new", "New"],
+  ["contacted", "Contacted"],
+  ["visited", "Visited"],
+  ["quoted", "Quoted"],
+  ["ordered_paid", "Ordered and paid"],
+  ["lost", "Lost"],
+];
+
+// Extra detail for one admin from GET /leads/performance/:adminId. Falls back
+// silently to the leaderboard numbers shown above it if the call fails.
+const AdminDetail = ({ adminId, range }) => {
+  const [detail, setDetail] = useState(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setDetail(null);
+    setFailed(false);
+    fetchAdminPerformance(adminId, {
+      from: range.from || undefined,
+      to: range.to || undefined,
+    })
+      .then((res) => !cancelled && setDetail(res.data))
+      .catch(() => !cancelled && setFailed(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [adminId, range.from, range.to]);
+
+  if (failed) {
+    return (
+      <p className="text-xs text-[#98a2b3]">
+        Stage and lost reason detail is not available right now.
+      </p>
+    );
+  }
+  if (!detail) return <div className="h-24 animate-pulse rounded-lg bg-[#f3f4f6]" />;
+
+  const lostReasons = Array.isArray(detail.lostReasons) ? detail.lostReasons : [];
+  return (
+    <div className="grid gap-4 lg:grid-cols-3">
+      <div className="rounded-xl border border-[#e5e7eb] p-4">
+        <h3 className="text-xs font-semibold">Pipeline stages</h3>
+        <dl className="mt-2 space-y-1 text-xs">
+          {STAGE_LABELS.map(([key, label]) => (
+            <div key={key} className="flex justify-between">
+              <dt className="text-[#667085]">{label}</dt>
+              <dd className="font-semibold">{toNumber(detail.stages?.[key])}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+      <div className="rounded-xl border border-[#e5e7eb] p-4">
+        <h3 className="text-xs font-semibold">Lost reasons</h3>
+        {lostReasons.length === 0 ? (
+          <p className="mt-2 text-xs text-[#98a2b3]">No lost reasons recorded yet.</p>
+        ) : (
+          <ul className="mt-2 space-y-1 text-xs">
+            {lostReasons.map((r) => (
+              <li key={r.reason} className="flex justify-between">
+                <span className="capitalize text-[#667085]">{String(r.reason).replace(/_/g, " ")}</span>
+                <span className="font-semibold">{toNumber(r.count)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <Metric
+        label="Overdue follow-ups"
+        value={toNumber(detail.overdueFollowUps)}
+        tip="Leads with a past-due next action that are not ordered and paid or lost."
+      />
     </div>
   );
 };
@@ -244,12 +322,18 @@ const LeadPerformance = () => {
               <Metric label="Rejected" value={toNumber(selectedRow.rejected)} tip={TIPS.rejected} />
             </div>
           </div>
+          <AdminDetail adminId={selectedRow.owner.id} range={range} />
         </section>
       )}
 
       {canViewReports && (
         <section className="rounded-xl border border-[#e5e7eb] bg-white p-4">
-          <h2 className="text-sm font-semibold">Leaderboard</h2>
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-sm font-semibold">Leaderboard</h2>
+            <Link to="/leads/notes" className="text-xs font-semibold text-[#008f45] hover:underline">
+              All admin notes
+            </Link>
+          </div>
           <p className="mt-1 text-xs text-[#667085]">All owners, best paying first. Select a row for that admin&apos;s funnel; click a name for their leads and notes.</p>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[1000px] text-left text-xs">

@@ -47,6 +47,11 @@ export const fetchMyPerformance = (params) =>
 export const fetchLeaderboard = (params) =>
   apiClient.get("/leads/performance", { params });
 
+export const fetchAdminPerformance = (adminId, params) =>
+  apiClient.get(`/leads/performance/${adminId}`, { params });
+export const fetchNotesFeed = (params) =>
+  apiClient.get("/leads/notes", { params });
+
 export const toNumber = (value, fallback = 0) => {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ACTIONS, RESOURCES } from "../../constants/permissions";
 import { usePermission } from "../Hooks/usePermission";
@@ -125,6 +125,13 @@ const LeadPerformance = () => {
   const [mine, setMine] = useState(null);
   const [board, setBoard] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedOwnerId = searchParams.get("owner");
+  const selectedRow = canViewReports
+    ? board.find((row) => row.owner?.id === selectedOwnerId)
+    : null;
+  const selectOwner = (id) =>
+    setSearchParams(id ? { owner: id } : {}, { replace: true });
 
   const load = useCallback(async () => {
     const params = {
@@ -196,10 +203,54 @@ const LeadPerformance = () => {
         </>
       ) : null}
 
+      {selectedRow && (
+        <section className="space-y-4 rounded-xl border border-[#008f45]/30 bg-white p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">
+                {selectedRow.owner?.name || "Unknown"}: conversion funnel
+              </h2>
+              <p className="mt-1 text-xs text-[#667085]">
+                Same period as the leaderboard.{" "}
+                <Link
+                  to={`/leads?ownerId=${encodeURIComponent(selectedRow.owner.id)}&ownerName=${encodeURIComponent(selectedRow.owner.name || "")}`}
+                  className="font-semibold text-[#008f45] hover:underline"
+                >
+                  View their leads and notes
+                </Link>
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => selectOwner(null)}
+              className="h-8 rounded-md border border-[#d0d5dd] px-3 text-xs text-[#667085]"
+            >
+              Close
+            </button>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Funnel data={selectedRow} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Metric label="Revenue" value={ngn(selectedRow.revenue)} tip={TIPS.revenue} />
+              <Metric label="Registered" value={toNumber(selectedRow.registered)} tip={TIPS.registered}
+                sub={`${toNumber(selectedRow.registeredBeforeClaim)} already registered before claim (not credited)`} />
+              <Metric label="Contact rate" value={pct(selectedRow.contactRate)} tip={TIPS.contactRate} />
+              <Metric label="Registration rate" value={pct(selectedRow.registrationRate)} tip={TIPS.registrationRate} />
+              <Metric label="Paying rate" value={pct(selectedRow.payingRate)} tip={TIPS.payingRate} />
+              <Metric label="Registered to paying" value={pct(selectedRow.registeredToPayingRate)} tip={TIPS.registeredToPayingRate} />
+              <Metric label="Avg. days to register" value={days(selectedRow.avgDaysToRegister)} tip={TIPS.avgDaysToRegister} />
+              <Metric label="Avg. days to first payment" value={days(selectedRow.avgDaysToFirstPayment)} tip={TIPS.avgDaysToFirstPayment} />
+              <Metric label="Qualified" value={toNumber(selectedRow.qualified)} tip={TIPS.qualified} />
+              <Metric label="Rejected" value={toNumber(selectedRow.rejected)} tip={TIPS.rejected} />
+            </div>
+          </div>
+        </section>
+      )}
+
       {canViewReports && (
         <section className="rounded-xl border border-[#e5e7eb] bg-white p-4">
           <h2 className="text-sm font-semibold">Leaderboard</h2>
-          <p className="mt-1 text-xs text-[#667085]">All owners, best paying first. Select an admin to see their leads; open a lead to read its notes.</p>
+          <p className="mt-1 text-xs text-[#667085]">All owners, best paying first. Select a row for that admin&apos;s funnel; click a name for their leads and notes.</p>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[1000px] text-left text-xs">
               <thead className="border-b border-[#e5e7eb] text-[10px] uppercase tracking-wide text-[#667085]">
@@ -230,11 +281,16 @@ const LeadPerformance = () => {
                   </tr>
                 ) : (
                   board.map((row, i) => (
-                    <tr key={row.owner?.id || i}>
+                    <tr
+                      key={row.owner?.id || i}
+                      onClick={() => row.owner?.id && selectOwner(row.owner.id)}
+                      className={`cursor-pointer hover:bg-[#f9fafb] ${row.owner?.id === selectedOwnerId ? "bg-[#f0fdf4]" : ""}`}
+                    >
                       <td className="px-3 py-2 font-semibold">
                         {row.owner?.id ? (
                           <Link
                             to={`/leads?ownerId=${encodeURIComponent(row.owner.id)}&ownerName=${encodeURIComponent(row.owner.name || "")}`}
+                            onClick={(e) => e.stopPropagation()}
                             title="View this admin's leads and notes"
                             className="hover:text-[#008f45] hover:underline"
                           >
